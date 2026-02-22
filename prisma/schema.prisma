@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// AUTHENTICATION
+// ============================================================================
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(ADMIN)
+  createdAt    DateTime @default(now())
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+// ============================================================================
+// ONLINE COUPONS (Existing)
+// ============================================================================
+
+model Store {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logo      String?
+  website   String?
+  createdAt DateTime @default(now())
+  
+  coupons   Coupon[]
+
+  @@map("stores")
+}
+
+model Coupon {
+  id           String   @id @default(cuid())
+  title        String
+  code         String
+  discountText String
+  url          String
+  description  String?  @db.Text
+  storeId      String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@index([isActive])
+  @@map("coupons")
+}
+
+// ============================================================================
+// SUPERMARKET OFFERS MODULE (NEW)
+// ============================================================================
+
+// Cities for location filtering
+model City {
+  id        String   @id @default(cuid())
+  nameAr    String
+  nameEn    String
+  slug      String   @unique
+  region    String?  // e.g., "Riyadh Region", "Makkah Region"
+  createdAt DateTime @default(now())
+
+  supermarkets Supermarket[]
+  flyers       Flyer[]
+
+  @@map("cities")
+}
+
+// Supermarket/Retailer (Enhanced from existing)
+model Supermarket {
+  id        String   @id @default(cuid())
+  name      String
+  nameAr    String
+  slug      String   @unique
+  logo      String?
+  website   String?
+  cityId    String?
+  isActive  Boolean  @default(true)
+  viewCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  city          City?           @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  flyers        Flyer[]
+  productOffers ProductOffer[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@index([cityId])
+  @@map("supermarkets")
+}
+
+// Flyer (PDF brochure)
+model Flyer {
+  id           String      @id @default(cuid())
+  supermarketId String
+  title        String
+  titleAr      String?
+  startDate    DateTime
+  endDate      DateTime
+  pdfUrl       String?     // Cloud storage URL
+  pdfPath      String?     // Local file path
+  coverImage   String?     // First page thumbnail
+  totalPages   Int         @default(0)
+  status       FlyerStatus @default(DRAFT)
+  viewCount    Int         @default(0)
+  cityId       String?
+  
+  // Extraction metadata
+  extractedAt  DateTime?
+  extractionLog String?    @db.Text
+  
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  supermarket   Supermarket   @relation(fields: [supermarketId], references: [id], onDelete: Cascade)
+  city          City?         @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  productOffers ProductOffer[]
+
+  @@index([supermarketId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@index([cityId])
+  @@map("flyers")
+}
+
+enum FlyerStatus {
+  DRAFT
+  PROCESSING
+  ACTIVE
+  EXPIRED
+  FAILED
+}
+
+// Product Categories (hierarchical)
+model Category {
+  id       String  @id @default(cuid())
+  nameAr   String
+  nameEn   String
+  slug     String  @unique
+  icon     String? // emoji or icon class
+  parentId String?
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  parent   Category?      @relation("CategoryToCategory", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[]     @relation("CategoryToCategory")
+  products ProductOffer[]
+
+  @@index([parentId])
+  @@index([slug])
+  @@index([isActive])
+  @@map("categories")
+}
+
+// Product extracted from flyer
+model ProductOffer {
+  id            String   @id @default(cuid())
+  flyerId       String
+  supermarketId String
+  categoryId    String?
+  
+  // Product info (extracted)
+  nameAr        String?
+  nameEn        String?
+  brand         String?
+  price         Float
+  oldPrice      Float?
+  discountPercent Int?
+  sizeText      String?  // "1kg", "500ml", "pack of 6"
+  
+  // Image and location in PDF
+  imageUrl      String?  // Cropped product image
+  pageNumber    Int
+  bbox          String?  // JSON: {x, y, width, height}
+  
+  // Metadata
+  tags          String?  // Comma-separated keywords
+  confidence    Float?   @default(0.5) // OCR confidence score
+  isHidden      Boolean  @default(false)
+  viewCount     Int      @default(0)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  flyer         Flyer        @relation(fields: [flyerId], references: [id], onDelete: Cascade)
+  supermarket   Supermarket  @relation(fields: [supermarketId], references: [id], onDelete: Cascade)
+  category      Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([flyerId])
+  @@index([supermarketId])
+  @@index([categoryId])
+  @@index([price])
+  @@index([isHidden])
+  @@map("product_offers")
+}
