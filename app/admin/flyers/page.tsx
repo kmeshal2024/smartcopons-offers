@@ -58,8 +58,14 @@ export default function AdminFlyersPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/admin/flyers').then(r => r.json()),
-      fetch('/api/admin/supermarkets').then(r => r.json()),
+      fetch('/api/admin/flyers').then(r => {
+        if (r.status === 401) { window.location.href = '/admin/login'; return { flyers: [] } }
+        return r.json()
+      }),
+      fetch('/api/admin/supermarkets').then(r => {
+        if (r.status === 401) { window.location.href = '/admin/login'; return { supermarkets: [] } }
+        return r.json()
+      }),
     ]).then(([flyerData, smData]) => {
       setFlyers(flyerData.flyers || [])
       setSupermarkets(smData.supermarkets || [])
@@ -69,6 +75,7 @@ export default function AdminFlyersPage() {
 
   const loadFlyers = async () => {
     const res = await fetch('/api/admin/flyers')
+    if (res.status === 401) { window.location.href = '/admin/login'; return }
     const data = await res.json()
     setFlyers(data.flyers || [])
   }
