@@ -90,15 +90,28 @@ export default function AdminProductsPage() {
 
   const loadProducts = async () => {
     setLoading(true)
-    const params = new URLSearchParams({ page: page.toString() })
-    if (search) params.set('search', search)
-    if (filterSupermarket) params.set('supermarketId', filterSupermarket)
+    try {
+      const params = new URLSearchParams({ page: page.toString() })
+      if (search) params.set('search', search)
+      if (filterSupermarket) params.set('supermarketId', filterSupermarket)
 
-    const res = await fetch(`/api/admin/products?${params}`)
-    const data = await res.json()
-    setProducts(data.products || [])
-    setPagination(data.pagination || null)
-    setLoading(false)
+      const res = await fetch(`/api/admin/products?${params}`)
+      if (res.status === 401) {
+        window.location.href = '/admin/login'
+        return
+      }
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Failed to load products')
+        return
+      }
+      setProducts(data.products || [])
+      setPagination(data.pagination || null)
+    } catch {
+      setError('Failed to load products')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

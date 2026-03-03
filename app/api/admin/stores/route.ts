@@ -6,7 +6,12 @@ import { storeSchema } from '@/lib/validators'
 export async function GET() {
   try {
     await requireAdmin()
+  } catch (error: any) {
+    console.error('Stores auth error:', error?.message)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
+  try {
     const stores = await prisma.store.findMany({
       orderBy: {
         name: 'asc',
@@ -15,7 +20,8 @@ export async function GET() {
 
     return NextResponse.json({ stores })
   } catch (error) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    console.error('Stores fetch error:', error)
+    return NextResponse.json({ error: 'Failed to fetch stores' }, { status: 500 })
   }
 }
 

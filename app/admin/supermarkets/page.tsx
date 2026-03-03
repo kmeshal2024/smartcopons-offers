@@ -35,7 +35,15 @@ export default function AdminSupermarketsPage() {
   const loadData = async () => {
     try {
       const res = await fetch('/api/admin/supermarkets')
+      if (res.status === 401) {
+        window.location.href = '/admin/login'
+        return
+      }
       const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Failed to load supermarkets')
+        return
+      }
       setSupermarkets(data.supermarkets || [])
     } catch {
       setError('Failed to load supermarkets')
@@ -189,14 +197,45 @@ export default function AdminSupermarketsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-1">Logo URL</label>
-                <input
-                  type="text"
-                  value={formData.logo}
-                  onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
-                  placeholder="https://... or /logos/supermarket.png"
-                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="block text-sm font-semibold mb-1">Logo</label>
+                <div className="flex gap-3 items-start">
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        setError('')
+                        const fd = new FormData()
+                        fd.append('file', file)
+                        fd.append('folder', 'logos')
+                        try {
+                          const res = await fetch('/api/admin/upload', { method: 'POST', body: fd })
+                          const data = await res.json()
+                          if (data.url) {
+                            setFormData(prev => ({ ...prev, logo: data.url }))
+                          } else {
+                            setError(data.error || 'Upload failed')
+                          }
+                        } catch {
+                          setError('Upload failed')
+                        }
+                      }}
+                      className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="text"
+                      value={formData.logo}
+                      onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
+                      placeholder="Or paste logo URL..."
+                      className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2 text-sm"
+                    />
+                  </div>
+                  {formData.logo && (
+                    <img src={formData.logo} alt="Logo" className="w-16 h-16 object-contain rounded border" />
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-2">

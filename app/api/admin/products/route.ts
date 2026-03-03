@@ -5,7 +5,12 @@ import { requireAdmin } from '@/lib/auth'
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin()
+  } catch (error: any) {
+    console.error('Products auth error:', error?.message)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
+  try {
     const { searchParams } = new URL(request.url)
     const supermarketId = searchParams.get('supermarketId')
     const search = searchParams.get('search')
@@ -42,7 +47,8 @@ export async function GET(request: NextRequest) {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     })
   } catch (error) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    console.error('Products fetch error:', error)
+    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 })
   }
 }
 

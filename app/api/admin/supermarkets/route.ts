@@ -5,7 +5,12 @@ import { requireAdmin } from '@/lib/auth'
 export async function GET() {
   try {
     await requireAdmin()
+  } catch (error: any) {
+    console.error('Supermarkets auth error:', error?.message)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
+  try {
     const supermarkets = await prisma.supermarket.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
@@ -20,7 +25,8 @@ export async function GET() {
 
     return NextResponse.json({ supermarkets })
   } catch (error) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    console.error('Supermarkets fetch error:', error)
+    return NextResponse.json({ error: 'Failed to fetch supermarkets' }, { status: 500 })
   }
 }
 

@@ -6,7 +6,12 @@ import { couponSchema } from '@/lib/validators'
 export async function GET() {
   try {
     await requireAdmin()
+  } catch (error: any) {
+    console.error('Coupons auth error:', error?.message)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
+  try {
     const coupons = await prisma.coupon.findMany({
       include: {
         store: {
@@ -22,7 +27,8 @@ export async function GET() {
 
     return NextResponse.json({ coupons })
   } catch (error) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    console.error('Coupons fetch error:', error)
+    return NextResponse.json({ error: 'Failed to fetch coupons' }, { status: 500 })
   }
 }
 
