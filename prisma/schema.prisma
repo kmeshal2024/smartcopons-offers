@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -202,10 +202,25 @@ model ProductOffer {
   supermarket   Supermarket  @relation(fields: [supermarketId], references: [id], onDelete: Cascade)
   category      Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
+  // Single-column indexes
   @@index([flyerId])
   @@index([supermarketId])
   @@index([categoryId])
   @@index([price])
-  @@index([isHidden])
+
+  // Composite indexes for common query patterns
+  // Main listing query: non-hidden products sorted by date
+  @@index([isHidden, createdAt])
+  // Filter by supermarket + not hidden
+  @@index([supermarketId, isHidden, createdAt])
+  // Filter by category + not hidden
+  @@index([categoryId, isHidden, createdAt])
+  // Price range + not hidden
+  @@index([isHidden, price])
+  // Discount sort (popular query: "biggest discounts")
+  @@index([isHidden, discountPercent])
+  // Popular products
+  @@index([isHidden, viewCount])
+
   @@map("product_offers")
 }

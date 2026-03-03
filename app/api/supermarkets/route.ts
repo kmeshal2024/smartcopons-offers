@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const supermarkets = await prisma.supermarket.findMany({
@@ -26,7 +28,9 @@ export async function GET() {
       orderBy: { viewCount: 'desc' },
     })
 
-    return NextResponse.json({ supermarkets })
+    const response = NextResponse.json({ supermarkets })
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+    return response
   } catch (error) {
     console.error('Error fetching supermarkets:', error)
     return NextResponse.json(

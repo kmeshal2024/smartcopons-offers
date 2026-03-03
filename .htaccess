@@ -1,0 +1,33 @@
+# SmartCopons — Root .htaccess for Hostinger (LiteSpeed + Passenger)
+# This file goes in public_html/ (the app root)
+
+# Enable gzip compression
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css application/json application/javascript text/javascript
+</IfModule>
+
+# Cache static assets
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/png "access plus 1 month"
+  ExpiresByType image/jpeg "access plus 1 month"
+  ExpiresByType image/webp "access plus 1 month"
+  ExpiresByType image/svg+xml "access plus 1 month"
+  ExpiresByType text/css "access plus 1 week"
+  ExpiresByType application/javascript "access plus 1 week"
+  ExpiresByType application/font-woff2 "access plus 1 month"
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set X-XSS-Protection "1; mode=block"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Proxy all requests to Node.js app (if not using hPanel Node.js manager)
+# Uncomment these lines ONLY if Hostinger's Node.js App Manager doesn't work:
+# RewriteEngine On
+# RewriteRule ^(.*)$ http://127.0.0.1:3000/$1 [P,L]
+# ProxyPassReverse / http://127.0.0.1:3000/

@@ -27,7 +27,7 @@ export class CategoryMapper {
     const normalizedName = productName.toLowerCase()
 
     // Try to match keywords
-    for (const [categoryId, keywords] of this.categoryKeywords.entries()) {
+    for (const [categoryId, keywords] of Array.from(this.categoryKeywords.entries())) {
       for (const keyword of keywords) {
         if (normalizedName.includes(keyword.toLowerCase())) {
           return categoryId

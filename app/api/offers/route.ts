@@ -123,7 +123,7 @@ export async function GET(request: Request) {
       }).catch(() => {})
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       products,
       pagination: {
         page,
@@ -132,6 +132,11 @@ export async function GET(request: Request) {
         totalPages: Math.ceil(total / limit),
       },
     })
+
+    // Cache for 60 seconds on CDN/browser — reduces DB hits on shared hosting
+    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
+
+    return response
   } catch (error) {
     console.error('Error fetching offers:', error)
     return NextResponse.json(

@@ -1,12 +1,31 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#db2777',
+}
+
 export const metadata: Metadata = {
-  title: 'SmartCopons - كوبونات وعروض حصرية',
-  description: 'احصل على أفضل كوبونات الخصم من المتاجر الإلكترونية في السعودية',
+  title: {
+    default: 'SmartCopons | عروض وكوبونات السوبرماركت في السعودية',
+    template: '%s | SmartCopons',
+  },
+  description: 'اكتشف أحدث عروض السوبرماركت وكوبونات الخصم في السعودية',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://sa.smartcopons.com'),
+  openGraph: {
+    type: 'website',
+    locale: 'ar_SA',
+    siteName: 'SmartCopons',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function RootLayout({

@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start -p ${PORT:-3000}",
+    "start:standalone": "node .next/standalone/server.js",
     "postinstall": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
     "lint": "next lint"
   },
   "prisma": {

@@ -1,8 +1,29 @@
 import path from 'path'
 import fs from 'fs/promises'
 import { existsSync } from 'fs'
-import sharp from 'sharp'
-import { createWorker } from 'tesseract.js'
+
+// Dynamic imports for native deps — may not be available on shared hosting
+let sharp: any
+let createWorker: any
+
+async function loadNativeDeps() {
+  try {
+    sharp = (await import('sharp')).default
+  } catch {
+    throw new Error(
+      'sharp is not available. PDF extraction requires sharp. ' +
+      'On shared hosting, run extraction locally and upload products manually.'
+    )
+  }
+  try {
+    createWorker = (await import('tesseract.js')).createWorker
+  } catch {
+    throw new Error(
+      'tesseract.js is not available. PDF extraction requires tesseract.js. ' +
+      'On shared hosting, run extraction locally and upload products manually.'
+    )
+  }
+}
 
 interface ProductBlock {
   text: string
@@ -46,6 +67,9 @@ export class PDFExtractor {
   async extractProducts(pdfPath: string): Promise<ExtractionResult> {
     this.logs = []
     this.log(`Starting extraction for: ${pdfPath}`)
+
+    // Load native dependencies (may fail on shared hosting)
+    await loadNativeDeps()
 
     if (!existsSync(pdfPath)) {
       throw new Error(`PDF file not found: ${pdfPath}`)

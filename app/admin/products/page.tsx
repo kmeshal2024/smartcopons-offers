@@ -51,10 +51,12 @@ export default function AdminProductsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [search, setSearch] = useState('')
   const [filterSupermarket, setFilterSupermarket] = useState('')
   const [pagination, setPagination] = useState<Pagination | null>(null)
   const [page, setPage] = useState(1)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const [formData, setFormData] = useState({
     flyerId: '',
@@ -172,6 +174,44 @@ export default function AdminProductsPage() {
     setError('')
   }
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === products.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(products.map(p => p.id)))
+    }
+  }
+
+  const handleBulkAction = async (action: string) => {
+    if (selectedIds.size === 0) return
+    setError('')
+    setSuccess('')
+
+    try {
+      const res = await fetch('/api/admin/products/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ids: Array.from(selectedIds) }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Failed'); return }
+      setSuccess(`${action}: ${data.count} products updated`)
+      setSelectedIds(new Set())
+      loadProducts()
+    } catch {
+      setError('Bulk action failed')
+    }
+  }
+
   const allCategories = categories.flatMap(c => [c, ...c.children])
 
   return (
@@ -189,7 +229,16 @@ export default function AdminProductsPage() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{error}</div>
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+            <button onClick={() => setError('')} className="float-right font-bold">x</button>
+          </div>
+        )}
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4">
+            {success}
+            <button onClick={() => setSuccess('')} className="float-right font-bold">x</button>
+          </div>
         )}
 
         {showForm && (
@@ -388,6 +437,25 @@ export default function AdminProductsPage() {
           </button>
         </div>
 
+        {/* Bulk Actions Bar */}
+        {selectedIds.size > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex items-center gap-3">
+            <span className="text-sm font-semibold text-blue-700">{selectedIds.size} selected</span>
+            <button onClick={() => handleBulkAction('show')} className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
+              Show All
+            </button>
+            <button onClick={() => handleBulkAction('hide')} className="bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700">
+              Hide All
+            </button>
+            <button onClick={() => { if (confirm(`Delete ${selectedIds.size} products?`)) handleBulkAction('delete') }} className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">
+              Delete All
+            </button>
+            <button onClick={() => setSelectedIds(new Set())} className="text-gray-500 hover:text-gray-700 text-sm ml-auto">
+              Clear Selection
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -403,6 +471,9 @@ export default function AdminProductsPage() {
               <table className="min-w-full">
                 <thead className="bg-gray-100">
                   <tr>
+                    <th className="px-3 py-3 w-8">
+                      <input type="checkbox" checked={selectedIds.size === products.length && products.length > 0} onChange={toggleSelectAll} />
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Brand</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
@@ -416,12 +487,15 @@ export default function AdminProductsPage() {
                 <tbody className="divide-y divide-gray-200">
                   {products.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
                         No products found. Add products through flyer upload or manually.
                       </td>
                     </tr>
                   ) : products.map(p => (
                     <tr key={p.id} className={p.isHidden ? 'opacity-50' : ''}>
+                      <td className="px-3 py-3">
+                        <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelect(p.id)} />
+                      </td>
                       <td className="px-4 py-3 text-sm">
                         <div dir="rtl">{p.nameAr || '-'}</div>
                         <div className="text-gray-400 text-xs">{p.nameEn || ''}</div>

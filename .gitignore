@@ -35,3 +35,11 @@ next-env.d.ts
 
 # prisma
 /prisma/migrations
+
+# deploy artifacts
+smartcopons-deploy.zip
+/public/uploads/products/*
+/public/uploads/flyers/*
+/public/uploads/logos/*
+/public/uploads/covers/*
+!public/uploads/**/.gitkeep
