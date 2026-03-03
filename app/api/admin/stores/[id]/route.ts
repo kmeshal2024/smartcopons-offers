@@ -5,10 +5,11 @@ import { storeSchema } from '@/lib/validators'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin()
+    const { id } = await params
 
     const body = await request.json()
     const validation = storeSchema.safeParse(body)
@@ -21,7 +22,7 @@ export async function PUT(
     }
 
     const store = await prisma.store.update({
-      where: { id: params.id },
+      where: { id },
       data: validation.data,
     })
 
@@ -37,13 +38,14 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin()
+    const { id } = await params
 
     await prisma.store.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ success: true })

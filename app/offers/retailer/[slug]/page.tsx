@@ -7,13 +7,14 @@ import type { Metadata } from 'next'
 import RetailerFilters from './RetailerFilters'
 
 interface Props {
-  params: { slug: string }
-  searchParams: { sort?: string; category?: string; page?: string }
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ sort?: string; category?: string; page?: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
   const supermarket = await prisma.supermarket.findUnique({
-    where: { slug: params.slug },
+    where: { slug },
   })
 
   if (!supermarket) return { title: 'متجر غير موجود' }
@@ -109,11 +110,13 @@ async function getRetailerData(slug: string, sort: string, categorySlug: string,
 }
 
 export default async function RetailerPage({ params, searchParams }: Props) {
-  const sort = searchParams.sort || 'newest'
-  const category = searchParams.category || ''
-  const page = parseInt(searchParams.page || '1')
+  const { slug } = await params
+  const sp = await searchParams
+  const sort = sp.sort || 'newest'
+  const category = sp.category || ''
+  const page = parseInt(sp.page || '1')
 
-  const data = await getRetailerData(params.slug, sort, category, page)
+  const data = await getRetailerData(slug, sort, category, page)
 
   if (!data) return notFound()
 
@@ -182,7 +185,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
 
         {/* Filters */}
         <RetailerFilters
-          slug={params.slug}
+          slug={slug}
           categories={categories}
           currentSort={sort}
           currentCategory={category}
@@ -207,7 +210,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
               <div className="flex justify-center gap-2 mt-8">
                 {currentPage > 1 && (
                   <Link
-                    href={`/offers/retailer/${params.slug}?sort=${sort}&category=${category}&page=${currentPage - 1}`}
+                    href={`/offers/retailer/${slug}?sort=${sort}&category=${category}&page=${currentPage - 1}`}
                     className="px-4 py-2 rounded-full border-2 border-pink-200 hover:border-pink-500 font-semibold"
                   >
                     السابق
@@ -218,7 +221,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
                   return (
                     <Link
                       key={p}
-                      href={`/offers/retailer/${params.slug}?sort=${sort}&category=${category}&page=${p}`}
+                      href={`/offers/retailer/${slug}?sort=${sort}&category=${category}&page=${p}`}
                       className={`w-10 h-10 rounded-full font-semibold flex items-center justify-center ${
                         p === currentPage
                           ? 'bg-pink-600 text-white'
@@ -231,7 +234,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
                 })}
                 {currentPage < totalPages && (
                   <Link
-                    href={`/offers/retailer/${params.slug}?sort=${sort}&category=${category}&page=${currentPage + 1}`}
+                    href={`/offers/retailer/${slug}?sort=${sort}&category=${category}&page=${currentPage + 1}`}
                     className="px-4 py-2 rounded-full border-2 border-pink-200 hover:border-pink-500 font-semibold"
                   >
                     التالي

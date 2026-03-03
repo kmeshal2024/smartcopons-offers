@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
-import path from 'path'
-import fs from 'fs/promises'
+import { put } from '@vercel/blob'
 
 export async function POST(request: Request) {
   try {
@@ -42,30 +41,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Flyer not found' }, { status: 404 })
     }
 
-    // Save file to disk
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'flyers')
-    await fs.mkdir(uploadsDir, { recursive: true })
+    // Upload to Vercel Blob
+    const filename = `flyers/${flyerId}-${Date.now()}.pdf`
+    const blob = await put(filename, file, {
+      access: 'public',
+    })
 
-    const safeFilename = `${flyerId}-${Date.now()}.pdf`
-    const filepath = path.join(uploadsDir, safeFilename)
-
-    const buffer = Buffer.from(await file.arrayBuffer())
-    await fs.writeFile(filepath, buffer)
-
-    // Update flyer record with file paths
-    const pdfUrl = `/uploads/flyers/${safeFilename}`
+    // Update flyer record with blob URL
     await prisma.flyer.update({
       where: { id: flyerId },
       data: {
-        pdfPath: filepath,
-        pdfUrl,
+        pdfPath: blob.url,
+        pdfUrl: blob.url,
       },
     })
 
     return NextResponse.json({
       success: true,
-      pdfUrl,
-      pdfPath: filepath,
+      pdfUrl: blob.url,
+      pdfPath: blob.url,
       size: file.size,
     })
   } catch (error: any) {

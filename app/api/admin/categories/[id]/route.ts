@@ -4,16 +4,17 @@ import { requireAdmin } from '@/lib/auth'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin()
+    const { id } = await params
 
     const body = await request.json()
     const { nameAr, nameEn, slug, icon, parentId, order, isActive } = body
 
     const category = await prisma.category.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         nameAr,
         nameEn,
@@ -36,12 +37,13 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin()
+    const { id } = await params
 
-    await prisma.category.delete({ where: { id: params.id } })
+    await prisma.category.delete({ where: { id } })
 
     return NextResponse.json({ success: true })
   } catch (error) {

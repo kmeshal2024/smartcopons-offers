@@ -366,14 +366,45 @@ export default function AdminProductsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-1">Image URL</label>
-                <input
-                  type="text"
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  placeholder="https://..."
-                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="block text-sm font-semibold mb-1">Product Image</label>
+                <div className="flex gap-3 items-start">
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        setError('')
+                        const fd = new FormData()
+                        fd.append('file', file)
+                        fd.append('folder', 'products')
+                        try {
+                          const res = await fetch('/api/admin/upload', { method: 'POST', body: fd })
+                          const data = await res.json()
+                          if (data.url) {
+                            setFormData(prev => ({ ...prev, imageUrl: data.url }))
+                          } else {
+                            setError(data.error || 'Upload failed')
+                          }
+                        } catch {
+                          setError('Upload failed')
+                        }
+                      }}
+                      className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="text"
+                      value={formData.imageUrl}
+                      onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                      placeholder="Or paste image URL..."
+                      className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2 text-sm"
+                    />
+                  </div>
+                  {formData.imageUrl && (
+                    <img src={formData.imageUrl} alt="Preview" className="w-16 h-16 object-cover rounded border" />
+                  )}
+                </div>
               </div>
 
               <div>

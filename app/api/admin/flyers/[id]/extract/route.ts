@@ -5,13 +5,14 @@ import { FlyerIngestService } from '@/lib/services/flyer-ingest'
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin()
+    const { id } = await params
 
     const flyer = await prisma.flyer.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { supermarket: true },
     })
 

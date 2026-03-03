@@ -4,13 +4,14 @@ import { requireAdmin } from '@/lib/auth'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin()
+    const { id } = await params
 
     const flyer = await prisma.flyer.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         supermarket: {
           select: { id: true, name: true, nameAr: true },
@@ -36,10 +37,11 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin()
+    const { id } = await params
 
     const body = await request.json()
     const updateData: any = {}
@@ -52,7 +54,7 @@ export async function PUT(
     if (body.cityId !== undefined) updateData.cityId = body.cityId || null
 
     const flyer = await prisma.flyer.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
     })
 
@@ -67,12 +69,13 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin()
+    const { id } = await params
 
-    await prisma.flyer.delete({ where: { id: params.id } })
+    await prisma.flyer.delete({ where: { id } })
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

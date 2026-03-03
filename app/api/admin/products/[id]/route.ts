@@ -4,10 +4,11 @@ import { requireAdmin } from '@/lib/auth'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin()
+    const { id } = await params
 
     const body = await request.json()
     const {
@@ -17,7 +18,7 @@ export async function PUT(
     } = body
 
     const product = await prisma.productOffer.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         categoryId: categoryId || null,
         nameAr: nameAr || null,
@@ -42,12 +43,13 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin()
+    const { id } = await params
 
-    await prisma.productOffer.delete({ where: { id: params.id } })
+    await prisma.productOffer.delete({ where: { id } })
 
     return NextResponse.json({ success: true })
   } catch (error) {
