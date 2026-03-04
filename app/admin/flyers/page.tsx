@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { upload } from '@vercel/blob/client'
 import AdminNav from '@/components/AdminNav'
 
 interface Supermarket {
@@ -118,26 +119,51 @@ export default function AdminFlyersPage() {
     setError('')
 
     try {
-      const formData = new FormData()
-      formData.append('pdf', file)
-      formData.append('flyerId', flyerId)
+      // For files > 4MB, use client-side direct upload to Vercel Blob
+      // This bypasses Vercel's serverless body size limit
+      if (file.size > 4 * 1024 * 1024) {
+        setUploadProgress(`Uploading ${(file.size / 1024 / 1024).toFixed(1)}MB directly...`)
 
-      const res = await fetch('/api/admin/flyers/upload', {
-        method: 'POST',
-        body: formData,
-      })
+        const blob = await upload(`flyers/${flyerId}-${Date.now()}.pdf`, file, {
+          access: 'public',
+          handleUploadUrl: '/api/admin/flyers/upload',
+        })
 
-      if (!res.ok) {
-        const data = await res.json()
-        setError(data.error || 'Upload failed')
-        return
+        // Link the blob URL to the flyer record
+        const linkRes = await fetch('/api/admin/flyers/upload', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ flyerId, blobUrl: blob.url }),
+        })
+
+        if (!linkRes.ok) {
+          const linkData = await linkRes.json()
+          setError(linkData.error || 'Failed to link uploaded file')
+          return
+        }
+      } else {
+        // Small files: use traditional server upload
+        const formData = new FormData()
+        formData.append('pdf', file)
+        formData.append('flyerId', flyerId)
+
+        const res = await fetch('/api/admin/flyers/upload', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!res.ok) {
+          const data = await res.json()
+          setError(data.error || 'Upload failed')
+          return
+        }
       }
 
       setUploadProgress('Upload complete!')
       setSuccess('PDF uploaded successfully.')
       loadFlyers()
-    } catch {
-      setError('Upload failed')
+    } catch (err: any) {
+      setError('Upload failed: ' + (err?.message || 'Unknown error'))
     } finally {
       setUploadingId(null)
       setUploadProgress('')
