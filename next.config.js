@@ -13,6 +13,9 @@ const nextConfig = {
       'images.deliveryhero.io',     // Panda / HungerStation
       'www.pfrmt.com',
       'www.panda.com.sa',
+      'panda.sa',                    // Panda new domain
+      'www.panda.sa',
+      'cdn.panda.sa',
       'cdn.danube.sa',              // Danube / BinDawood
       'www.danube.sa',
       'bindawood.com',

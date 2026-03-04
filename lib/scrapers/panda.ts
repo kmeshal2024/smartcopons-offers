@@ -8,8 +8,8 @@ export class PandaScraper extends BaseScraper {
       supermarketSlug: 'panda',
       name: 'Panda',
       nameAr: 'بنده',
-      baseUrl: 'https://www.pfrmt.com',
-      offersUrl: 'https://www.pfrmt.com/en/offers',
+      baseUrl: 'https://panda.sa',
+      offersUrl: 'https://panda.sa/en/plp?category_id=468&deals=1',
       maxPages: 3,
       requestDelayMs: 2000,
     })
@@ -17,9 +17,9 @@ export class PandaScraper extends BaseScraper {
 
   // Panda/HyperPanda — try multiple known domains
   private readonly urls = [
-    'https://www.pfrmt.com/en/offers',
+    'https://panda.sa/en/plp?category_id=468&deals=1',
+    'https://panda.sa/en/collections?parent_id=1003&type=huge_discounts',
     'https://www.panda.com.sa/en/promotions',
-    'https://www.pandafoodretail.com/en/offers',
     'https://www.panda.com.sa/offers',
   ]
 

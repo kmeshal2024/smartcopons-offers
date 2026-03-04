@@ -18,35 +18,22 @@ export class LuluScraper extends BaseScraper {
   protected async extractOffers(): Promise<ScrapedOffer[]> {
     const allOffers: ScrapedOffer[] = []
 
-    // Try main offers page
-    try {
-      const offers = await this.scrapeOffersPage(this.config.offersUrl)
-      allOffers.push(...offers)
-    } catch (e) {
-      this.logError(`Main page failed: ${e instanceof Error ? e.message : e}`)
-    }
+    // Try multiple LuLu pages
+    const urls = [
+      this.config.offersUrl,
+      'https://gcc.luluhypermarket.com/en-sa/deals/',
+      'https://gcc.luluhypermarket.com/en-sa/pages/instore-promotions',
+      'https://gcc.luluhypermarket.com/en-sa/promotions',
+      'https://gcc.luluhypermarket.com/en-sa/hot-deals',
+    ]
 
-    // Try promotions page
-    if (allOffers.length === 0) {
+    for (const url of urls) {
       try {
-        const offers = await this.scrapeOffersPage(
-          'https://gcc.luluhypermarket.com/en-sa/promotions'
-        )
+        const offers = await this.scrapeOffersPage(url)
         allOffers.push(...offers)
+        if (allOffers.length > 0) break
       } catch (e) {
-        this.logError(`Promotions page failed: ${e instanceof Error ? e.message : e}`)
-      }
-    }
-
-    // Try hot deals
-    if (allOffers.length === 0) {
-      try {
-        const offers = await this.scrapeOffersPage(
-          'https://gcc.luluhypermarket.com/en-sa/hot-deals'
-        )
-        allOffers.push(...offers)
-      } catch (e) {
-        this.logError(`Hot deals page failed: ${e instanceof Error ? e.message : e}`)
+        this.logError(`${url} failed: ${e instanceof Error ? e.message : e}`)
       }
     }
 
