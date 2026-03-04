@@ -121,7 +121,7 @@ export class DanubeScraper extends BaseScraper {
 
   private extractProduct(
     $: cheerio.CheerioAPI,
-    $card: cheerio.Cheerio<cheerio.AnyNode>,
+    $card: cheerio.Cheerio<any>,
     sourceUrl: string
   ): ScrapedOffer | null {
     const name = $card.find('[class*="name"], [class*="title"], h2, h3, h4, [class*="line-clamp"]')

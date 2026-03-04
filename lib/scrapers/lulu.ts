@@ -140,7 +140,7 @@ export class LuluScraper extends BaseScraper {
 
   private extractFromCard(
     $: cheerio.CheerioAPI,
-    $card: cheerio.Cheerio<cheerio.AnyNode>,
+    $card: cheerio.Cheerio<any>,
     sourceUrl: string
   ): ScrapedOffer | null {
     // Name
