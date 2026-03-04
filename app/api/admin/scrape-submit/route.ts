@@ -4,11 +4,32 @@ import { OfferIngestService } from '@/lib/services/offer-ingest'
 import { prisma } from '@/lib/db'
 import type { ScrapedOffer } from '@/lib/scrapers/types'
 
+// CORS headers for bookmarklet cross-origin requests
+function corsHeaders(request: Request) {
+  const origin = request.headers.get('origin') || '*'
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+  }
+}
+
+// Handle CORS preflight
+export async function OPTIONS(request: Request) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders(request),
+  })
+}
+
 export async function POST(request: Request) {
+  const headers = corsHeaders(request)
+
   try {
     await requireAdmin()
   } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers })
   }
 
   try {
@@ -22,7 +43,7 @@ export async function POST(request: Request) {
     if (!supermarketSlug || !offers || !Array.isArray(offers) || offers.length === 0) {
       return NextResponse.json(
         { error: 'Missing supermarketSlug or offers array' },
-        { status: 400 }
+        { status: 400, headers }
       )
     }
 
@@ -33,7 +54,7 @@ export async function POST(request: Request) {
     if (!supermarket) {
       return NextResponse.json(
         { error: `Supermarket "${supermarketSlug}" not found` },
-        { status: 404 }
+        { status: 404, headers }
       )
     }
 
@@ -53,7 +74,7 @@ export async function POST(request: Request) {
     if (normalizedOffers.length === 0) {
       return NextResponse.json(
         { error: 'No valid offers after normalization (need name and price > 0)' },
-        { status: 400 }
+        { status: 400, headers }
       )
     }
 
@@ -82,12 +103,12 @@ export async function POST(request: Request) {
       newOffers: result.newOffers,
       duplicatesSkipped: result.duplicatesSkipped,
       flyerId: result.flyerId,
-    })
+    }, { headers })
   } catch (error) {
     console.error('Scrape submit error:', error)
     return NextResponse.json(
       { error: 'Failed to process offers', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
+      { status: 500, headers }
     )
   }
 }

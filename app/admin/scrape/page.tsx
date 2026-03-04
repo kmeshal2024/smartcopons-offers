@@ -21,9 +21,8 @@ interface ScrapeResult {
   error?: string
 }
 
-// The bookmarklet extraction script (minified version injected into browser)
+// The bookmarklet: extracts products, then opens a popup on our domain to submit
 function getBookmarkletCode(apiUrl: string): string {
-  // This script runs on the supermarket page, extracts products, and POSTs to our API
   const script = `
 (function(){
   var products=[];
@@ -124,7 +123,7 @@ function getBookmarkletCode(apiUrl: string): string {
     });
   }
 
-  /* Deduplicate by name */
+  /* Deduplicate by name+price */
   var seen={};
   products=products.filter(function(p){
     var key=p.nameEn+p.price;
@@ -134,7 +133,7 @@ function getBookmarkletCode(apiUrl: string): string {
   });
 
   if(products.length===0){
-    alert('SmartCopons: No products found on this page. Make sure you are on a supermarket offers/promotions page.');
+    alert('SmartCopons: No products found on this page.\\nMake sure you are on a supermarket offers page and scroll down to load all products.');
     return;
   }
 
@@ -144,28 +143,28 @@ function getBookmarkletCode(apiUrl: string): string {
   for(var k in slugMap){if(host.includes(k)){slug=slugMap[k];break;}}
 
   if(!slug){
-    slug=prompt('SmartCopons: Could not detect supermarket. Enter slug (carrefour/lulu/alothaim/danube/panda):');
+    slug=prompt('SmartCopons: Could not detect supermarket.\\nEnter slug (carrefour/lulu/alothaim/danube/panda):');
     if(!slug)return;
   }
 
-  var confirmed=confirm('SmartCopons: Found '+products.length+' products from '+slug+'.\\n\\nSend to SmartCopons?');
-  if(!confirmed)return;
-
-  /* Send to API */
-  fetch('${apiUrl}/api/admin/scrape-submit',{
-    method:'POST',
-    credentials:'include',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({supermarketSlug:slug,offers:products,sourceUrl:url})
-  }).then(function(r){return r.json()}).then(function(d){
-    if(d.success){
-      alert('SmartCopons: Success!\\n'+d.newOffers+' new offers added, '+d.duplicatesSkipped+' duplicates skipped.');
-    }else{
-      alert('SmartCopons: Error - '+d.error);
-    }
-  }).catch(function(e){
-    alert('SmartCopons: Network error - '+e.message+'\\n\\nMake sure you are logged into the admin panel first.');
-  });
+  /* Open popup on our domain to submit (avoids CORS issues) */
+  var data=encodeURIComponent(JSON.stringify({supermarketSlug:slug,offers:products,sourceUrl:url}));
+  var submitUrl='${apiUrl}/admin/scrape/submit?data='+data;
+  if(submitUrl.length>8000){
+    /* If too much data for URL, use localStorage relay */
+    try{
+      var w=window.open('${apiUrl}/admin/scrape/submit','_blank','width=500,height=400');
+      if(w){
+        setTimeout(function(){
+          w.postMessage({type:'smartcopons-scrape',supermarketSlug:slug,offers:products,sourceUrl:url},'${apiUrl}');
+        },2000);
+      }else{
+        alert('SmartCopons: Popup blocked. Please allow popups for this site.');
+      }
+    }catch(e){alert('SmartCopons: Error - '+e.message);}
+  }else{
+    window.open(submitUrl,'_blank','width=500,height=400');
+  }
 })();`
 
   return 'javascript:' + encodeURIComponent(script.replace(/\n\s*/g, ''))
@@ -272,7 +271,7 @@ export default function AdminScrapePage() {
 
           <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm mb-4">
             <strong>Important:</strong> You must be logged into the admin panel first (in the same browser).
-            The bookmarklet sends data with your admin session cookie.
+            The bookmarklet opens a popup window on SmartCopons to submit the data.
           </div>
 
           <h3 className="font-medium mb-2">How to use:</h3>
@@ -281,7 +280,7 @@ export default function AdminScrapePage() {
             <li>Open a supermarket offers page (links below)</li>
             <li>Scroll down to load all products</li>
             <li>Click the &quot;SmartCopons Scraper&quot; bookmark</li>
-            <li>Confirm the number of products found</li>
+            <li>A popup will open showing how many products were found</li>
             <li>Products are automatically saved to the database</li>
           </ol>
 
