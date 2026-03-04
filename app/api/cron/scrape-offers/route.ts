@@ -3,7 +3,8 @@ import { getScraper, getAllScraperSlugs } from '@/lib/scrapers/registry'
 import { OfferIngestService } from '@/lib/services/offer-ingest'
 import { prisma } from '@/lib/db'
 
-export const maxDuration = 120 // 2 minutes max per supermarket
+export const maxDuration = 120 // Allow up to 2 minutes per supermarket scrape
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
