@@ -29,6 +29,12 @@ const nextConfig = {
 
   // Disable source maps in production
   productionBrowserSourceMaps: false,
+
+  // Exclude cheerio from webpack bundling (undici uses private class fields
+  // that Next.js 14.2.0 webpack can't parse)
+  experimental: {
+    serverComponentsExternalPackages: ['cheerio'],
+  },
 }
 
 module.exports = nextConfig
