@@ -19,6 +19,7 @@ export default function AdminNav() {
     { href: '/admin/categories', label: 'Categories' },
     { href: '/admin/flyers', label: 'Flyers' },
     { href: '/admin/products', label: 'Products' },
+    { href: '/admin/scrape', label: 'Scrape' },
   ]
 
   return (
