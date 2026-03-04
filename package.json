@@ -20,6 +20,7 @@
     "@vercel/blob": "^2.3.0",
     "bcryptjs": "^2.4.3",
     "canvas": "^3.2.1",
+    "cheerio": "^1.2.0",
     "csv-parser": "^3.0.0",
     "next": "14.2.0",
     "pdf-lib": "^1.17.1",

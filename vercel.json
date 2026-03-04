@@ -1,0 +1,29 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/scrape-offers?supermarket=carrefour",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/scrape-offers?supermarket=panda",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/scrape-offers?supermarket=danube",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/scrape-offers?supermarket=alothaim",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/scrape-offers?supermarket=lulu",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/expire-flyers",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

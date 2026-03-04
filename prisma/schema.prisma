@@ -189,6 +189,10 @@ model ProductOffer {
   pageNumber    Int
   bbox          String?  // JSON: {x, y, width, height}
   
+  // Scraping metadata
+  sourceUrl     String?  // URL where this offer was scraped from
+  sourceHash    String?  // Deduplication hash
+
   // Metadata
   tags          String?  // Comma-separated keywords
   confidence    Float?   @default(0.5) // OCR confidence score
@@ -221,6 +225,28 @@ model ProductOffer {
   @@index([isHidden, discountPercent])
   // Popular products
   @@index([isHidden, viewCount])
+  // Deduplication
+  @@index([sourceHash])
 
   @@map("product_offers")
+}
+
+// ============================================================================
+// SCRAPING LOGS
+// ============================================================================
+
+model ScrapeLog {
+  id              String   @id @default(cuid())
+  supermarketSlug String
+  scrapedAt       DateTime @default(now())
+  offersFound     Int      @default(0)
+  offersCreated   Int      @default(0)
+  offersSkipped   Int      @default(0)
+  durationMs      Int      @default(0)
+  success         Boolean  @default(true)
+  errorMessage    String?  @db.Text
+  logs            String?  @db.Text
+
+  @@index([supermarketSlug, scrapedAt])
+  @@map("scrape_logs")
 }
