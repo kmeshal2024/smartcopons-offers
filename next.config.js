@@ -28,6 +28,8 @@ const nextConfig = {
       'bf1af2.akinoncloudcdn.com',  // LuLu product images (Akinon)
       'www.othaimmarkets.com',      // Othaim Markets
       'cdn.othaimmarkets.com',
+      'upload.wikimedia.org',       // Supermarket logos (Wikipedia)
+      'i.imgur.com',                // Fallback logos
     ],
     // Vercel handles image optimization automatically
     unoptimized: false,

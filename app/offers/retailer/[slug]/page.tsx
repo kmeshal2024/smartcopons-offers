@@ -306,7 +306,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
         )}
       </main>
 
-      <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white mt-16 py-6">
+      <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white mt-16 py-6 pb-20 md:pb-6">
         <div className="container mx-auto px-4 text-center">
           <p className="text-sm opacity-90">SmartCopons {new Date().getFullYear()} - جميع الحقوق محفوظة</p>
         </div>

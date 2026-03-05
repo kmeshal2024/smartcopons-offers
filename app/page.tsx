@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
 }
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60 // Cache for 60 seconds, ISR
 
 async function getHomeData() {
   const [coupons, supermarkets, latestProducts, topDiscounts] = await Promise.all([
@@ -226,7 +226,7 @@ export default async function HomePage() {
         </section>
       </main>
 
-      <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white py-10">
+      <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white py-10 pb-24 md:pb-10">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>

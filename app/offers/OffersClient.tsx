@@ -580,7 +580,7 @@ export default function OffersClient() {
         </div>
       </main>
 
-      <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white mt-20 py-8">
+      <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white mt-20 py-8 pb-20 md:pb-8">
         <div className="container mx-auto px-4 text-center">
           <p className="text-lg">© 2024 SmartCopons. جميع الحقوق محفوظة 💝</p>
         </div>

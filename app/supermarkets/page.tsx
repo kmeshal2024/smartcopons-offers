@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   keywords: 'عروض بنده, عروض كارفور, عروض لولو, عروض الدانوب, عروض السوبرماركت السعودية, خصومات',
 }
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60 // Cache for 60 seconds, ISR
 
 async function getSupermarkets() {
   return prisma.supermarket.findMany({
@@ -94,7 +94,7 @@ export default async function SupermarketsPage() {
         )}
       </main>
 
-      <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white mt-20 py-8">
+      <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white mt-20 py-8 pb-20 md:pb-8">
         <div className="container mx-auto px-4 text-center">
           <p>SmartCopons {new Date().getFullYear()} - جميع الحقوق محفوظة</p>
         </div>
