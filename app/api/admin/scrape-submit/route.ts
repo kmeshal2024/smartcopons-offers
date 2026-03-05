@@ -26,10 +26,17 @@ export async function OPTIONS(request: Request) {
 export async function POST(request: Request) {
   const headers = corsHeaders(request)
 
-  try {
-    await requireAdmin()
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers })
+  // Auth: session cookie OR ?secret=APP_SECRET query param
+  const url = new URL(request.url)
+  const secret = url.searchParams.get('secret')
+  if (secret === process.env.APP_SECRET) {
+    // API key auth - OK
+  } else {
+    try {
+      await requireAdmin()
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers })
+    }
   }
 
   try {

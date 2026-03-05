@@ -30,6 +30,34 @@ function getBookmarkletCode(apiUrl: string): string {
   // 4. Debug info
   const script = `
 (function(){
+  /* ===== AUTO-SCROLL to load all products ===== */
+  function autoScrollThenExtract(){
+    var scrollCount=0;
+    var maxScrolls=50;
+    var prevHeight=0;
+    var sameCount=0;
+    var statusDiv=document.createElement('div');
+    statusDiv.style.cssText='position:fixed;top:10px;right:10px;z-index:99999;background:#e91e63;color:white;padding:12px 20px;border-radius:8px;font:bold 14px sans-serif;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+    statusDiv.textContent='SmartCopons: Scrolling to load all products...';
+    document.body.appendChild(statusDiv);
+    var timer=setInterval(function(){
+      window.scrollTo(0,document.body.scrollHeight);
+      scrollCount++;
+      var h=document.body.scrollHeight;
+      if(h===prevHeight){sameCount++;}else{sameCount=0;}
+      prevHeight=h;
+      statusDiv.textContent='SmartCopons: Scrolling... ('+scrollCount+'/'+maxScrolls+')';
+      if(sameCount>=3||scrollCount>=maxScrolls){
+        clearInterval(timer);
+        statusDiv.textContent='SmartCopons: Extracting products...';
+        setTimeout(function(){
+          document.body.removeChild(statusDiv);
+          doExtract();
+        },500);
+      }
+    },800);
+  }
+  function doExtract(){
   var products=[];
   var host=location.hostname;
   var url=location.href;
@@ -309,6 +337,8 @@ function getBookmarkletCode(apiUrl: string): string {
   }else{
     window.open(submitUrl,'_blank','width=500,height=400');
   }
+  } /* end doExtract */
+  autoScrollThenExtract();
 })();`
 
   return 'javascript:' + encodeURIComponent(script.replace(/\n\s*/g, ''))
