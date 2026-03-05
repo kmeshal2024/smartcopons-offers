@@ -427,7 +427,9 @@ export default function AdminScrapePage() {
       { label: 'Offers', url: 'https://www.othaimmarkets.com/en/offers' },
     ]},
     { slug: 'danube', name: 'Danube', urls: [
-      { label: 'Offers', url: 'https://www.danube.sa/en/offers' },
+      { label: 'Weekly Offers', url: 'https://www.danube.sa/en/departments/promotions/weekly-offers' },
+      { label: 'Best Offers', url: 'https://www.danube.sa/en/departments/promotions/best-offers' },
+      { label: 'All Departments', url: 'https://www.danube.sa/en/departments' },
     ]},
   ]
 
@@ -500,8 +502,8 @@ export default function AdminScrapePage() {
               <li><strong>Carrefour:</strong> Scroll down slowly to load all products. Works best on the &quot;All Offers&quot; page.</li>
               <li><strong>Panda:</strong> Use the new panda.sa website (not the old pfrmt.com). Open &quot;Deals&quot; or &quot;Huge Discounts&quot; and scroll down.</li>
               <li><strong>LuLu:</strong> Try &quot;Offers&quot; or &quot;Deals&quot; page. Scroll all the way down to load everything.</li>
-              <li><strong>Othaim:</strong> For PDFs/catalogs, use the Flyers tab to upload the PDF instead.</li>
-              <li><strong>Danube:</strong> Open the offers page and scroll down before running the bookmarklet.</li>
+              <li><strong>Othaim:</strong> Only has PDF brochures (no web products). Use the Flyers tab to upload the PDF instead.</li>
+              <li><strong>Danube:</strong> Has a direct API! Products are auto-fetched via cron. You can also use the bookmarklet on Weekly Offers or Best Offers pages.</li>
             </ul>
           </div>
         </div>

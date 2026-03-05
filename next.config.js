@@ -19,6 +19,7 @@ const nextConfig = {
       'images.todoorstep.com',       // Panda product images
       'cdn.danube.sa',              // Danube / BinDawood
       'www.danube.sa',
+      'd1c124wpoew66.cloudfront.net', // Danube product images (CloudFront CDN)
       'bindawood.com',
       'www.bindawood.com',
       'cdn.luluhypermarket.com',    // LuLu Hypermarket
