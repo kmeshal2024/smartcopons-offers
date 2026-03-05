@@ -1,71 +1,73 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
+import { usePathname } from 'next/navigation'
+import SearchAutocomplete from './SearchAutocomplete'
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [searchValue, setSearchValue] = useState('')
-  const router = useRouter()
+  const pathname = usePathname()
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (searchValue.trim()) {
-      router.push(`/offers?search=${encodeURIComponent(searchValue.trim())}`)
-      setSearchOpen(false)
-      setSearchValue('')
-      setMenuOpen(false)
-    }
+  const isActive = (href: string) => {
+    if (href === '/') return pathname === '/'
+    return pathname?.startsWith(href) || false
   }
 
+  const navLinks = [
+    { href: '/', label: 'الرئيسية' },
+    { href: '/offers', label: 'العروض' },
+    { href: '/supermarkets', label: 'المتاجر' },
+  ]
+
   return (
-    <header className="bg-gradient-to-r from-pink-600 to-red-500 text-white shadow-lg sticky top-0 z-40">
-      <div className="container mx-auto px-4 py-2.5">
-        <div className="flex justify-between items-center gap-3">
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center gap-3 h-14 md:h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xl sm:text-2xl font-extrabold tracking-tight">Smart<span className="text-pink-200">Copons</span></span>
+          <Link href="/" className="flex-shrink-0">
+            <Image
+              src="/logo.png.png"
+              alt="SmartCopons"
+              width={130}
+              height={36}
+              className="h-8 md:h-9 w-auto"
+              priority
+            />
           </Link>
 
           {/* Desktop Search Bar */}
-          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-4">
-            <div className="relative w-full">
-              <input
-                type="text"
-                placeholder="ابحث عن منتج أو متجر..."
-                value={searchValue}
-                onChange={e => setSearchValue(e.target.value)}
-                className="w-full pr-10 pl-4 py-2 rounded-lg bg-white/15 border border-white/20 text-white placeholder-white/60
-                           focus:outline-none focus:bg-white/25 focus:border-white/40 text-sm transition"
-              />
-              <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2">
-                <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </button>
-            </div>
-          </form>
+          <div className="hidden md:block flex-1 max-w-xl mx-4">
+            <SearchAutocomplete
+              variant="header"
+              placeholder="ابحث عن منتج، متجر أو تصنيف..."
+            />
+          </div>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex gap-5 items-center flex-shrink-0">
-            <Link href="/" className="hover:text-pink-200 transition font-semibold text-sm">
-              الرئيسية
-            </Link>
-            <Link href="/offers" className="hover:text-pink-200 transition font-semibold text-sm">
-              العروض
-            </Link>
-            <Link href="/supermarkets" className="hover:text-pink-200 transition font-semibold text-sm">
-              المتاجر
-            </Link>
+          <nav className="hidden md:flex gap-1 items-center flex-shrink-0">
+            {navLinks.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+                  isActive(link.href)
+                    ? 'text-pink-600 bg-pink-50'
+                    : 'text-gray-600 hover:text-pink-600 hover:bg-gray-50'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
           </nav>
 
           {/* Mobile: Search + Menu */}
-          <div className="flex md:hidden items-center gap-1">
+          <div className="flex md:hidden items-center gap-0.5 mr-auto">
             <button
               onClick={() => { setSearchOpen(!searchOpen); setMenuOpen(false) }}
-              className="p-2 rounded-lg hover:bg-white/10 transition"
+              className={`p-2 rounded-lg transition ${searchOpen ? 'text-pink-600 bg-pink-50' : 'text-gray-600 hover:bg-gray-100'}`}
               aria-label="بحث"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,7 +76,7 @@ export default function Header() {
             </button>
             <button
               onClick={() => { setMenuOpen(!menuOpen); setSearchOpen(false) }}
-              className="p-2 rounded-lg hover:bg-white/10 transition"
+              className={`p-2 rounded-lg transition ${menuOpen ? 'text-pink-600 bg-pink-50' : 'text-gray-600 hover:bg-gray-100'}`}
               aria-label="القائمة"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,38 +92,32 @@ export default function Header() {
 
         {/* Mobile Search Bar */}
         {searchOpen && (
-          <form onSubmit={handleSearch} className="md:hidden pt-2.5 pb-1">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="ابحث عن منتج أو متجر..."
-                value={searchValue}
-                onChange={e => setSearchValue(e.target.value)}
-                autoFocus
-                className="w-full pr-10 pl-4 py-2.5 rounded-lg bg-white/15 border border-white/20 text-white placeholder-white/60
-                           focus:outline-none focus:bg-white/25 focus:border-white/40 text-sm transition"
-              />
-              <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2">
-                <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </button>
-            </div>
-          </form>
+          <div className="md:hidden pb-3">
+            <SearchAutocomplete
+              variant="header"
+              placeholder="ابحث عن منتج أو متجر..."
+              onClose={() => setSearchOpen(false)}
+            />
+          </div>
         )}
 
         {/* Mobile Menu */}
         {menuOpen && (
-          <nav className="md:hidden pt-2.5 pb-1 border-t border-white/20 mt-2.5 space-y-1">
-            <Link href="/" onClick={() => setMenuOpen(false)} className="block py-2 hover:text-pink-200 font-semibold text-sm">
-              الرئيسية
-            </Link>
-            <Link href="/offers" onClick={() => setMenuOpen(false)} className="block py-2 hover:text-pink-200 font-semibold text-sm">
-              العروض
-            </Link>
-            <Link href="/supermarkets" onClick={() => setMenuOpen(false)} className="block py-2 hover:text-pink-200 font-semibold text-sm">
-              المتاجر
-            </Link>
+          <nav className="md:hidden pb-3 border-t border-gray-100 mt-1 pt-2 space-y-0.5">
+            {navLinks.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMenuOpen(false)}
+                className={`block py-2.5 px-3 rounded-lg text-sm font-semibold transition ${
+                  isActive(link.href)
+                    ? 'text-pink-600 bg-pink-50'
+                    : 'text-gray-600 hover:text-pink-600 hover:bg-gray-50'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
           </nav>
         )}
       </div>

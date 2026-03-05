@@ -22,25 +22,29 @@ export default function CouponCard({ id, title, code, discountText, storeName, s
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-6 border-2 border-pink-100 hover:border-pink-300 transform hover:-translate-y-1">
-      <div className="mb-4">
-        <Link href={`/store/${storeSlug}`} className="inline-block bg-gradient-to-r from-pink-100 to-red-100 text-pink-700 px-4 py-1 rounded-full text-sm font-semibold hover:from-pink-200 hover:to-red-200 transition">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 p-5 flex flex-col">
+      <div className="mb-3">
+        <Link href={`/store/${storeSlug}`} className="inline-block bg-pink-50 text-pink-700 px-3 py-1 rounded-full text-xs font-semibold hover:bg-pink-100 transition">
           {storeName}
         </Link>
-        <h3 className="text-xl font-bold mt-3 text-gray-800 line-clamp-2">{title}</h3>
-      </div>
-      
-      <div className="bg-gradient-to-r from-pink-500 via-red-500 to-pink-600 text-white p-6 rounded-xl mb-4 shadow-md">
-        <div className="text-3xl font-bold text-center drop-shadow-lg">{discountText}</div>
+        <h3 className="text-base font-bold mt-2 text-gray-800 line-clamp-2">{title}</h3>
       </div>
 
-      <div className="flex gap-2">
-        <div className="flex-1 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-dashed border-pink-300 rounded-lg px-4 py-3 font-mono text-center font-bold text-pink-700 text-lg">
+      <div className="bg-pink-50 text-pink-700 p-4 rounded-lg mb-3">
+        <div className="text-2xl font-bold text-center">{discountText}</div>
+      </div>
+
+      <div className="flex gap-2 mt-auto">
+        <div className="flex-1 bg-gray-50 border border-dashed border-pink-300 rounded-lg px-3 py-2.5 font-mono text-center font-bold text-pink-700 text-base">
           {code}
         </div>
         <button
           onClick={handleCopy}
-          className="bg-gradient-to-r from-pink-600 to-red-600 text-white px-6 py-3 rounded-lg hover:from-pink-700 hover:to-red-700 transition-all transform active:scale-95 font-semibold shadow-md"
+          className={`px-5 py-2.5 rounded-lg font-semibold text-sm transition-all active:scale-95 ${
+            copied
+              ? 'bg-green-500 text-white'
+              : 'bg-pink-600 text-white hover:bg-pink-700'
+          }`}
         >
           {copied ? '✓ تم!' : 'نسخ'}
         </button>
@@ -48,9 +52,9 @@ export default function CouponCard({ id, title, code, discountText, storeName, s
 
       <Link
         href={`/coupon/${id}`}
-        className="mt-4 block text-center text-pink-600 hover:text-pink-700 font-semibold hover:underline text-sm"
+        className="mt-3 block text-center text-pink-600 hover:text-pink-700 font-semibold hover:underline text-sm"
       >
-        عرض التفاصيل ←
+        عرض التفاصيل
       </Link>
     </div>
   )

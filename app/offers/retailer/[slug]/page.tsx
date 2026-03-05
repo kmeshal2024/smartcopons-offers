@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
+import Footer from '@/components/Footer'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import RetailerFilters from './RetailerFilters'
@@ -306,11 +307,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
         )}
       </main>
 
-      <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white mt-16 py-6 pb-20 md:pb-6">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm opacity-90">SmartCopons {new Date().getFullYear()} - جميع الحقوق محفوظة</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

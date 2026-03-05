@@ -53,8 +53,15 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         {/* Discount Badge */}
         {hasDiscount && (
-          <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-0.5 rounded-md text-xs font-bold shadow-sm">
+          <div className="absolute top-2 right-2 bg-pink-600 text-white px-2 py-0.5 rounded-md text-xs font-bold shadow-sm">
             {product.discountPercent}%-
+          </div>
+        )}
+
+        {/* Supermarket Logo Badge */}
+        {product.supermarket.logo && (
+          <div className="absolute bottom-2 right-2 w-7 h-7 bg-white rounded-full shadow-sm flex items-center justify-center overflow-hidden border border-gray-100">
+            <img src={product.supermarket.logo} alt={product.supermarket.nameAr} className="w-5 h-5 object-contain" />
           </div>
         )}
 
@@ -98,7 +105,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         {/* Price */}
         <div className="mt-auto flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-base sm:text-lg font-bold text-gray-900">
+          <span className="text-base sm:text-lg font-bold text-pink-700">
             {product.price.toFixed(2)}
           </span>
           <span className="text-[10px] sm:text-xs text-gray-400">ر.س</span>

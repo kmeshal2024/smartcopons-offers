@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
+import Link from 'next/link'
 
 interface Product {
   id: string
@@ -112,7 +113,6 @@ export default function OffersClient() {
           .catch(() => setCoupons([]))
       }
     } else {
-      // Show general coupons
       fetch('/api/public/coupons')
         .then(r => r.json())
         .then(data => setCoupons((data.coupons || []).slice(0, 4)))
@@ -147,7 +147,6 @@ export default function OffersClient() {
     fetchProducts()
   }, [sort, selectedCategory, selectedSupermarket, page])
 
-  // Debounced search
   const handleSearchChange = (value: string) => {
     setSearch(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -195,14 +194,14 @@ export default function OffersClient() {
     <div className="space-y-6">
       {/* Supermarket filter */}
       <div>
-        <h3 className="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wide">المتاجر</h3>
-        <div className="space-y-2">
+        <h3 className="font-bold text-gray-800 mb-3 text-sm">المتاجر</h3>
+        <div className="space-y-1">
           <button
             onClick={() => handleSupermarketSelect('')}
             className={`w-full text-right px-3 py-2 rounded-lg text-sm transition ${
               !selectedSupermarket
                 ? 'bg-pink-600 text-white font-semibold'
-                : 'hover:bg-pink-50 text-gray-700'
+                : 'hover:bg-gray-50 text-gray-700'
             }`}
           >
             جميع المتاجر
@@ -214,13 +213,13 @@ export default function OffersClient() {
               className={`w-full text-right px-3 py-2 rounded-lg text-sm transition flex items-center gap-2 ${
                 selectedSupermarket === sm.id
                   ? 'bg-pink-600 text-white font-semibold'
-                  : 'hover:bg-pink-50 text-gray-700'
+                  : 'hover:bg-gray-50 text-gray-700'
               }`}
             >
               <span className="flex-1">{sm.nameAr}</span>
               {sm._count.flyers > 0 && (
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  selectedSupermarket === sm.id ? 'bg-pink-700' : 'bg-pink-100 text-pink-700'
+                  selectedSupermarket === sm.id ? 'bg-pink-700' : 'bg-pink-50 text-pink-700'
                 }`}>
                   {sm._count.flyers}
                 </span>
@@ -232,14 +231,14 @@ export default function OffersClient() {
 
       {/* Category filter */}
       <div>
-        <h3 className="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wide">الفئات</h3>
+        <h3 className="font-bold text-gray-800 mb-3 text-sm">الفئات</h3>
         <div className="space-y-1">
           <button
             onClick={() => handleCategorySelect('')}
             className={`w-full text-right px-3 py-2 rounded-lg text-sm transition ${
               !selectedCategory
                 ? 'bg-pink-600 text-white font-semibold'
-                : 'hover:bg-pink-50 text-gray-700'
+                : 'hover:bg-gray-50 text-gray-700'
             }`}
           >
             جميع الفئات
@@ -252,7 +251,7 @@ export default function OffersClient() {
                   className={`flex-1 text-right px-3 py-2 rounded-lg text-sm transition flex items-center gap-2 ${
                     selectedCategory === cat.id
                       ? 'bg-pink-600 text-white font-semibold'
-                      : 'hover:bg-pink-50 text-gray-700'
+                      : 'hover:bg-gray-50 text-gray-700'
                   }`}
                 >
                   {cat.icon && <span>{cat.icon}</span>}
@@ -270,7 +269,9 @@ export default function OffersClient() {
                     onClick={() => toggleCategoryExpand(cat.id)}
                     className="px-2 py-2 text-gray-400 hover:text-gray-700"
                   >
-                    {expandedCategories.has(cat.id) ? '▲' : '▼'}
+                    <svg className={`w-3 h-3 transition-transform ${expandedCategories.has(cat.id) ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
                 )}
               </div>
@@ -281,7 +282,7 @@ export default function OffersClient() {
                   className={`w-full text-right pr-8 pl-3 py-1.5 rounded-lg text-xs transition flex items-center gap-2 ${
                     selectedCategory === child.id
                       ? 'bg-pink-500 text-white font-semibold'
-                      : 'hover:bg-pink-50 text-gray-600'
+                      : 'hover:bg-gray-50 text-gray-600'
                   }`}
                 >
                   {child.icon && <span>{child.icon}</span>}
@@ -298,7 +299,7 @@ export default function OffersClient() {
 
       {/* Price filter */}
       <div>
-        <h3 className="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wide">السعر</h3>
+        <h3 className="font-bold text-gray-800 mb-3 text-sm">السعر</h3>
         <div className="px-2">
           <input
             type="range"
@@ -320,22 +321,23 @@ export default function OffersClient() {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-red-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir="rtl">
       <Header />
 
-      <main className="container mx-auto px-4 py-6">
-        {/* Page Title */}
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-red-600 bg-clip-text text-transparent mb-2">
-            عروض السوبرماركت
-          </h1>
-          <p className="text-gray-600">اكتشف أفضل العروض والخصومات 🛒</p>
+      <main className="container mx-auto px-4 py-5">
+        {/* Page Header */}
+        <div className="mb-5">
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">عروض السوبرماركت</h1>
+          <p className="text-sm text-gray-500">اكتشف أفضل العروض والخصومات</p>
         </div>
 
-        {/* Search Bar */}
-        <div className="bg-white rounded-2xl shadow-lg p-4 mb-6">
-          <div className="flex gap-3">
+        {/* Search + Sort Bar */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 sm:p-4 mb-5">
+          <div className="flex gap-2 sm:gap-3">
             <div className="flex-1 relative">
+              <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
               <input
                 ref={searchInputRef}
                 type="text"
@@ -343,62 +345,66 @@ export default function OffersClient() {
                 value={search}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
-                className="w-full px-5 py-3 pr-12 rounded-full border-2 border-pink-200 focus:outline-none focus:ring-4 focus:ring-pink-200 focus:border-pink-500 text-base"
+                className="w-full pr-10 pl-9 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-pink-400 focus:ring-2 focus:ring-pink-100 focus:outline-none text-sm transition"
               />
-              <svg
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-pink-400"
-                fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
               {search && (
                 <button
                   onClick={() => { setSearch(''); fetchProducts(true) }}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  ×
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               )}
             </div>
             <select
               value={sort}
               onChange={(e) => { setSort(e.target.value); setPage(1) }}
-              className="px-4 py-3 rounded-full border-2 border-pink-200 focus:outline-none focus:ring-4 focus:ring-pink-200 focus:border-pink-500 bg-white text-sm"
+              className="px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-400 text-sm transition min-w-[120px]"
             >
               <option value="newest">الأحدث</option>
-              <option value="price-low">السعر: الأقل أولاً</option>
-              <option value="price-high">السعر: الأعلى أولاً</option>
+              <option value="price-low">السعر: الأقل</option>
+              <option value="price-high">السعر: الأعلى</option>
               <option value="discount">الخصم الأكبر</option>
               <option value="popular">الأكثر مشاهدة</option>
             </select>
             <button
               onClick={() => setShowMobileFilters(!showMobileFilters)}
-              className="md:hidden bg-pink-600 text-white px-4 py-3 rounded-full font-semibold"
+              className="md:hidden bg-pink-600 text-white px-3 py-2.5 rounded-lg font-semibold text-sm"
             >
-              فلتر
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
             </button>
           </div>
 
           {/* Active filters chips */}
           {(selectedCategory || selectedSupermarket || search) && (
-            <div className="flex flex-wrap gap-2 mt-3">
+            <div className="flex flex-wrap gap-1.5 mt-3">
               {search && (
-                <span className="inline-flex items-center gap-1 bg-pink-100 text-pink-700 text-sm px-3 py-1 rounded-full">
+                <span className="inline-flex items-center gap-1 bg-pink-50 text-pink-700 text-xs px-2.5 py-1 rounded-full font-medium">
                   بحث: {search}
-                  <button onClick={() => { setSearch(''); fetchProducts(true) }} className="hover:text-pink-900">×</button>
+                  <button onClick={() => { setSearch(''); fetchProducts(true) }} className="hover:text-pink-900">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
                 </span>
               )}
               {selectedSupermarket && (
-                <span className="inline-flex items-center gap-1 bg-pink-100 text-pink-700 text-sm px-3 py-1 rounded-full">
+                <span className="inline-flex items-center gap-1 bg-pink-50 text-pink-700 text-xs px-2.5 py-1 rounded-full font-medium">
                   {supermarkets.find(s => s.id === selectedSupermarket)?.nameAr}
-                  <button onClick={() => { setSelectedSupermarket(''); setPage(1) }} className="hover:text-pink-900">×</button>
+                  <button onClick={() => { setSelectedSupermarket(''); setPage(1) }} className="hover:text-pink-900">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
                 </span>
               )}
               {selectedCategory && (
-                <span className="inline-flex items-center gap-1 bg-pink-100 text-pink-700 text-sm px-3 py-1 rounded-full">
+                <span className="inline-flex items-center gap-1 bg-pink-50 text-pink-700 text-xs px-2.5 py-1 rounded-full font-medium">
                   {categories.find(c => c.id === selectedCategory)?.nameAr ||
                     categories.flatMap(c => c.children).find(c => c.id === selectedCategory)?.nameAr}
-                  <button onClick={() => { setSelectedCategory(''); setPage(1) }} className="hover:text-pink-900">×</button>
+                  <button onClick={() => { setSelectedCategory(''); setPage(1) }} className="hover:text-pink-900">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
                 </span>
               )}
               <button
@@ -408,7 +414,7 @@ export default function OffersClient() {
                   setSelectedSupermarket('')
                   setPage(1)
                 }}
-                className="text-sm text-gray-500 hover:text-red-600 underline"
+                className="text-xs text-gray-400 hover:text-red-500 transition"
               >
                 مسح الكل
               </button>
@@ -418,32 +424,32 @@ export default function OffersClient() {
 
         {/* Coupon Codes Strip */}
         {coupons.length > 0 && (
-          <div className="bg-gradient-to-r from-pink-600 to-red-500 rounded-2xl p-4 mb-6 text-white">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-xl">🎟️</span>
-              <h2 className="font-bold text-lg">
+              <div className="w-1 h-5 bg-pink-600 rounded-full" />
+              <h2 className="font-bold text-gray-900 text-sm">
                 {selectedSupermarket
                   ? `كوبونات ${supermarkets.find(s => s.id === selectedSupermarket)?.nameAr || ''}`
                   : 'أحدث كوبونات الخصم'}
               </h2>
             </div>
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
               {coupons.map(coupon => (
                 <div
                   key={coupon.id}
-                  className="flex-shrink-0 bg-white/10 backdrop-blur border border-white/20 rounded-xl p-3 min-w-[200px]"
+                  className="flex-shrink-0 bg-pink-50 rounded-lg p-3 min-w-[200px] border border-pink-100"
                 >
-                  <div className="text-xs text-white/80 mb-1">{coupon.store.name}</div>
-                  <div className="font-bold text-sm mb-2 line-clamp-1">{coupon.title}</div>
-                  <div className="text-pink-200 font-bold text-xs mb-2">{coupon.discountText}</div>
+                  <div className="text-[10px] text-pink-600 font-medium mb-1">{coupon.store.name}</div>
+                  <div className="font-bold text-xs text-gray-800 mb-1.5 line-clamp-1">{coupon.title}</div>
+                  <div className="text-pink-700 font-bold text-xs mb-2">{coupon.discountText}</div>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-white/20 border border-dashed border-white/40 rounded-lg px-3 py-1 font-mono text-sm font-bold text-center">
+                    <div className="flex-1 bg-white border border-dashed border-pink-300 rounded-md px-2 py-1 font-mono text-xs font-bold text-center text-pink-700">
                       {coupon.code}
                     </div>
                     <button
                       id={`copy-${coupon.id}`}
                       onClick={() => handleCopyCode(coupon.code, coupon.id)}
-                      className="bg-white text-pink-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-pink-50 transition"
+                      className="bg-pink-600 text-white px-2.5 py-1 rounded-md text-xs font-bold hover:bg-pink-700 transition"
                     >
                       نسخ
                     </button>
@@ -454,29 +460,33 @@ export default function OffersClient() {
           </div>
         )}
 
-        <div className="flex gap-6">
+        <div className="flex gap-5">
           {/* Sidebar Filters (Desktop) */}
-          <aside className="hidden md:block w-64 flex-shrink-0">
-            <div className="bg-white rounded-2xl shadow-lg p-5 sticky top-4">
+          <aside className="hidden md:block w-60 flex-shrink-0">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 sticky top-20">
               <FiltersPanel />
             </div>
           </aside>
 
           {/* Mobile Filters */}
           {showMobileFilters && (
-            <div className="md:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setShowMobileFilters(false)}>
+            <div className="md:hidden fixed inset-0 z-50 bg-black/40" onClick={() => setShowMobileFilters(false)}>
               <div
-                className="absolute right-0 top-0 h-full w-80 bg-white p-6 overflow-y-auto"
+                className="absolute right-0 top-0 h-full w-80 bg-white p-5 overflow-y-auto shadow-xl"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="font-bold text-xl">الفلاتر</h2>
-                  <button onClick={() => setShowMobileFilters(false)} className="text-gray-500 text-2xl">×</button>
+                  <h2 className="font-bold text-lg text-gray-900">الفلاتر</h2>
+                  <button onClick={() => setShowMobileFilters(false)} className="text-gray-400 hover:text-gray-600">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
                 <FiltersPanel />
                 <button
                   onClick={() => setShowMobileFilters(false)}
-                  className="w-full mt-6 bg-pink-600 text-white py-3 rounded-full font-bold"
+                  className="w-full mt-6 bg-pink-600 text-white py-3 rounded-lg font-bold text-sm"
                 >
                   عرض النتائج {pagination ? `(${pagination.total})` : ''}
                 </button>
@@ -488,12 +498,12 @@ export default function OffersClient() {
           <div className="flex-1 min-w-0">
             {/* Results count */}
             {!loading && pagination && (
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-gray-600 text-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-gray-500 text-sm">
                   عرض {products.length} من {pagination.total} منتج
                 </span>
                 {pagination.totalPages > 1 && (
-                  <span className="text-gray-500 text-sm">
+                  <span className="text-gray-400 text-xs">
                     صفحة {pagination.page} من {pagination.totalPages}
                   </span>
                 )}
@@ -501,22 +511,24 @@ export default function OffersClient() {
             )}
 
             {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="bg-white rounded-2xl shadow h-72 animate-pulse">
-                    <div className="h-40 bg-gray-200 rounded-t-2xl" />
-                    <div className="p-4 space-y-2">
-                      <div className="h-3 bg-gray-200 rounded w-3/4" />
-                      <div className="h-3 bg-gray-200 rounded w-1/2" />
-                      <div className="h-5 bg-gray-200 rounded w-1/3" />
+                  <div key={i} className="bg-white rounded-xl border border-gray-100 h-72 animate-pulse">
+                    <div className="h-40 bg-gray-100 rounded-t-xl" />
+                    <div className="p-3 space-y-2">
+                      <div className="h-2.5 bg-gray-100 rounded w-3/4" />
+                      <div className="h-2.5 bg-gray-100 rounded w-1/2" />
+                      <div className="h-4 bg-gray-100 rounded w-1/3" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : products.length === 0 ? (
-              <div className="text-center py-20 bg-white rounded-2xl shadow-lg">
-                <div className="text-6xl mb-4">🔍</div>
-                <p className="text-gray-600 text-xl mb-2">لا توجد منتجات متطابقة</p>
+              <div className="text-center py-16 bg-white rounded-xl border border-gray-100 shadow-sm">
+                <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <p className="text-gray-500 text-lg mb-1">لا توجد منتجات متطابقة</p>
                 {(search || selectedCategory || selectedSupermarket) && (
                   <button
                     onClick={() => {
@@ -525,7 +537,7 @@ export default function OffersClient() {
                       setSelectedSupermarket('')
                       setPage(1)
                     }}
-                    className="mt-4 text-pink-600 hover:underline font-semibold"
+                    className="mt-3 text-pink-600 hover:underline font-semibold text-sm"
                   >
                     مسح الفلاتر
                   </button>
@@ -533,7 +545,7 @@ export default function OffersClient() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {products.map(product => (
                     <ProductCard key={product.id} product={product} />
                   ))}
@@ -541,11 +553,11 @@ export default function OffersClient() {
 
                 {/* Pagination */}
                 {pagination && pagination.totalPages > 1 && (
-                  <div className="flex justify-center gap-2 mt-8">
+                  <div className="flex justify-center gap-1.5 mt-8">
                     <button
                       onClick={() => setPage(p => Math.max(1, p - 1))}
                       disabled={page === 1}
-                      className="px-4 py-2 rounded-full border-2 border-pink-200 disabled:opacity-40 hover:border-pink-500 hover:text-pink-600 transition font-semibold"
+                      className="px-3 py-2 rounded-lg border border-gray-200 disabled:opacity-30 hover:border-pink-400 hover:text-pink-600 transition text-sm font-medium"
                     >
                       السابق
                     </button>
@@ -555,10 +567,10 @@ export default function OffersClient() {
                         <button
                           key={p}
                           onClick={() => setPage(p)}
-                          className={`w-10 h-10 rounded-full font-semibold transition ${
+                          className={`w-9 h-9 rounded-lg text-sm font-medium transition ${
                             p === page
                               ? 'bg-pink-600 text-white'
-                              : 'border-2 border-pink-200 hover:border-pink-500 hover:text-pink-600'
+                              : 'border border-gray-200 hover:border-pink-400 hover:text-pink-600'
                           }`}
                         >
                           {p}
@@ -568,7 +580,7 @@ export default function OffersClient() {
                     <button
                       onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
                       disabled={page === pagination.totalPages}
-                      className="px-4 py-2 rounded-full border-2 border-pink-200 disabled:opacity-40 hover:border-pink-500 hover:text-pink-600 transition font-semibold"
+                      className="px-3 py-2 rounded-lg border border-gray-200 disabled:opacity-30 hover:border-pink-400 hover:text-pink-600 transition text-sm font-medium"
                     >
                       التالي
                     </button>
@@ -580,9 +592,14 @@ export default function OffersClient() {
         </div>
       </main>
 
-      <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white mt-20 py-8 pb-20 md:pb-8">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-lg">© 2024 SmartCopons. جميع الحقوق محفوظة 💝</p>
+      {/* Simple footer for client component */}
+      <footer className="bg-gray-900 text-gray-400 mt-16 py-6 pb-20 md:pb-6">
+        <div className="container mx-auto px-4 text-center text-sm">
+          <p>© {new Date().getFullYear()} SmartCopons - جميع الحقوق محفوظة</p>
+          <div className="flex justify-center gap-4 mt-2 text-xs">
+            <Link href="/" className="hover:text-white transition">الرئيسية</Link>
+            <Link href="/supermarkets" className="hover:text-white transition">المتاجر</Link>
+          </div>
         </div>
       </footer>
     </div>

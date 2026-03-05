@@ -44,6 +44,15 @@ body {
   animation: fade-in 0.2s ease-out;
 }
 
+/* Dropdown animation */
+@keyframes dropdown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-dropdown {
+  animation: dropdown 0.15s ease-out;
+}
+
 /* Mobile bottom nav padding */
 @media (max-width: 767px) {
   .pb-safe-bottom {
