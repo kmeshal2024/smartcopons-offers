@@ -60,7 +60,6 @@ function getBookmarkletCode(apiUrl: string): string {
   /* ===== 1. CARREFOUR KSA ===== */
   if(host.includes('carrefourksa')){
     debug.push('Carrefour mode');
-    /* Strategy A: Product links with /p/ */
     document.querySelectorAll('[data-testid*="product"], a[href*="/p/"]').forEach(function(el){
       var card=el.closest('[class*="product"]')||el.closest('[data-testid]')||el.parentElement.parentElement;
       if(!card)card=el;
@@ -78,9 +77,8 @@ function getBookmarkletCode(apiUrl: string): string {
         products.push({nameEn:n,price:parseFloat(pm[1]),discountPercent:dm?parseInt(dm[1]):null,imageUrl:img,sourceUrl:'https://www.carrefourksa.com'+(href||'')});
       }
     });
-    /* Strategy B: Look for price elements with SAR */
     if(products.length===0){
-      debug.push('Trying SAR pattern');
+      debug.push('Trying SAR pattern fallback');
       var allEls=document.querySelectorAll('*');
       for(var i=0;i<allEls.length;i++){
         var el=allEls[i];
@@ -99,124 +97,101 @@ function getBookmarkletCode(apiUrl: string): string {
         }
       }
     }
-    debug.push('Found: '+products.length);
+    debug.push('Carrefour: '+products.length);
   }
 
-  /* ===== 2. LULU HYPERMARKET ===== */
+  /* ===== 2. LULU HYPERMARKET (Akinon platform, Tailwind) ===== */
   else if(host.includes('luluhypermarket')){
     debug.push('LuLu mode');
-    /* Strategy A: Common product card selectors */
-    var selectors=['[class*="product-card"]','[class*="ProductCard"]','[data-testid*="product"]','[class*="product-item"]','[class*="productCard"]','[class*="product_card"]','[class*="item-card"]','[class*="plp-card"]','[class*="offer-card"]'];
-    for(var si=0;si<selectors.length;si++){
-      if(products.length>0)break;
-      document.querySelectorAll(selectors[si]).forEach(function(card){
-        var name=card.querySelector('[class*="name"],[class*="title"],h3,h4,h2,[class*="line-clamp"],a[class*="product"]');
+    /* Strategy A (tested): Product links a[href*="/p/"] - walk up to bordered card */
+    var seen={};
+    document.querySelectorAll('a[href*="/p/"]').forEach(function(link){
+      var text=link.innerText.trim();
+      if(text.length<3)return;
+      var href=link.getAttribute('href');
+      if(seen[href])return;
+      seen[href]=1;
+      var card=link.parentElement;
+      while(card&&card!==document.body){
+        if(card.className&&card.className.includes('border')&&card.className.includes('rounded'))break;
+        card=card.parentElement;
+      }
+      if(!card||card===document.body)return;
+      var cardText=card.innerText;
+      var nums=cardText.match(/(\\d+\\.\\d{2})/g);
+      var price=nums&&nums.length>0?parseFloat(nums[0]):0;
+      var oldPrice=nums&&nums.length>1?parseFloat(nums[1]):null;
+      if(oldPrice&&oldPrice<price){var tmp=price;price=oldPrice;oldPrice=tmp;}
+      var discM=cardText.match(/(\\d+)%/);
+      var img=card.querySelector('img');
+      var imgSrc=img?(img.src||img.getAttribute('data-src')):null;
+      if(price>0){
+        products.push({nameEn:text,price:price,oldPrice:oldPrice,discountPercent:discM?parseInt(discM[1]):null,imageUrl:imgSrc,sourceUrl:'https://gcc.luluhypermarket.com'+href});
+      }
+    });
+    debug.push('LuLu product links: '+products.length);
+    /* Strategy B fallback: generic card selectors */
+    if(products.length===0){
+      debug.push('LuLu: trying generic selectors');
+      document.querySelectorAll('[class*="product-card"],[class*="ProductCard"],[class*="product-item"]').forEach(function(card){
+        var name=card.querySelector('[class*="name"],[class*="title"],h3,h4,h2');
         if(!name)return;
         var n=cleanName(name.textContent);
         if(n.length<3||n.length>300)return;
-        var priceEl=card.querySelector('[class*="price"]:not([class*="old"]):not([class*="was"]):not(.line-through)');
-        var p=priceEl?findPrice(priceEl):0;
-        if(p<=0){p=findPrice(card);}
+        var p=findPrice(card);
         if(p<=0)return;
-        var oldEl=card.querySelector('[class*="old"],[class*="was"],.line-through,del,s,[class*="strike"],[class*="before"]');
+        var oldEl=card.querySelector('.line-through,del,s,[class*="old"]');
         var op=oldEl?findPrice(oldEl):null;
         products.push({nameEn:n,price:p,oldPrice:op,imageUrl:findImg(card),sourceUrl:url});
       });
-      if(products.length>0)debug.push('LuLu found via: '+selectors[si]);
-    }
-    /* Strategy B: Grid items with images and prices */
-    if(products.length===0){
-      debug.push('LuLu: trying grid items');
-      document.querySelectorAll('li,article,[role="listitem"]').forEach(function(el){
-        if(!el.querySelector('img'))return;
-        var txt=el.textContent||'';
-        if(!/\\d+\\.\\d{2}/.test(txt)&&!/SAR|ر\\.س/.test(txt))return;
-        var name=el.querySelector('h2,h3,h4,a[class*="name"],a[class*="title"],span[class*="name"],span[class*="title"],p[class*="name"]');
-        if(!name)return;
-        var n=cleanName(name.textContent);
-        if(n.length<3||n.length>300)return;
-        var p=findPrice(el);
-        if(p>0){
-          products.push({nameEn:n,price:p,imageUrl:findImg(el),sourceUrl:url});
-        }
-      });
-      if(products.length>0)debug.push('LuLu grid items: '+products.length);
-    }
-    /* Strategy C: Find all price-pattern elements and walk up */
-    if(products.length===0){
-      debug.push('LuLu: trying price walk-up');
-      var priceEls=document.querySelectorAll('[class*="price"],[class*="Price"]');
-      priceEls.forEach(function(pel){
-        var p=findPrice(pel);
-        if(p<=0)return;
-        var card=pel.closest('li,article,div[class*="card"],div[class*="item"],div[class*="product"],[role="listitem"]');
-        if(!card)card=pel.parentElement.parentElement.parentElement;
-        if(!card)return;
-        var name=card.querySelector('h2,h3,h4,a[class*="name"],a[class*="title"],span[class*="name"]');
-        if(!name){
-          var links=card.querySelectorAll('a');
-          for(var li=0;li<links.length;li++){
-            var lt=links[li].textContent.trim();
-            if(lt.length>3&&lt.length<200&&!/SAR|\\d+\\.\\d{2}/.test(lt)){name=links[li];break;}
-          }
-        }
-        if(!name)return;
-        var n=cleanName(name.textContent);
-        if(n.length<3)return;
-        products.push({nameEn:n,price:p,imageUrl:findImg(card),sourceUrl:url});
-      });
-      if(products.length>0)debug.push('LuLu price walk-up: '+products.length);
     }
     debug.push('LuLu total: '+products.length);
   }
 
-  /* ===== 3. PANDA (panda.sa / panda.com.sa) ===== */
+  /* ===== 3. PANDA (panda.sa - Next.js/Tailwind) ===== */
   else if(host.includes('panda')){
     debug.push('Panda mode');
-    /* Strategy A: Product cards - Panda uses Next.js/Tailwind */
-    var pandaSel=['[class*="product"]','[class*="card"]','[class*="item"]','article','[data-testid]'];
-    for(var pi=0;pi<pandaSel.length;pi++){
-      if(products.length>0)break;
-      document.querySelectorAll(pandaSel[pi]).forEach(function(card){
-        if(card.querySelectorAll('img').length===0)return;
+    /* Strategy A (tested): Grid children with product data */
+    var grid=document.querySelector('div[class*="grid grid-cols"]');
+    if(grid){
+      var cards=grid.children;
+      for(var i=0;i<cards.length;i++){
+        var card=cards[i];
+        var nameEl=card.querySelector('span[class*="inline-block"][class*="font-bold"]');
+        if(!nameEl)continue;
+        var n=nameEl.textContent.trim();
+        if(n.length<3)continue;
+        var priceEl=card.querySelector('p[class*="text-secondary"]:not([class*="line-through"])');
+        if(!priceEl)priceEl=card.querySelector('p[class*="font-bold"]:not([class*="line-through"])');
+        var price=priceEl?parseFloat(priceEl.textContent.trim()):0;
+        if(price<=0)continue;
+        var oldEl=card.querySelector('p[class*="line-through"]');
+        var oldPrice=oldEl?parseFloat(oldEl.textContent.trim()):null;
+        var discM=card.innerText.match(/(\\d+)%/);
+        var img=card.querySelector('img');
+        var imgSrc=img?img.src:null;
+        products.push({nameEn:n,price:price,oldPrice:oldPrice,discountPercent:discM?parseInt(discM[1]):null,imageUrl:imgSrc,sourceUrl:url});
+      }
+      debug.push('Panda grid: '+products.length);
+    }
+    /* Strategy B fallback: generic selectors */
+    if(products.length===0){
+      debug.push('Panda: trying generic');
+      document.querySelectorAll('[class*="product"],[class*="card"],[class*="item"]').forEach(function(card){
+        if(!card.querySelector('img'))return;
         var txt=card.textContent||'';
-        /* Must have a price pattern */
-        if(!/\\d+\\.\\d{2}/.test(txt)&&!/SAR|ر\\.?س/.test(txt))return;
-        /* Skip if too much text (probably a container, not a card) */
-        if(txt.length>1000)return;
-        var name=card.querySelector('h2,h3,h4,p[class*="name"],p[class*="title"],span[class*="name"],span[class*="title"],a[class*="name"],a[class*="title"],[class*="line-clamp"]');
-        if(!name){
-          /* Try first meaningful text element */
-          var spans=card.querySelectorAll('p,span,a');
-          for(var j=0;j<spans.length;j++){
-            var st=spans[j].textContent.trim();
-            if(st.length>3&&st.length<200&&!/^[\\d.,\\s]+$/.test(st)&&!/SAR|ر\\.?س/.test(st)){
-              name=spans[j];break;
-            }
-          }
-        }
+        if(txt.length>1000||!/\\d+\\.\\d{2}/.test(txt))return;
+        var name=card.querySelector('h2,h3,h4,span[class*="font-bold"],p[class*="name"]');
         if(!name)return;
         var n=cleanName(name.textContent);
         if(n.length<3)return;
-        /* Extract price */
-        var pm=txt.match(/([\\d.]+)\\s*(?:SAR|ر\\.?س)/);
-        if(!pm)pm=txt.match(/(?:SAR|ر\\.?س)\\s*([\\d.]+)/);
-        if(!pm)pm=txt.match(/(\\d+\\.\\d{2})/);
+        var pm=txt.match(/(\\d+\\.\\d{2})/);
         if(!pm)return;
-        var price=parseFloat(pm[1]);
-        if(price<=0)return;
-        /* Old price */
-        var oldEl=card.querySelector('del,s,.line-through,[class*="old"],[class*="was"],[class*="strike"],[class*="before"]');
-        var op=oldEl?findPrice(oldEl):null;
-        /* Discount */
-        var discM=txt.match(/(\\d+)\\s*%/);
-        products.push({nameEn:n,price:price,oldPrice:op,discountPercent:discM?parseInt(discM[1]):null,imageUrl:findImg(card),sourceUrl:url});
+        products.push({nameEn:n,price:parseFloat(pm[1]),imageUrl:findImg(card),sourceUrl:url});
       });
-      if(products.length>0)debug.push('Panda found via: '+pandaSel[pi]);
     }
-    /* Strategy B: Try __NEXT_DATA__ */
+    /* Strategy C: __NEXT_DATA__ */
     if(products.length===0){
-      debug.push('Panda: trying __NEXT_DATA__');
       var nd=document.getElementById('__NEXT_DATA__');
       if(nd){
         try{
@@ -228,36 +203,14 @@ function getBookmarkletCode(apiUrl: string): string {
             if(obj.name&&(obj.price||obj.salePrice||obj.sale_price)){
               var pr=parseFloat(obj.salePrice||obj.sale_price||obj.price);
               var op2=obj.salePrice?parseFloat(obj.price):null;
-              if(pr>0)products.push({nameEn:obj.name||obj.name_en||obj.title,nameAr:obj.name_ar||obj.nameAr||'',price:pr,oldPrice:op2,imageUrl:obj.image||obj.imageUrl||obj.image_url||obj.thumbnail,sourceUrl:url});
+              if(pr>0)products.push({nameEn:obj.name||obj.name_en||obj.title,nameAr:obj.name_ar||'',price:pr,oldPrice:op2,imageUrl:obj.image||obj.imageUrl||obj.thumbnail,sourceUrl:url});
             }
             for(var kk in obj)findP(obj[kk],d+1);
           };
           findP(jd,0);
-          debug.push('__NEXT_DATA__ products: '+products.length);
-        }catch(e){debug.push('__NEXT_DATA__ parse error');}
+          debug.push('__NEXT_DATA__: '+products.length);
+        }catch(e){debug.push('__NEXT_DATA__ error');}
       }
-    }
-    /* Strategy C: Scan inline scripts for product JSON */
-    if(products.length===0){
-      debug.push('Panda: scanning scripts');
-      document.querySelectorAll('script:not([src])').forEach(function(sc){
-        var t=sc.textContent||'';
-        if(t.includes('"price"')&&(t.includes('"name"')||t.includes('"title"'))){
-          var ms=t.match(/\\{[^{}]*"(?:name|title)"[^{}]*"price"[^{}]*\\}/g);
-          if(!ms)ms=t.match(/\\{[^{}]*"price"[^{}]*"(?:name|title)"[^{}]*\\}/g);
-          if(ms){
-            for(var mi=0;mi<Math.min(ms.length,200);mi++){
-              try{
-                var o=JSON.parse(ms[mi]);
-                var nn=o.name||o.title||o.name_en;
-                var pp=parseFloat(o.price||o.salePrice||o.sale_price);
-                if(nn&&pp>0)products.push({nameEn:nn,price:pp,imageUrl:o.image||o.imageUrl,sourceUrl:url});
-              }catch(e){}
-            }
-          }
-        }
-      });
-      debug.push('Script scan products: '+products.length);
     }
     debug.push('Panda total: '+products.length);
   }
@@ -295,25 +248,18 @@ function getBookmarkletCode(apiUrl: string): string {
   /* ===== 6. UNIVERSAL FALLBACK ===== */
   if(products.length===0){
     debug.push('Universal fallback');
-    /* Find all elements that look like product cards (have an image + a price) */
     var candidates=document.querySelectorAll('li,article,[role="listitem"],div[class*="card"],div[class*="product"],div[class*="item"],div[class*="offer"]');
     candidates.forEach(function(el){
       if(!el.querySelector('img'))return;
       var txt=el.textContent||'';
-      if(txt.length>2000)return;
-      if(!/\\d+\\.\\d{2}/.test(txt))return;
+      if(txt.length>2000||!/\\d+\\.\\d{2}/.test(txt))return;
       var name=el.querySelector('h2,h3,h4,[class*="name"],[class*="title"],a:not([class*="price"])');
-      if(!name){
-        var firstA=el.querySelector('a');
-        if(firstA&&firstA.textContent.trim().length>3)name=firstA;
-      }
+      if(!name){var firstA=el.querySelector('a');if(firstA&&firstA.textContent.trim().length>3)name=firstA;}
       if(!name)return;
       var n=cleanName(name.textContent);
       if(n.length<3)return;
       var p=findPrice(el);
-      if(p>0){
-        products.push({nameEn:n,price:p,imageUrl:findImg(el),sourceUrl:url});
-      }
+      if(p>0)products.push({nameEn:n,price:p,imageUrl:findImg(el),sourceUrl:url});
     });
     debug.push('Universal: '+products.length);
   }
@@ -443,8 +389,8 @@ export default function AdminScrapePage() {
       { label: 'All Categories', url: 'https://panda.sa/en' },
     ]},
     { slug: 'lulu', name: 'LuLu', urls: [
-      { label: 'Offers', url: 'https://gcc.luluhypermarket.com/en-sa/offers' },
-      { label: 'Deals', url: 'https://gcc.luluhypermarket.com/en-sa/deals/' },
+      { label: 'Deals (Best)', url: 'https://gcc.luluhypermarket.com/en-sa/deals/' },
+      { label: 'Grocery', url: 'https://gcc.luluhypermarket.com/en-sa/grocery/' },
       { label: 'In-Store Promos', url: 'https://gcc.luluhypermarket.com/en-sa/pages/instore-promotions' },
     ]},
     { slug: 'alothaim', name: 'Othaim', urls: [

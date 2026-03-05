@@ -16,6 +16,7 @@ const nextConfig = {
       'panda.sa',                    // Panda new domain
       'www.panda.sa',
       'cdn.panda.sa',
+      'images.todoorstep.com',       // Panda product images
       'cdn.danube.sa',              // Danube / BinDawood
       'www.danube.sa',
       'bindawood.com',
@@ -23,6 +24,7 @@ const nextConfig = {
       'cdn.luluhypermarket.com',    // LuLu Hypermarket
       'gcc.luluhypermarket.com',
       'www.luluhypermarket.com',
+      'bf1af2.akinoncloudcdn.com',  // LuLu product images (Akinon)
       'www.othaimmarkets.com',      // Othaim Markets
       'cdn.othaimmarkets.com',
     ],
