@@ -8,19 +8,23 @@ import RetailerFilters from './RetailerFilters'
 
 interface Props {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ sort?: string; category?: string; page?: string }>
+  searchParams: Promise<{ sort?: string; category?: string; page?: string; search?: string }>
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params
+  const sp = await searchParams
   const supermarket = await prisma.supermarket.findUnique({
     where: { slug },
   })
 
   if (!supermarket) return { title: 'متجر غير موجود' }
 
+  const search = sp.search || ''
   return {
-    title: `عروض ${supermarket.nameAr} اليوم | خصومات ${supermarket.nameAr} - SmartCopons`,
+    title: search
+      ? `بحث "${search}" في عروض ${supermarket.nameAr} | SmartCopons`
+      : `عروض ${supermarket.nameAr} اليوم | خصومات ${supermarket.nameAr} - SmartCopons`,
     description: `تصفح أحدث عروض وخصومات ${supermarket.nameAr} في السعودية. عروض يومية وأسبوعية على المنتجات الغذائية والمنزلية.`,
     keywords: `عروض ${supermarket.nameAr}, عروض ${supermarket.nameAr} اليوم, خصومات ${supermarket.nameAr}, ${supermarket.name} offers, ${supermarket.name} KSA`,
     openGraph: {
@@ -31,16 +35,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export const revalidate = 60 // Revalidate every minute
+export const revalidate = 60
 
-async function getRetailerData(slug: string, sort: string, categorySlug: string, page: number) {
+async function getRetailerData(slug: string, sort: string, categorySlug: string, page: number, search: string) {
   const supermarket = await prisma.supermarket.findUnique({
     where: { slug },
   })
 
   if (!supermarket) return null
 
-  // Increment view count
+  // Increment view count (fire-and-forget)
   prisma.supermarket.update({
     where: { id: supermarket.id },
     data: { viewCount: { increment: 1 } },
@@ -52,6 +56,16 @@ async function getRetailerData(slug: string, sort: string, categorySlug: string,
   const where: any = {
     supermarketId: supermarket.id,
     isHidden: false,
+  }
+
+  // Search filter
+  if (search) {
+    where.OR = [
+      { nameAr: { contains: search } },
+      { nameEn: { contains: search } },
+      { brand: { contains: search } },
+      { tags: { contains: search } },
+    ]
   }
 
   if (categorySlug) {
@@ -115,12 +129,23 @@ export default async function RetailerPage({ params, searchParams }: Props) {
   const sort = sp.sort || 'newest'
   const category = sp.category || ''
   const page = parseInt(sp.page || '1')
+  const search = sp.search || ''
 
-  const data = await getRetailerData(slug, sort, category, page)
+  const data = await getRetailerData(slug, sort, category, page, search)
 
   if (!data) return notFound()
 
   const { supermarket, products, total, categories, activeFlyers, totalPages, currentPage } = data
+
+  // Helper to build pagination URLs
+  function buildPageUrl(pageNum: number) {
+    const params = new URLSearchParams()
+    if (sort !== 'newest') params.set('sort', sort)
+    if (category) params.set('category', category)
+    if (search) params.set('search', search)
+    params.set('page', String(pageNum))
+    return `/offers/retailer/${slug}?${params.toString()}`
+  }
 
   // Structured data for SEO
   const jsonLd = {
@@ -132,7 +157,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-red-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir="rtl">
       <Header />
 
       <script
@@ -140,42 +165,46 @@ export default async function RetailerPage({ params, searchParams }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-4 py-5">
         {/* Breadcrumb */}
-        <nav className="mb-4 text-sm text-gray-600">
-          <Link href="/" className="hover:text-pink-600">الرئيسية</Link>
-          <span className="mx-2">/</span>
-          <Link href="/supermarkets" className="hover:text-pink-600">المتاجر</Link>
-          <span className="mx-2">/</span>
-          <span className="text-gray-800 font-semibold">{supermarket.nameAr}</span>
+        <nav className="mb-4 text-sm text-gray-500 flex items-center gap-1.5">
+          <Link href="/" className="hover:text-pink-600 transition">الرئيسية</Link>
+          <svg className="w-3.5 h-3.5 text-gray-300 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <Link href="/supermarkets" className="hover:text-pink-600 transition">المتاجر</Link>
+          <svg className="w-3.5 h-3.5 text-gray-300 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <span className="text-gray-800 font-medium">{supermarket.nameAr}</span>
         </nav>
 
         {/* Supermarket Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-6">
-          <div className="flex items-center gap-5">
-            <div className="w-20 h-20 bg-gradient-to-br from-pink-100 to-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-5 mb-5">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white rounded-full border-2 border-gray-100 flex items-center justify-center flex-shrink-0">
               {supermarket.logo ? (
-                <img src={supermarket.logo} alt={supermarket.nameAr} className="w-14 h-14 object-contain" />
+                <img src={supermarket.logo} alt={supermarket.nameAr} className="w-10 h-10 sm:w-11 sm:h-11 object-contain" />
               ) : (
-                <span className="text-4xl">🏪</span>
+                <span className="text-2xl sm:text-3xl">🏪</span>
               )}
             </div>
             <div className="min-w-0">
-              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 to-red-600 bg-clip-text text-transparent mb-1">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-0.5">
                 عروض {supermarket.nameAr}
               </h1>
-              <p className="text-gray-600">{total} عرض متوفر</p>
+              <p className="text-sm text-gray-500">{total} عرض متوفر</p>
             </div>
           </div>
 
           {/* Active Flyers */}
           {activeFlyers.length > 0 && (
-            <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
+            <div className="mt-4 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
               {activeFlyers.map(flyer => (
-                <div key={flyer.id} className="flex-shrink-0 bg-pink-50 border border-pink-200 rounded-xl px-4 py-2">
-                  <div className="font-semibold text-pink-700 text-sm">{flyer.titleAr || flyer.title}</div>
-                  <div className="text-xs text-pink-500">
-                    {flyer._count.productOffers} منتج - ينتهي {new Date(flyer.endDate).toLocaleDateString('ar-SA')}
+                <div key={flyer.id} className="flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                  <div className="font-medium text-gray-700 text-sm whitespace-nowrap">{flyer.titleAr || flyer.title}</div>
+                  <div className="text-xs text-gray-500">
+                    {flyer._count.productOffers} منتج · ينتهي {new Date(flyer.endDate).toLocaleDateString('ar-SA')}
                   </div>
                 </div>
               ))}
@@ -183,23 +212,53 @@ export default async function RetailerPage({ params, searchParams }: Props) {
           )}
         </div>
 
-        {/* Filters */}
+        {/* Filters + Search */}
         <RetailerFilters
           slug={slug}
           categories={categories}
           currentSort={sort}
           currentCategory={category}
+          currentSearch={search}
+          totalResults={total}
         />
 
         {/* Products Grid */}
         {products.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl shadow-lg">
-            <div className="text-6xl mb-4">🛒</div>
-            <p className="text-gray-600 text-xl">لا توجد عروض حالياً</p>
+          <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
+            <svg className="w-16 h-16 text-gray-200 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <p className="text-gray-500 text-lg font-medium mb-1">
+              {search ? 'لم يتم العثور على نتائج' : 'لا توجد عروض حالياً'}
+            </p>
+            <p className="text-gray-400 text-sm">
+              {search ? `لا توجد منتجات تطابق "${search}"` : 'جرب تغيير الفلاتر أو البحث'}
+            </p>
+            {(search || category) && (
+              <Link
+                href={`/offers/retailer/${slug}`}
+                className="inline-block mt-4 text-pink-600 hover:text-pink-700 text-sm font-medium transition"
+              >
+                مسح الفلاتر والبحث
+              </Link>
+            )}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+            {/* Results summary */}
+            <div className="flex items-center justify-between mb-3 px-0.5">
+              <span className="text-xs sm:text-sm text-gray-400">
+                عرض {products.length} من {total} منتج
+              </span>
+              {totalPages > 1 && (
+                <span className="text-xs text-gray-400">
+                  صفحة {currentPage} من {totalPages}
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4">
               {products.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
@@ -207,25 +266,26 @@ export default async function RetailerPage({ params, searchParams }: Props) {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex justify-center gap-2 mt-8">
+              <div className="flex justify-center items-center gap-1.5 mt-8">
                 {currentPage > 1 && (
                   <Link
-                    href={`/offers/retailer/${slug}?sort=${sort}&category=${category}&page=${currentPage - 1}`}
-                    className="px-4 py-2 rounded-full border-2 border-pink-200 hover:border-pink-500 font-semibold"
+                    href={buildPageUrl(currentPage - 1)}
+                    className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition"
                   >
                     السابق
                   </Link>
                 )}
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   const p = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i
+                  if (p < 1 || p > totalPages) return null
                   return (
                     <Link
                       key={p}
-                      href={`/offers/retailer/${slug}?sort=${sort}&category=${category}&page=${p}`}
-                      className={`w-10 h-10 rounded-full font-semibold flex items-center justify-center ${
+                      href={buildPageUrl(p)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium flex items-center justify-center transition ${
                         p === currentPage
                           ? 'bg-pink-600 text-white'
-                          : 'border-2 border-pink-200 hover:border-pink-500'
+                          : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
                       }`}
                     >
                       {p}
@@ -234,8 +294,8 @@ export default async function RetailerPage({ params, searchParams }: Props) {
                 })}
                 {currentPage < totalPages && (
                   <Link
-                    href={`/offers/retailer/${slug}?sort=${sort}&category=${category}&page=${currentPage + 1}`}
-                    className="px-4 py-2 rounded-full border-2 border-pink-200 hover:border-pink-500 font-semibold"
+                    href={buildPageUrl(currentPage + 1)}
+                    className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition"
                   >
                     التالي
                   </Link>
@@ -246,9 +306,9 @@ export default async function RetailerPage({ params, searchParams }: Props) {
         )}
       </main>
 
-      <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white mt-20 py-8">
+      <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white mt-16 py-6">
         <div className="container mx-auto px-4 text-center">
-          <p>SmartCopons {new Date().getFullYear()} - جميع الحقوق محفوظة</p>
+          <p className="text-sm opacity-90">SmartCopons {new Date().getFullYear()} - جميع الحقوق محفوظة</p>
         </div>
       </footer>
     </div>

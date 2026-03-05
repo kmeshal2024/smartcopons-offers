@@ -16,12 +16,22 @@ function transformProduct(p) {
   const price = parseFloat(p.price) || parseFloat(p.display_price?.replace(/[^\d.]/g, '')) || 0
   const oldPrice = parseFloat(p.original_price) || parseFloat(p.display_original_price?.replace(/[^\d.]/g, '')) || null
 
-  // Get image URL
+  // Get image URL — Spree Commerce stores images on master variant
   let imageUrl = null
-  if (p.images && p.images.length > 0) {
-    imageUrl = p.images[0].product_url || p.images[0].large_url || p.images[0].small_url
+  // Try master.images first (this is where Danube's Spree API puts them)
+  if (p.master && p.master.images && p.master.images.length > 0) {
+    const img = p.master.images[0]
+    imageUrl = img.product_url || img.large_url || img.small_url || img.mini_url
   }
-  if (!imageUrl && p.image_url) imageUrl = p.image_url
+  // Fallback: top-level images array
+  if (!imageUrl && p.images && p.images.length > 0) {
+    const img = p.images[0]
+    imageUrl = img.product_url || img.large_url || img.small_url || img.mini_url
+  }
+  // Ensure absolute URL
+  if (imageUrl && !imageUrl.startsWith('http')) {
+    imageUrl = 'https://www.danube.sa' + imageUrl
+  }
 
   // Calculate discount
   let discountPercent = null
@@ -30,8 +40,8 @@ function transformProduct(p) {
   }
 
   return {
-    nameEn: p.name || '',
-    nameAr: p.name_ar || p.meta_description_ar || '',
+    nameEn: p.name_en || p.full_name_en || p.name || '',
+    nameAr: p.name || '',
     price: price,
     oldPrice: oldPrice && oldPrice > price ? oldPrice : undefined,
     discountPercent: discountPercent,

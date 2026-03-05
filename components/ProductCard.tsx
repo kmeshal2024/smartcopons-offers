@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -25,81 +26,73 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const displayName = product.nameAr || product.nameEn || 'منتج'
   const hasDiscount = product.discountPercent && product.discountPercent > 0
+  const [imgError, setImgError] = useState(false)
 
   return (
-    <div className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+    <div className="bg-white rounded-xl border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 overflow-hidden group flex flex-col">
       {/* Product Image */}
-      <div className="relative h-48 bg-gradient-to-br from-gray-50 to-gray-100">
-        {product.imageUrl ? (
+      <div className="relative h-44 sm:h-52 bg-gray-50 flex items-center justify-center">
+        {product.imageUrl && !imgError ? (
           <Image
             src={product.imageUrl}
             alt={displayName}
             fill
-            className="object-contain p-4 group-hover:scale-105 transition-transform"
+            className="object-contain p-4 group-hover:scale-[1.03] transition-transform duration-200"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            onError={() => setImgError(true)}
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-6xl">
-            🛍️
+          <div className="flex flex-col items-center justify-center h-full text-gray-300">
+            <svg className="w-12 h-12 sm:w-14 sm:h-14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            <span className="text-[10px] text-gray-300 mt-1">لا توجد صورة</span>
           </div>
         )}
 
         {/* Discount Badge */}
         {hasDiscount && (
-          <div className="absolute top-3 right-3 bg-gradient-to-r from-red-500 to-pink-600 text-white px-3 py-1 rounded-full font-bold text-sm shadow-lg">
-            -{product.discountPercent}%
-          </div>
-        )}
-
-        {/* Retailer Logo */}
-        {product.supermarket.logo && (
-          <div className="absolute bottom-3 left-3 bg-white rounded-lg p-2 shadow-md">
-            <Image
-              src={product.supermarket.logo}
-              alt={product.supermarket.nameAr}
-              width={40}
-              height={40}
-              className="object-contain"
-            />
+          <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-0.5 rounded-md text-xs font-bold shadow-sm">
+            {product.discountPercent}%-
           </div>
         )}
       </div>
 
       {/* Product Info */}
-      <div className="p-4">
-        {/* Brand */}
-        {product.brand && (
-          <div className="text-xs text-gray-500 mb-1">{product.brand}</div>
-        )}
-
-        {/* Name */}
-        <h3 className="font-bold text-gray-800 mb-2 line-clamp-2 min-h-[2.5rem]">
-          {displayName}
-        </h3>
-
-        {/* Size */}
-        {product.sizeText && (
-          <div className="text-sm text-gray-600 mb-3">{product.sizeText}</div>
-        )}
-
-        {/* Price */}
-        <div className="flex items-center gap-2 mb-3">
-          {product.oldPrice && (
-            <span className="text-gray-400 line-through text-sm">
-              {product.oldPrice.toFixed(2)} ر.س
-            </span>
-          )}
-          <span className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-red-600 bg-clip-text text-transparent">
-            {product.price.toFixed(2)} ر.س
-          </span>
-        </div>
-
-        {/* Retailer */}
+      <div className="p-3 sm:p-3.5 flex flex-col flex-1">
+        {/* Retailer name */}
         <Link
           href={`/offers/retailer/${product.supermarket.slug}`}
-          className="text-xs text-pink-600 hover:text-pink-700 hover:underline"
+          className="text-[10px] sm:text-[11px] text-gray-400 hover:text-pink-600 transition-colors font-medium truncate"
         >
           {product.supermarket.nameAr}
         </Link>
+
+        {/* Product Name */}
+        <h3 className="text-xs sm:text-sm font-semibold text-gray-800 line-clamp-2 mt-0.5 mb-1 min-h-[2rem] sm:min-h-[2.5rem] leading-snug">
+          {displayName}
+        </h3>
+
+        {/* Brand + Size */}
+        {(product.brand || product.sizeText) && (
+          <div className="text-[10px] sm:text-xs text-gray-400 mb-1.5 truncate">
+            {product.brand}{product.brand && product.sizeText ? ' · ' : ''}{product.sizeText}
+          </div>
+        )}
+
+        {/* Price */}
+        <div className="mt-auto flex items-baseline gap-1.5 flex-wrap">
+          <span className="text-base sm:text-lg font-bold text-gray-900">
+            {product.price.toFixed(2)}
+          </span>
+          <span className="text-[10px] sm:text-xs text-gray-400">ر.س</span>
+          {product.oldPrice && product.oldPrice > product.price && (
+            <span className="text-[10px] sm:text-xs text-gray-400 line-through mr-auto">
+              {product.oldPrice.toFixed(2)}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
