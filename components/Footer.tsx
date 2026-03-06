@@ -48,6 +48,9 @@ export default async function Footer() {
               <Link href="/supermarkets" className="block text-gray-400 hover:text-white transition">
                 المتاجر
               </Link>
+              <Link href="/coupons" className="block text-gray-400 hover:text-white transition">
+                كوبونات الخصم
+              </Link>
             </div>
           </div>
 

@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import Header from '@/components/Header'
-import CouponCard from '@/components/CouponCard'
 import ProductCard from '@/components/ProductCard'
 import Footer from '@/components/Footer'
 import type { Metadata } from 'next'
@@ -21,12 +20,12 @@ export const metadata: Metadata = {
 export const revalidate = 60
 
 async function getHomeData() {
-  const [coupons, supermarkets, latestProducts, topDiscounts, categories] = await Promise.all([
+  const [coupons, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores] = await Promise.all([
     prisma.coupon.findMany({
       where: { isActive: true },
-      include: { store: { select: { name: true, slug: true } } },
+      include: { store: { select: { name: true, slug: true, logo: true } } },
       orderBy: { createdAt: 'desc' },
-      take: 6,
+      take: 8,
     }),
     prisma.supermarket.findMany({
       where: { isActive: true },
@@ -59,6 +58,15 @@ async function getHomeData() {
       orderBy: { discountPercent: 'desc' },
       take: 4,
     }),
+    prisma.productOffer.findMany({
+      where: { isHidden: false, viewCount: { gt: 0 } },
+      include: {
+        supermarket: { select: { nameAr: true, slug: true, logo: true } },
+        category: { select: { nameAr: true, icon: true } },
+      },
+      orderBy: { viewCount: 'desc' },
+      take: 5,
+    }),
     prisma.category.findMany({
       where: { isActive: true, parentId: null },
       include: {
@@ -67,13 +75,15 @@ async function getHomeData() {
       orderBy: { order: 'asc' },
       take: 8,
     }),
+    prisma.productOffer.count({ where: { isHidden: false } }),
+    prisma.supermarket.count({ where: { isActive: true } }),
   ])
 
-  return { coupons, supermarkets, latestProducts, topDiscounts, categories }
+  return { coupons, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores }
 }
 
 export default async function HomePage() {
-  const { coupons, supermarkets, latestProducts, topDiscounts, categories } = await getHomeData()
+  const { coupons, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores } = await getHomeData()
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -94,10 +104,30 @@ export default async function HomePage() {
       />
 
       <main>
-        {/* Brand Banner */}
-        <div className="bg-pink-600 text-white py-2.5">
-          <div className="container mx-auto px-4 text-center text-sm font-medium">
-            اكتشف أفضل عروض وخصومات السوبرماركت في السعودية - نحدث العروض يومياً
+        {/* Brand Banner with Stats */}
+        <div className="bg-gradient-to-l from-pink-600 to-pink-700 text-white py-4">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-2">
+              <span className="text-sm font-medium opacity-90">
+                اكتشف أفضل عروض وخصومات السوبرماركت في السعودية
+              </span>
+            </div>
+            <div className="flex justify-center gap-6 sm:gap-10">
+              <div className="text-center">
+                <div className="text-xl sm:text-2xl font-bold">{totalProducts.toLocaleString()}+</div>
+                <div className="text-[10px] sm:text-xs opacity-80">عرض متوفر</div>
+              </div>
+              <div className="w-px bg-white/20" />
+              <div className="text-center">
+                <div className="text-xl sm:text-2xl font-bold">{totalStores}</div>
+                <div className="text-[10px] sm:text-xs opacity-80">متجر</div>
+              </div>
+              <div className="w-px bg-white/20" />
+              <div className="text-center">
+                <div className="text-xl sm:text-2xl font-bold">{coupons.length}</div>
+                <div className="text-[10px] sm:text-xs opacity-80">كوبون خصم</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -140,7 +170,75 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Categories Section */}
+        {/* ===== COUPONS & DEALS Section (ClicFlyer style - prominent) ===== */}
+        {coupons.length > 0 && (
+          <section className="container mx-auto px-4 mt-6">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🎟️</span>
+                  <h2 className="font-bold text-gray-900">كوبونات وخصومات</h2>
+                  <span className="bg-pink-100 text-pink-700 text-[10px] font-bold px-2 py-0.5 rounded-full">COUPONS &amp; DEALS</span>
+                </div>
+                <Link href="/coupons" className="text-pink-600 hover:text-pink-700 text-sm font-semibold">
+                  عرض الكل
+                </Link>
+              </div>
+              <div className="p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {coupons.slice(0, 4).map(coupon => (
+                    <div key={coupon.id} className="bg-gradient-to-br from-pink-50 to-white rounded-lg border border-pink-100 p-4 relative overflow-hidden group hover:shadow-md transition-all">
+                      {/* Decorative corner */}
+                      <div className="absolute top-0 left-0 w-16 h-16 bg-pink-100/50 rounded-br-full" />
+
+                      {/* Store name */}
+                      <div className="relative flex items-center gap-2 mb-2">
+                        {coupon.store.logo ? (
+                          <img src={coupon.store.logo} alt={coupon.store.name} className="w-5 h-5 rounded object-contain" />
+                        ) : null}
+                        <span className="text-[11px] font-semibold text-pink-700">{coupon.store.name}</span>
+                      </div>
+
+                      {/* Discount text */}
+                      <div className="relative text-xl font-black text-gray-900 mb-1">{coupon.discountText}</div>
+
+                      {/* Title */}
+                      <p className="relative text-xs text-gray-500 mb-3 line-clamp-1">{coupon.title}</p>
+
+                      {/* Code + Copy */}
+                      <div className="relative flex gap-2">
+                        <div className="flex-1 bg-white border border-dashed border-pink-300 rounded-md px-2 py-1.5 font-mono text-xs font-bold text-center text-pink-700 truncate">
+                          {coupon.code}
+                        </div>
+                        <button
+                          className="coupon-copy-btn bg-pink-600 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-pink-700 transition active:scale-95 whitespace-nowrap"
+                          data-code={coupon.code}
+                        >
+                          نسخ الكود
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Show more coupons as smaller chips if we have more than 4 */}
+                {coupons.length > 4 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {coupons.slice(4).map(coupon => (
+                      <div key={coupon.id} className="inline-flex items-center gap-2 bg-gray-50 rounded-full px-3 py-1.5 border border-gray-100 hover:border-pink-200 transition">
+                        <span className="text-[10px] text-gray-500">{coupon.store.name}</span>
+                        <span className="font-mono text-xs font-bold text-pink-700">{coupon.code}</span>
+                        <span className="text-[10px] text-pink-600 font-semibold">{coupon.discountText}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Categories Section + Coupons & Deals link */}
         {categories.length > 0 && (
           <section className="container mx-auto px-4 mt-6">
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -149,6 +247,16 @@ export default async function HomePage() {
               </div>
               <div className="p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                  {/* Coupons & Deals category card - first item like ClicFlyer */}
+                  <Link
+                    href="/coupons"
+                    className="group text-center p-3 rounded-lg bg-pink-50 hover:bg-pink-100 border border-pink-200 hover:border-pink-300 transition-all"
+                  >
+                    <div className="text-2xl mb-1.5">🎟️</div>
+                    <span className="text-xs font-bold text-pink-700 block">كوبونات وخصومات</span>
+                    <span className="text-[10px] text-pink-500">{coupons.length} كوبون</span>
+                  </Link>
+
                   {categories.map(cat => (
                     <Link
                       key={cat.id}
@@ -190,6 +298,27 @@ export default async function HomePage() {
           </section>
         )}
 
+        {/* Most Viewed Products */}
+        {mostViewed.length > 0 && (
+          <section className="container mx-auto px-4 mt-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 bg-orange-500 rounded-full" />
+                <h2 className="text-lg font-bold text-gray-900">الأكثر مشاهدة</h2>
+                <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">TRENDING</span>
+              </div>
+              <Link href="/offers?sort=popular" className="text-pink-600 hover:text-pink-700 text-sm font-semibold">
+                عرض المزيد
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              {mostViewed.map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Section Divider */}
         <div className="container mx-auto px-4 mt-8">
           <div className="flex items-center gap-4">
@@ -219,31 +348,6 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Coupons Section */}
-        {coupons.length > 0 && (
-          <section className="container mx-auto px-4 mt-10">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-6 bg-pink-600 rounded-full" />
-                <h2 className="text-lg font-bold text-gray-900">كوبونات الخصم</h2>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {coupons.map(coupon => (
-                <CouponCard
-                  key={coupon.id}
-                  id={coupon.id}
-                  title={coupon.title}
-                  code={coupon.code}
-                  discountText={coupon.discountText}
-                  storeName={coupon.store.name}
-                  storeSlug={coupon.store.slug}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
         {/* SEO Content */}
         <section className="container mx-auto px-4 mt-12 mb-8">
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 md:p-8 text-gray-600 leading-relaxed">
@@ -259,6 +363,13 @@ export default async function HomePage() {
           </div>
         </section>
       </main>
+
+      {/* Coupon copy script */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `document.addEventListener('click',function(e){var btn=e.target.closest('.coupon-copy-btn');if(btn){var code=btn.getAttribute('data-code');navigator.clipboard.writeText(code).then(function(){var orig=btn.textContent;btn.textContent='\\u2713 \\u062A\\u0645!';btn.style.backgroundColor='#16a34a';setTimeout(function(){btn.textContent=orig;btn.style.backgroundColor='';},2000);});}});`,
+        }}
+      />
 
       <Footer />
     </div>
