@@ -41,6 +41,14 @@ const nextConfig = {
       'cdn.saco.sa',
       'upload.wikimedia.org',       // Supermarket logos (Wikipedia)
       'i.imgur.com',                // Fallback logos
+      'cdn.brandfetch.io',          // Supermarket logos (Brandfetch CDN)
+      'images.ctfassets.net',       // Contentful CDN (Othaim logo)
+      'farm.com.sa',                // Farm Superstores logo
+      'nestogroup.com',             // Nesto logo
+      'www.bindawoodholding.com',   // BinDawood logo
+      'tamimi-corp-images.s3.me-south-1.amazonaws.com', // Tamimi logo
+      'cdn.d4donline.com',          // Manuel Market logo
+      'danube.sa',                  // Danube logo
     ],
     // Vercel handles image optimization automatically
     unoptimized: false,
