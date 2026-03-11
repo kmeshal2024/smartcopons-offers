@@ -28,6 +28,17 @@ const nextConfig = {
       'bf1af2.akinoncloudcdn.com',  // LuLu product images (Akinon)
       'www.othaimmarkets.com',      // Othaim Markets
       'cdn.othaimmarkets.com',
+      'www.tamimimarkets.com',      // Tamimi Markets
+      'cdn.tamimimarkets.com',
+      'www.farm.com.sa',            // Farm Superstores
+      'cdn.farm.com.sa',
+      'www.nesto.sa',               // Nesto Hypermarket
+      'cdn.nesto.sa',
+      'www.manuelmarket.com',       // Manuel Market
+      'media.extra.com',            // Extra
+      'www.extra.com',
+      'www.saco.sa',                // Saco
+      'cdn.saco.sa',
       'upload.wikimedia.org',       // Supermarket logos (Wikipedia)
       'i.imgur.com',                // Fallback logos
     ],

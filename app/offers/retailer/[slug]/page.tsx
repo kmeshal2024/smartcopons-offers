@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
 import Footer from '@/components/Footer'
+import FlyerViewer from '@/components/FlyerViewer'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import RetailerFilters from './RetailerFilters'
@@ -108,7 +109,7 @@ async function getRetailerData(slug: string, sort: string, categorySlug: string,
         status: 'ACTIVE',
         endDate: { gte: new Date() },
       },
-      select: { id: true, title: true, titleAr: true, endDate: true, _count: { select: { productOffers: true } } },
+      select: { id: true, title: true, titleAr: true, endDate: true, pdfUrl: true, _count: { select: { productOffers: true } } },
       orderBy: { startDate: 'desc' },
     }),
   ])
@@ -212,6 +213,21 @@ export default async function RetailerPage({ params, searchParams }: Props) {
             </div>
           )}
         </div>
+
+        {/* Weekly Flyer PDF Viewer */}
+        {activeFlyers.filter((f: any) => f.pdfUrl).length > 0 && (
+          <div className="mb-5 space-y-4">
+            {activeFlyers
+              .filter((f: any) => f.pdfUrl)
+              .map((flyer: any) => (
+                <FlyerViewer
+                  key={flyer.id}
+                  pdfUrl={flyer.pdfUrl}
+                  title={flyer.titleAr || flyer.title}
+                />
+              ))}
+          </div>
+        )}
 
         {/* Filters + Search */}
         <RetailerFilters

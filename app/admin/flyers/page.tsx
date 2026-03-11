@@ -409,12 +409,23 @@ export default function AdminFlyersPage() {
                       </>
                     )}
 
-                    {/* Extract Button */}
+                    {/* Publish Button (skip OCR, just make flyer browsable) */}
+                    {flyer.pdfUrl && (flyer.status === 'DRAFT' || flyer.status === 'FAILED') && (
+                      <button
+                        onClick={() => handleStatusChange(flyer.id, 'ACTIVE')}
+                        className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700"
+                      >
+                        Publish Flyer
+                      </button>
+                    )}
+
+                    {/* Extract Button (OCR - optional) */}
                     {flyer.pdfUrl && flyer.status !== 'PROCESSING' && (
                       <button
                         onClick={() => handleExtract(flyer.id)}
                         disabled={extractingId === flyer.id}
-                        className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                        className="bg-purple-600 text-white px-3 py-1.5 rounded text-sm hover:bg-purple-700 disabled:opacity-50"
+                        title="Extract products from PDF (OCR)"
                       >
                         {extractingId === flyer.id ? 'Extracting...' : 'Extract Products'}
                       </button>

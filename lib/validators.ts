@@ -15,6 +15,20 @@ export const couponSchema = z.object({
   isActive: z.boolean().default(true),
 })
 
+export const bulkCouponItemSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  code: z.string().min(1, 'Code is required'),
+  discountText: z.string().min(1, 'Discount text is required'),
+  url: z.string().default('#'),
+  description: z.string().optional(),
+  storeName: z.string().min(1, 'Store name is required'),
+  isActive: z.boolean().default(true),
+})
+
+export const bulkCouponSchema = z.object({
+  coupons: z.array(bulkCouponItemSchema).min(1, 'At least 1 coupon required').max(100, 'Max 100 coupons per batch'),
+})
+
 export const storeSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   slug: z.string().min(2, 'Slug must be at least 2 characters').regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens'),
