@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { upload } from '@vercel/blob/client'
 import AdminNav from '@/components/AdminNav'
 
@@ -47,7 +47,6 @@ export default function AdminFlyersPage() {
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [extractingId, setExtractingId] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     supermarketId: '',
@@ -104,7 +103,7 @@ export default function AdminFlyersPage() {
         return
       }
 
-      setSuccess('Flyer created. Now upload a PDF.')
+      setSuccess('Flyer created! Now upload a PDF.')
       setFormData({ supermarketId: '', title: '', titleAr: '', startDate: '', endDate: '' })
       setShowForm(false)
       loadFlyers()
@@ -113,23 +112,27 @@ export default function AdminFlyersPage() {
     }
   }
 
+  // Trigger file input for a specific flyer
+  const triggerUpload = (flyerId: string) => {
+    const input = document.getElementById(`pdf-input-${flyerId}`) as HTMLInputElement
+    if (input) input.click()
+  }
+
   const handleUploadPDF = async (flyerId: string, file: File) => {
     setUploadingId(flyerId)
     setUploadProgress('Uploading...')
     setError('')
 
     try {
-      // For files > 4MB, use client-side direct upload to Vercel Blob
-      // This bypasses Vercel's serverless body size limit
       if (file.size > 4 * 1024 * 1024) {
-        setUploadProgress(`Uploading ${(file.size / 1024 / 1024).toFixed(1)}MB directly...`)
+        // Large files: client-side direct upload to Vercel Blob
+        setUploadProgress(`Uploading ${(file.size / 1024 / 1024).toFixed(1)}MB...`)
 
         const blob = await upload(`flyers/${flyerId}-${Date.now()}.pdf`, file, {
           access: 'public',
           handleUploadUrl: '/api/admin/flyers/upload',
         })
 
-        // Link the blob URL to the flyer record
         const linkRes = await fetch('/api/admin/flyers/upload', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -142,14 +145,14 @@ export default function AdminFlyersPage() {
           return
         }
       } else {
-        // Small files: use traditional server upload
-        const formData = new FormData()
-        formData.append('pdf', file)
-        formData.append('flyerId', flyerId)
+        // Small files: traditional server upload
+        const fd = new FormData()
+        fd.append('pdf', file)
+        fd.append('flyerId', flyerId)
 
         const res = await fetch('/api/admin/flyers/upload', {
           method: 'POST',
-          body: formData,
+          body: fd,
         })
 
         if (!res.ok) {
@@ -159,8 +162,7 @@ export default function AdminFlyersPage() {
         }
       }
 
-      setUploadProgress('Upload complete!')
-      setSuccess('PDF uploaded successfully.')
+      setSuccess('PDF uploaded successfully! You can now Publish the flyer.')
       loadFlyers()
     } catch (err: any) {
       setError('Upload failed: ' + (err?.message || 'Unknown error'))
@@ -176,10 +178,7 @@ export default function AdminFlyersPage() {
     setSuccess('')
 
     try {
-      const res = await fetch(`/api/admin/flyers/${flyerId}/extract`, {
-        method: 'POST',
-      })
-
+      const res = await fetch(`/api/admin/flyers/${flyerId}/extract`, { method: 'POST' })
       const data = await res.json()
 
       if (!res.ok) {
@@ -203,11 +202,15 @@ export default function AdminFlyersPage() {
   }
 
   const handleStatusChange = async (id: string, status: string) => {
-    await fetch(`/api/admin/flyers/${id}`, {
+    setError('')
+    const res = await fetch(`/api/admin/flyers/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
+    if (res.ok) {
+      setSuccess(status === 'ACTIVE' ? 'Flyer published! Customers can now view it.' : `Status changed to ${status}`)
+    }
     loadFlyers()
   }
 
@@ -234,6 +237,12 @@ export default function AdminFlyersPage() {
           >
             {showForm ? 'Cancel' : 'New Flyer'}
           </button>
+        </div>
+
+        {/* How-to guide */}
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded mb-4 text-sm">
+          <strong>How to add a flyer:</strong> 1. Click &quot;New Flyer&quot; → select supermarket & dates → Create.
+          2. Click &quot;Upload PDF&quot; on the new flyer. 3. Click &quot;Publish&quot; to make it visible to customers.
         </div>
 
         {error && (
@@ -342,96 +351,74 @@ export default function AdminFlyersPage() {
                       <span className={`px-2 py-0.5 rounded text-xs font-bold ${STATUS_COLORS[flyer.status] || ''}`}>
                         {flyer.status}
                       </span>
+                      {flyer.pdfUrl && (
+                        <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700">
+                          PDF
+                        </span>
+                      )}
                     </div>
                     {flyer.titleAr && <p className="text-gray-500 text-sm" dir="rtl">{flyer.titleAr}</p>}
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
                       <span>{flyer.supermarket.nameAr}</span>
                       <span>{formatDate(flyer.startDate)} - {formatDate(flyer.endDate)}</span>
                       <span>{flyer._count.productOffers} products</span>
-                      <span>{flyer.totalPages} pages</span>
+                      {flyer.totalPages > 0 && <span>{flyer.totalPages} pages</span>}
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {/* Upload PDF */}
-                    {!flyer.pdfUrl && (
-                      <>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept=".pdf"
-                          className="hidden"
-                          onChange={e => {
-                            const file = e.target.files?.[0]
-                            if (file) handleUploadPDF(flyer.id, file)
-                            e.target.value = ''
-                          }}
-                        />
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={uploadingId === flyer.id}
-                          className="bg-purple-600 text-white px-3 py-1.5 rounded text-sm hover:bg-purple-700 disabled:opacity-50"
-                        >
-                          {uploadingId === flyer.id ? uploadProgress : 'Upload PDF'}
-                        </button>
-                      </>
-                    )}
+                  <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+                    {/* Hidden file input — one per flyer with unique ID */}
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      className="hidden"
+                      id={`pdf-input-${flyer.id}`}
+                      onChange={e => {
+                        const file = e.target.files?.[0]
+                        if (file) handleUploadPDF(flyer.id, file)
+                        e.target.value = ''
+                      }}
+                    />
 
-                    {/* Re-upload PDF */}
+                    {/* Upload / Re-upload PDF */}
+                    <button
+                      onClick={() => triggerUpload(flyer.id)}
+                      disabled={uploadingId === flyer.id}
+                      className={`px-3 py-1.5 rounded text-sm disabled:opacity-50 ${
+                        flyer.pdfUrl
+                          ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          : 'bg-purple-600 text-white hover:bg-purple-700'
+                      }`}
+                    >
+                      {uploadingId === flyer.id
+                        ? uploadProgress
+                        : flyer.pdfUrl ? 'Re-upload PDF' : 'Upload PDF'}
+                    </button>
+
+                    {/* View PDF link */}
                     {flyer.pdfUrl && (
-                      <>
-                        <a
-                          href={flyer.pdfUrl}
-                          target="_blank"
-                          rel="noopener"
-                          className="text-blue-600 hover:underline text-sm"
-                        >
-                          View PDF
-                        </a>
-                        <input
-                          type="file"
-                          accept=".pdf"
-                          className="hidden"
-                          id={`reupload-${flyer.id}`}
-                          onChange={e => {
-                            const file = e.target.files?.[0]
-                            if (file) handleUploadPDF(flyer.id, file)
-                            e.target.value = ''
-                          }}
-                        />
-                        <label
-                          htmlFor={`reupload-${flyer.id}`}
-                          className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-300 cursor-pointer"
-                        >
-                          Re-upload
-                        </label>
-                      </>
+                      <a
+                        href={flyer.pdfUrl}
+                        target="_blank"
+                        rel="noopener"
+                        className="text-blue-600 hover:underline text-sm"
+                      >
+                        View PDF
+                      </a>
                     )}
 
-                    {/* Publish Button (skip OCR, just make flyer browsable) */}
-                    {flyer.pdfUrl && (flyer.status === 'DRAFT' || flyer.status === 'FAILED') && (
+                    {/* Publish Button — for flyers with PDF that aren't ACTIVE yet */}
+                    {flyer.pdfUrl && flyer.status !== 'ACTIVE' && flyer.status !== 'PROCESSING' && (
                       <button
                         onClick={() => handleStatusChange(flyer.id, 'ACTIVE')}
-                        className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700"
+                        className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700 font-semibold"
                       >
-                        Publish Flyer
+                        Publish
                       </button>
                     )}
 
-                    {/* Extract Button (OCR - optional) */}
-                    {flyer.pdfUrl && flyer.status !== 'PROCESSING' && (
-                      <button
-                        onClick={() => handleExtract(flyer.id)}
-                        disabled={extractingId === flyer.id}
-                        className="bg-purple-600 text-white px-3 py-1.5 rounded text-sm hover:bg-purple-700 disabled:opacity-50"
-                        title="Extract products from PDF (OCR)"
-                      >
-                        {extractingId === flyer.id ? 'Extracting...' : 'Extract Products'}
-                      </button>
-                    )}
-
-                    {/* Status Change */}
+                    {/* Expire */}
                     {flyer.status === 'ACTIVE' && (
                       <button
                         onClick={() => handleStatusChange(flyer.id, 'EXPIRED')}
@@ -440,6 +427,8 @@ export default function AdminFlyersPage() {
                         Expire
                       </button>
                     )}
+
+                    {/* Re-activate */}
                     {flyer.status === 'EXPIRED' && (
                       <button
                         onClick={() => handleStatusChange(flyer.id, 'ACTIVE')}
