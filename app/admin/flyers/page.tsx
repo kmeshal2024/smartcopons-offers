@@ -44,9 +44,12 @@ export default function AdminFlyersPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
+  const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set())
   const [uploadingId, setUploadingId] = useState<string | null>(null)
-  const [extractingId, setExtractingId] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState('')
+  const [importingId, setImportingId] = useState<string | null>(null)
+  const [productText, setProductText] = useState<Record<string, string>>({})
+  const [importResult, setImportResult] = useState<Record<string, { created: number; errors: any[] } | null>>({})
 
   const [formData, setFormData] = useState({
     supermarketId: '',
@@ -103,7 +106,7 @@ export default function AdminFlyersPage() {
         return
       }
 
-      setSuccess('Flyer created! Now upload a PDF.')
+      setSuccess('Flyer created! Now upload a PDF and add products.')
       setFormData({ supermarketId: '', title: '', titleAr: '', startDate: '', endDate: '' })
       setShowForm(false)
       loadFlyers()
@@ -112,7 +115,6 @@ export default function AdminFlyersPage() {
     }
   }
 
-  // Trigger file input for a specific flyer
   const triggerUpload = (flyerId: string) => {
     const input = document.getElementById(`pdf-input-${flyerId}`) as HTMLInputElement
     if (input) input.click()
@@ -125,73 +127,39 @@ export default function AdminFlyersPage() {
 
     try {
       if (file.size > 4 * 1024 * 1024) {
-        // Large files: client-side direct upload to Vercel Blob
         setUploadProgress(`Uploading ${(file.size / 1024 / 1024).toFixed(1)}MB...`)
-
         const blob = await upload(`flyers/${flyerId}-${Date.now()}.pdf`, file, {
           access: 'public',
           handleUploadUrl: '/api/admin/flyers/upload',
         })
-
         const linkRes = await fetch('/api/admin/flyers/upload', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ flyerId, blobUrl: blob.url }),
         })
-
         if (!linkRes.ok) {
           const linkData = await linkRes.json()
           setError(linkData.error || 'Failed to link uploaded file')
           return
         }
       } else {
-        // Small files: traditional server upload
         const fd = new FormData()
         fd.append('pdf', file)
         fd.append('flyerId', flyerId)
-
-        const res = await fetch('/api/admin/flyers/upload', {
-          method: 'POST',
-          body: fd,
-        })
-
+        const res = await fetch('/api/admin/flyers/upload', { method: 'POST', body: fd })
         if (!res.ok) {
           const data = await res.json()
           setError(data.error || 'Upload failed')
           return
         }
       }
-
-      setSuccess('PDF uploaded successfully! You can now Publish the flyer.')
+      setSuccess('PDF uploaded! You can now Publish the flyer.')
       loadFlyers()
     } catch (err: any) {
       setError('Upload failed: ' + (err?.message || 'Unknown error'))
     } finally {
       setUploadingId(null)
       setUploadProgress('')
-    }
-  }
-
-  const handleExtract = async (flyerId: string) => {
-    setExtractingId(flyerId)
-    setError('')
-    setSuccess('')
-
-    try {
-      const res = await fetch(`/api/admin/flyers/${flyerId}/extract`, { method: 'POST' })
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error || 'Extraction failed')
-        return
-      }
-
-      setSuccess(`Extraction complete: ${data.productsSaved} products saved from ${data.totalPages} pages.`)
-      loadFlyers()
-    } catch {
-      setError('Extraction failed')
-    } finally {
-      setExtractingId(null)
     }
   }
 
@@ -209,7 +177,7 @@ export default function AdminFlyersPage() {
       body: JSON.stringify({ status }),
     })
     if (res.ok) {
-      setSuccess(status === 'ACTIVE' ? 'Flyer published! Customers can now view it.' : `Status changed to ${status}`)
+      setSuccess(status === 'ACTIVE' ? 'Flyer published!' : `Status changed to ${status}`)
     }
     loadFlyers()
   }
@@ -221,6 +189,81 @@ export default function AdminFlyersPage() {
       else next.add(id)
       return next
     })
+  }
+
+  const toggleProducts = (id: string) => {
+    setExpandedProducts(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  // Bulk product import for a flyer
+  const handleImportProducts = async (flyerId: string) => {
+    const text = productText[flyerId]?.trim()
+    if (!text) return
+
+    setImportingId(flyerId)
+    setImportResult(prev => ({ ...prev, [flyerId]: null }))
+    setError('')
+
+    try {
+      const lines = text.split('\n').filter(l => l.trim())
+      // Skip header row if detected
+      const firstLine = lines[0].toLowerCase()
+      const startIdx = (firstLine.includes('name') || firstLine.includes('اسم') || firstLine.includes('price') || firstLine.includes('سعر')) ? 1 : 0
+
+      const products: any[] = []
+      for (let i = startIdx; i < lines.length; i++) {
+        const line = lines[i].trim()
+        if (!line) continue
+
+        const parts = line.includes('\t') ? line.split('\t') : line.split(',')
+        const trimmed = parts.map(p => p.trim())
+
+        if (trimmed.length < 2) continue
+
+        products.push({
+          nameAr: trimmed[0],
+          price: parseFloat(trimmed[1]) || 0,
+          oldPrice: trimmed[2] ? parseFloat(trimmed[2]) || undefined : undefined,
+          imageUrl: trimmed[3] || undefined,
+          brand: trimmed[4] || undefined,
+          sizeText: trimmed[5] || undefined,
+        })
+      }
+
+      if (products.length === 0) {
+        setError('No valid products found. Format: name, price, oldPrice, imageUrl')
+        setImportingId(null)
+        return
+      }
+
+      const res = await fetch(`/api/admin/flyers/${flyerId}/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Import failed')
+        setImportingId(null)
+        return
+      }
+
+      setImportResult(prev => ({ ...prev, [flyerId]: data }))
+      setSuccess(`${data.created} products added to flyer! Categories auto-assigned.`)
+      setProductText(prev => ({ ...prev, [flyerId]: '' }))
+      loadFlyers()
+    } catch {
+      setError('Import failed')
+    } finally {
+      setImportingId(null)
+    }
   }
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-SA')
@@ -241,8 +284,13 @@ export default function AdminFlyersPage() {
 
         {/* How-to guide */}
         <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded mb-4 text-sm">
-          <strong>How to add a flyer:</strong> 1. Click &quot;New Flyer&quot; → select supermarket & dates → Create.
-          2. Click &quot;Upload PDF&quot; on the new flyer. 3. Click &quot;Publish&quot; to make it visible to customers.
+          <strong>How to add a flyer:</strong>
+          <ol className="list-decimal list-inside mt-1 space-y-0.5">
+            <li>Click &quot;New Flyer&quot; → select supermarket &amp; dates → Create</li>
+            <li>Click &quot;Upload PDF&quot; (optional — shown to customers as browsable flyer)</li>
+            <li>Click &quot;Add Products&quot; → paste product list (name, price per line) → categories auto-assigned</li>
+            <li>Click &quot;Publish&quot; to make it live</li>
+          </ol>
         </div>
 
         {error && (
@@ -352,23 +400,20 @@ export default function AdminFlyersPage() {
                         {flyer.status}
                       </span>
                       {flyer.pdfUrl && (
-                        <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700">
-                          PDF
-                        </span>
+                        <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700">PDF</span>
                       )}
                     </div>
                     {flyer.titleAr && <p className="text-gray-500 text-sm" dir="rtl">{flyer.titleAr}</p>}
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
                       <span>{flyer.supermarket.nameAr}</span>
                       <span>{formatDate(flyer.startDate)} - {formatDate(flyer.endDate)}</span>
-                      <span>{flyer._count.productOffers} products</span>
+                      <span className="font-semibold text-gray-800">{flyer._count.productOffers} products</span>
                       {flyer.totalPages > 0 && <span>{flyer.totalPages} pages</span>}
                     </div>
                   </div>
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-                    {/* Hidden file input — one per flyer with unique ID */}
                     <input
                       type="file"
                       accept=".pdf"
@@ -381,7 +426,7 @@ export default function AdminFlyersPage() {
                       }}
                     />
 
-                    {/* Upload / Re-upload PDF */}
+                    {/* Upload PDF */}
                     <button
                       onClick={() => triggerUpload(flyer.id)}
                       disabled={uploadingId === flyer.id}
@@ -391,25 +436,29 @@ export default function AdminFlyersPage() {
                           : 'bg-purple-600 text-white hover:bg-purple-700'
                       }`}
                     >
-                      {uploadingId === flyer.id
-                        ? uploadProgress
-                        : flyer.pdfUrl ? 'Re-upload PDF' : 'Upload PDF'}
+                      {uploadingId === flyer.id ? uploadProgress : flyer.pdfUrl ? 'Re-upload PDF' : 'Upload PDF'}
                     </button>
 
-                    {/* View PDF link */}
                     {flyer.pdfUrl && (
-                      <a
-                        href={flyer.pdfUrl}
-                        target="_blank"
-                        rel="noopener"
-                        className="text-blue-600 hover:underline text-sm"
-                      >
+                      <a href={flyer.pdfUrl} target="_blank" rel="noopener" className="text-blue-600 hover:underline text-sm">
                         View PDF
                       </a>
                     )}
 
-                    {/* Publish Button — for flyers with PDF that aren't ACTIVE yet */}
-                    {flyer.pdfUrl && flyer.status !== 'ACTIVE' && flyer.status !== 'PROCESSING' && (
+                    {/* Add Products */}
+                    <button
+                      onClick={() => toggleProducts(flyer.id)}
+                      className={`px-3 py-1.5 rounded text-sm font-semibold ${
+                        expandedProducts.has(flyer.id)
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                      }`}
+                    >
+                      {expandedProducts.has(flyer.id) ? 'Hide Products Form' : 'Add Products'}
+                    </button>
+
+                    {/* Publish */}
+                    {flyer.status !== 'ACTIVE' && flyer.status !== 'PROCESSING' && (
                       <button
                         onClick={() => handleStatusChange(flyer.id, 'ACTIVE')}
                         className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700 font-semibold"
@@ -418,7 +467,6 @@ export default function AdminFlyersPage() {
                       </button>
                     )}
 
-                    {/* Expire */}
                     {flyer.status === 'ACTIVE' && (
                       <button
                         onClick={() => handleStatusChange(flyer.id, 'EXPIRED')}
@@ -427,8 +475,6 @@ export default function AdminFlyersPage() {
                         Expire
                       </button>
                     )}
-
-                    {/* Re-activate */}
                     {flyer.status === 'EXPIRED' && (
                       <button
                         onClick={() => handleStatusChange(flyer.id, 'ACTIVE')}
@@ -438,7 +484,6 @@ export default function AdminFlyersPage() {
                       </button>
                     )}
 
-                    {/* Logs Toggle */}
                     {flyer.extractionLog && (
                       <button
                         onClick={() => toggleLogs(flyer.id)}
@@ -448,7 +493,6 @@ export default function AdminFlyersPage() {
                       </button>
                     )}
 
-                    {/* Delete */}
                     <button
                       onClick={() => handleDelete(flyer.id)}
                       className="text-red-600 hover:text-red-800 px-2 py-1.5 text-sm"
@@ -457,6 +501,62 @@ export default function AdminFlyersPage() {
                     </button>
                   </div>
                 </div>
+
+                {/* === ADD PRODUCTS SECTION === */}
+                {expandedProducts.has(flyer.id) && (
+                  <div className="border-t bg-gray-50 p-5">
+                    <h4 className="font-bold text-sm mb-2">
+                      Add Products to: {flyer.title} ({flyer.supermarket.nameAr})
+                    </h4>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Paste products below — one per line. Format: <code className="bg-white px-1 rounded border">name, price, oldPrice, imageUrl, brand, size</code>.
+                      Only <strong>name</strong> and <strong>price</strong> are required. Categories are auto-assigned based on keywords.
+                    </p>
+                    <textarea
+                      value={productText[flyer.id] || ''}
+                      onChange={e => setProductText(prev => ({ ...prev, [flyer.id]: e.target.value }))}
+                      rows={8}
+                      dir="rtl"
+                      placeholder={`حليب المراعي كامل الدسم 1 لتر, 6.95, 8.50\nدجاج الوطنية مجمد 1200 جرام, 22.95, 27.50\nأرز بسمتي أبو كاس 5 كيلو, 42.95\nشيبس ليز 170 جم, 7.50, 9.95, https://example.com/image.jpg`}
+                      className="w-full px-3 py-2 border rounded font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+
+                    {/* Import result */}
+                    {importResult[flyer.id] && (
+                      <div className={`mt-3 p-3 rounded text-sm ${
+                        importResult[flyer.id]!.created > 0
+                          ? 'bg-green-50 border border-green-200 text-green-800'
+                          : 'bg-yellow-50 border border-yellow-200 text-yellow-800'
+                      }`}>
+                        <strong>{importResult[flyer.id]!.created} products added!</strong>
+                        {importResult[flyer.id]!.errors.length > 0 && (
+                          <span className="ml-2 text-red-600">
+                            {importResult[flyer.id]!.errors.length} errors
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => handleImportProducts(flyer.id)}
+                        disabled={importingId === flyer.id || !productText[flyer.id]?.trim()}
+                        className="bg-indigo-600 text-white px-5 py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50 font-semibold"
+                      >
+                        {importingId === flyer.id ? 'Importing...' : 'Import Products'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setProductText(prev => ({ ...prev, [flyer.id]: '' }))
+                          setImportResult(prev => ({ ...prev, [flyer.id]: null }))
+                        }}
+                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Extraction Logs */}
                 {expandedLogs.has(flyer.id) && flyer.extractionLog && (
