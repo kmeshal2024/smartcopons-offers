@@ -3,6 +3,7 @@ import { PandaScraper } from './panda'
 import { DanubeScraper } from './danube'
 import { OthaimScraper } from './othaim'
 import { LuluScraper } from './lulu'
+import { TamimiScraper } from './tamimi'
 import type { ISupermarketScraper } from './types'
 
 const scrapers: Record<string, () => ISupermarketScraper> = {
@@ -11,6 +12,7 @@ const scrapers: Record<string, () => ISupermarketScraper> = {
   danube: () => new DanubeScraper(),
   alothaim: () => new OthaimScraper(),
   lulu: () => new LuluScraper(),
+  tamimi: () => new TamimiScraper(),
 }
 
 export function getScraper(slug: string): ISupermarketScraper | null {

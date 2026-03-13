@@ -3,6 +3,24 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
 
+  // Clean store URLs: /offers/danube → /offers/retailer/danube
+  async rewrites() {
+    return [
+      { source: '/offers/danube', destination: '/offers/retailer/danube' },
+      { source: '/offers/carrefour', destination: '/offers/retailer/carrefour' },
+      { source: '/offers/panda', destination: '/offers/retailer/panda' },
+      { source: '/offers/tamimi', destination: '/offers/retailer/tamimi' },
+      { source: '/offers/lulu', destination: '/offers/retailer/lulu' },
+      { source: '/offers/alothaim', destination: '/offers/retailer/alothaim' },
+      { source: '/offers/bindawood', destination: '/offers/retailer/bindawood' },
+      { source: '/offers/nesto', destination: '/offers/retailer/nesto' },
+      { source: '/offers/extra', destination: '/offers/retailer/extra' },
+      { source: '/offers/saco', destination: '/offers/retailer/saco' },
+      { source: '/offers/farm', destination: '/offers/retailer/farm' },
+      { source: '/offers/manuel', destination: '/offers/retailer/manuel' },
+    ]
+  },
+
   images: {
     domains: [
       'localhost',
@@ -39,6 +57,7 @@ const nextConfig = {
       'www.extra.com',
       'www.saco.sa',                // Saco
       'cdn.saco.sa',
+      'shop.tamimimarkets.com',     // Tamimi online shop
       'upload.wikimedia.org',       // Supermarket logos (Wikipedia)
       'i.imgur.com',                // Fallback logos
       'cdn.brandfetch.io',          // Supermarket logos (Brandfetch CDN)

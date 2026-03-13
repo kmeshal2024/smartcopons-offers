@@ -26,13 +26,18 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   return {
     title: search
       ? `بحث "${search}" في عروض ${supermarket.nameAr} | SmartCopons`
-      : `عروض ${supermarket.nameAr} اليوم | خصومات ${supermarket.nameAr} - SmartCopons`,
-    description: `تصفح أحدث عروض وخصومات ${supermarket.nameAr} في السعودية. عروض يومية وأسبوعية على المنتجات الغذائية والمنزلية.`,
-    keywords: `عروض ${supermarket.nameAr}, عروض ${supermarket.nameAr} اليوم, خصومات ${supermarket.nameAr}, ${supermarket.name} offers, ${supermarket.name} KSA`,
+      : `عروض ${supermarket.nameAr} اليوم ${new Date().getFullYear()} | خصومات ${supermarket.nameAr} الأسبوعية - SmartCopons`,
+    description: `تصفح أحدث عروض وخصومات ${supermarket.nameAr} في السعودية. عروض يومية وأسبوعية على المنتجات الغذائية والمنزلية. قارن الأسعار ووفّر أكثر.`,
+    keywords: `عروض ${supermarket.nameAr}, عروض ${supermarket.nameAr} اليوم, خصومات ${supermarket.nameAr}, عروض ${supermarket.nameAr} الاسبوعية, ${supermarket.name} offers, ${supermarket.name} deals KSA, عروض السوبرماركت`,
+    alternates: {
+      canonical: `https://sa.smartcopons.com/offers/${supermarket.slug}`,
+    },
     openGraph: {
-      title: `عروض ${supermarket.nameAr} اليوم`,
-      description: `أحدث العروض والخصومات من ${supermarket.nameAr}`,
+      title: `عروض ${supermarket.nameAr} اليوم - أفضل الخصومات الأسبوعية`,
+      description: `أحدث العروض والخصومات من ${supermarket.nameAr} في السعودية`,
       locale: 'ar_SA',
+      type: 'website',
+      url: `https://sa.smartcopons.com/offers/${supermarket.slug}`,
     },
   }
 }
@@ -149,14 +154,47 @@ export default async function RetailerPage({ params, searchParams }: Props) {
     return `/offers/retailer/${slug}?${params.toString()}`
   }
 
-  // Structured data for SEO
+  // Structured data for SEO — Store + ItemList for rich results
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Store',
     name: supermarket.nameAr,
     alternateName: supermarket.name,
-    url: `https://sa.smartcopons.com/offers/retailer/${supermarket.slug}`,
+    url: `https://sa.smartcopons.com/offers/${supermarket.slug}`,
+    ...(supermarket.logo && { image: supermarket.logo }),
+    ...(supermarket.website && { sameAs: supermarket.website }),
+    address: {
+      '@type': 'PostalAddress',
+      addressCountry: 'SA',
+    },
   }
+
+  // ItemList for product offers (helps Google show rich results)
+  const itemListJsonLd = products.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: `عروض ${supermarket.nameAr}`,
+    numberOfItems: total,
+    itemListElement: products.slice(0, 10).map((p: any, i: number) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      item: {
+        '@type': 'Product',
+        name: p.nameAr || p.nameEn,
+        ...(p.imageUrl && { image: p.imageUrl }),
+        offers: {
+          '@type': 'Offer',
+          price: p.price,
+          priceCurrency: 'SAR',
+          availability: 'https://schema.org/InStock',
+          seller: {
+            '@type': 'Organization',
+            name: supermarket.nameAr,
+          },
+        },
+      },
+    })),
+  } : null
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
@@ -166,6 +204,12 @@ export default async function RetailerPage({ params, searchParams }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      {itemListJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+        />
+      )}
 
       <main className="container mx-auto px-4 py-5">
         {/* Breadcrumb */}

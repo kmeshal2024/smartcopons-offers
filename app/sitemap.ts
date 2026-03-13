@@ -46,7 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   const supermarketRoutes: MetadataRoute.Sitemap = supermarkets.map(sm => ({
-    url: `${BASE_URL}/offers/retailer/${sm.slug}`,
+    url: `${BASE_URL}/offers/${sm.slug}`,
     lastModified: sm.updatedAt,
     changeFrequency: 'daily' as const,
     priority: 0.8,

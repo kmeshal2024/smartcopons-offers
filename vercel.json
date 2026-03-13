@@ -22,6 +22,10 @@
       "schedule": "0 8 * * *"
     },
     {
+      "path": "/api/cron/scrape-offers?supermarket=tamimi",
+      "schedule": "0 9 * * *"
+    },
+    {
       "path": "/api/cron/expire-flyers",
       "schedule": "0 0 * * *"
     }
