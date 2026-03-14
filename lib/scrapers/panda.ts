@@ -1,163 +1,155 @@
-import * as cheerio from 'cheerio'
 import { BaseScraper } from './base-scraper'
 import type { ScrapedOffer } from './types'
 
+/**
+ * Panda (بنده) Scraper — uses the clean JSON deals API
+ *
+ * Endpoint: https://panda.sa/api/products?deals=1&per_page=60&page=N
+ * Returns: { products: { status, data: { total_records, next_page, products[] } } }
+ *
+ * Each product has varieties[] with price, undiscounted_price, discount_label, images.
+ * Only fetches deals (deals=1 filter) — no full catalog.
+ */
 export class PandaScraper extends BaseScraper {
+  private static readonly API_URL = 'https://panda.sa/api/products'
+  private static readonly PER_PAGE = 60
+  private static readonly MAX_PAGES = 15 // safety cap: 15 * 60 = 900 max offers
+
   constructor() {
     super({
       supermarketSlug: 'panda',
       name: 'Panda',
       nameAr: 'بنده',
       baseUrl: 'https://panda.sa',
-      offersUrl: 'https://panda.sa/en/plp?category_id=468&deals=1',
-      maxPages: 3,
-      requestDelayMs: 2000,
+      offersUrl: 'https://panda.sa/api/products?deals=1',
+      maxPages: PandaScraper.MAX_PAGES,
+      requestDelayMs: 1500,
     })
   }
 
-  // Panda/HyperPanda — try multiple known domains
-  private readonly urls = [
-    'https://panda.sa/en/plp?category_id=468&deals=1',
-    'https://panda.sa/en/collections?parent_id=1003&type=huge_discounts',
-    'https://www.panda.com.sa/en/promotions',
-    'https://www.panda.com.sa/offers',
-  ]
-
   protected async extractOffers(): Promise<ScrapedOffer[]> {
-    for (const url of this.urls) {
+    const allOffers: ScrapedOffer[] = []
+    let page = 1
+    let hasNext = true
+
+    while (hasNext && page <= PandaScraper.MAX_PAGES) {
+      const url = `${PandaScraper.API_URL}?deals=1&per_page=${PandaScraper.PER_PAGE}&page=${page}`
+      this.log(`Fetching page ${page}: ${url}`)
+
       try {
-        this.log(`Trying ${url}...`)
-        const offers = await this.scrapeUrl(url)
-        if (offers.length > 0) {
-          this.log(`Found ${offers.length} offers from ${url}`)
-          return offers
+        const response = await this.fetchWithRetry(url, {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          },
+        })
+
+        const json = await response.json()
+        const data = json?.products?.data
+
+        if (!data || !Array.isArray(data.products)) {
+          this.logError(`Unexpected API response on page ${page}`)
+          break
         }
-      } catch (e) {
-        this.log(`${url} failed: ${e instanceof Error ? e.message : e}`)
-        await this.delay(this.config.requestDelayMs || 2000)
+
+        this.pagesScraped++
+        const totalRecords = data.total_records || 0
+
+        if (page === 1) {
+          this.log(`Total deals available: ${totalRecords}`)
+        }
+
+        const pageOffers = this.mapProducts(data.products)
+        allOffers.push(...pageOffers)
+        this.log(`Page ${page}: ${pageOffers.length} deals mapped (running total: ${allOffers.length})`)
+
+        hasNext = !!data.next_page
+        page++
+
+        // Rate limit: polite delay between pages
+        if (hasNext) {
+          await this.delay(this.config.requestDelayMs || 1500)
+        }
+      } catch (error) {
+        this.logError(`Page ${page} failed: ${error instanceof Error ? error.message : String(error)}`)
+        break
       }
     }
 
-    this.logError('All Panda URLs failed to return products')
-    return []
+    this.log(`Scrape complete: ${allOffers.length} total deals from ${this.pagesScraped} pages`)
+    return allOffers
   }
 
-  private async scrapeUrl(url: string): Promise<ScrapedOffer[]> {
-    const response = await this.fetchWithRetry(url, undefined, 1)
-    const html = await response.text()
-    this.pagesScraped++
-    this.log(`Fetched: ${html.length} chars`)
-
-    const $ = cheerio.load(html)
+  private mapProducts(products: any[]): ScrapedOffer[] {
     const offers: ScrapedOffer[] = []
 
-    // Strategy 1: Product cards with price
-    $('[class*="product"], [class*="offer"], [class*="item"], [class*="card"], article').each((_, el) => {
+    for (const product of products) {
       try {
-        const $el = $(el)
-        const name = $el.find('[class*="name"], [class*="title"], h2, h3, h4, [class*="line-clamp"]')
-          .first().text().trim()
-        if (!name || name.length < 3) return
+        const variety = product.varieties?.[0]
+        if (!variety) continue
 
-        let price = 0
-        const priceText = $el.text()
-        const priceMatch = priceText.match(/(\d+\.?\d*)\s*(SAR|ر\.س|ريال)/)
-        if (priceMatch) price = parseFloat(priceMatch[1])
-        if (price <= 0) {
-          // Try just number.decimal pattern
-          const numMatch = $el.find('[class*="price"]').first().text().match(/(\d+\.?\d*)/)
-          if (numMatch) price = parseFloat(numMatch[1])
-        }
-        if (price <= 0) return
+        const name = product.name?.trim()
+        if (!name || name.length < 3) continue
 
-        let oldPrice: number | undefined
-        const oldText = $el.find('.line-through, del, s, [class*="old"], [class*="was"]').first().text()
-        const oldMatch = oldText.match(/(\d+\.?\d*)/)
-        if (oldMatch) oldPrice = parseFloat(oldMatch[1])
+        const price = parseFloat(variety.price)
+        if (!price || price <= 0) continue
 
+        // Only include actual deals
+        if (!variety.show_discount) continue
+
+        const oldPrice = variety.undiscounted_price
+          ? parseFloat(variety.undiscounted_price)
+          : undefined
+
+        // Parse discount percent from label like "26% Off"
         let discountPercent: number | undefined
-        const discountText = $el.find('[class*="discount"], [class*="save"], [class*="badge"]').first().text()
-        const dMatch = discountText.match(/(\d+)\s*%/)
-        if (dMatch) discountPercent = parseInt(dMatch[1])
+        const discountLabel = variety.discount_label || ''
+        const percentMatch = discountLabel.match(/(\d+)%/)
+        if (percentMatch) {
+          discountPercent = parseInt(percentMatch[1])
+        } else if (oldPrice && oldPrice > price) {
+          // Calculate if not in label (e.g. "Any 2 for 12.99 SR")
+          discountPercent = Math.round(((oldPrice - price) / oldPrice) * 100)
+        }
 
-        const img = $el.find('img').first()
-        const imageUrl = img.attr('src') || img.attr('data-src') || undefined
+        // Get best image URL (large version)
+        let imageUrl: string | undefined
+        if (variety.images?.[0]?.[1]) {
+          imageUrl = variety.images[0][1] // large image
+        } else if (variety.images?.[0]?.[0]) {
+          imageUrl = variety.images[0][0] // original image
+        } else if (variety.imageURL) {
+          imageUrl = variety.imageURL // thumbnail fallback
+        }
+
+        const brand = product.brand?.name || undefined
+        const category = product.category?.name || undefined
+        const size = variety.size && variety.unit
+          ? `${variety.size} ${variety.unit}`
+          : undefined
 
         offers.push({
-          nameAr: name,
+          nameAr: name,     // Panda API only has English names
           nameEn: name,
+          brand,
           price,
           oldPrice,
           discountPercent,
-          imageUrl: imageUrl?.startsWith('http') ? imageUrl : undefined,
-          sourceUrl: url,
-          tags: 'panda,offers',
+          sizeText: size,
+          imageUrl,
+          sourceUrl: `https://panda.sa/en/plp?deals=1`,
+          tags: [
+            'panda',
+            'deals',
+            category ? category.toLowerCase() : undefined,
+            discountLabel.includes('Any') ? 'bundle-deal' : undefined,
+          ].filter(Boolean).join(','),
         })
-      } catch { /* skip */ }
-    })
-
-    // Strategy 2: __NEXT_DATA__
-    if (offers.length === 0) {
-      const nextData = $('#__NEXT_DATA__')
-      if (nextData.length) {
-        try {
-          const data = JSON.parse(nextData.text())
-          offers.push(...this.extractFromJSON(data, url))
-        } catch { /* skip */ }
+      } catch {
+        // Skip malformed products
       }
     }
 
-    // Strategy 3: JSON-LD
-    if (offers.length === 0) {
-      $('script[type="application/ld+json"]').each((_, script) => {
-        try {
-          const data = JSON.parse($(script).text())
-          if (data.itemListElement) {
-            for (const item of data.itemListElement) {
-              const p = item.item || item
-              if (p.name && p.offers) {
-                offers.push({
-                  nameAr: p.name,
-                  nameEn: p.name,
-                  price: parseFloat(p.offers.price || p.offers.lowPrice),
-                  imageUrl: p.image,
-                  sourceUrl: url,
-                  tags: 'panda,offers',
-                })
-              }
-            }
-          }
-        } catch { /* skip */ }
-      })
-    }
-
-    return offers
-  }
-
-  private extractFromJSON(data: any, sourceUrl: string, depth = 0): ScrapedOffer[] {
-    const offers: ScrapedOffer[] = []
-    if (depth > 8 || !data) return offers
-    if (Array.isArray(data)) {
-      for (const item of data) offers.push(...this.extractFromJSON(item, sourceUrl, depth + 1))
-      return offers
-    }
-    if (typeof data !== 'object') return offers
-
-    if (data.name && (data.price || data.salePrice)) {
-      offers.push({
-        nameAr: data.name,
-        nameEn: data.name,
-        price: parseFloat(data.salePrice || data.price),
-        oldPrice: data.price && data.salePrice ? parseFloat(data.price) : undefined,
-        imageUrl: data.image || data.imageUrl,
-        sourceUrl,
-        tags: 'panda,offers',
-      })
-    }
-
-    for (const key of Object.keys(data)) {
-      offers.push(...this.extractFromJSON(data[key], sourceUrl, depth + 1))
-    }
     return offers
   }
 }
