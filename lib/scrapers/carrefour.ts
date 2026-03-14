@@ -20,7 +20,7 @@ export class CarrefourScraper extends BaseScraper {
   private static readonly REQUIRED_HEADERS: Record<string, string> = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'en-US,en;q=0.9,ar;q=0.8',
-    'Accept-Encoding': 'identity',
+    'Accept-Encoding': 'gzip, deflate, br',
     'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120"',
     'Sec-Ch-Ua-Mobile': '?0',
     'Sec-Ch-Ua-Platform': '"Windows"',
