@@ -16,9 +16,12 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '24')
     const skip = (page - 1) * limit
 
-    // Build filters
+    // Build filters — enforce data quality baseline
     const where: any = {
       isHidden: false,
+      price: { gt: 0 },
+      discountPercent: { gte: 5 },
+      imageUrl: { not: null },
     }
 
     // Only filter by active flyers if no direct product search
@@ -68,7 +71,7 @@ export async function GET(request: Request) {
         orderBy = { price: 'desc' }
         break
       case 'discount':
-        orderBy = { discountPercent: 'desc' }
+        orderBy = { discountPercent: { sort: 'desc', nulls: 'last' } }
         break
       case 'popular':
         orderBy = { viewCount: 'desc' }
