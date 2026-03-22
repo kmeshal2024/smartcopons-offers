@@ -50,6 +50,56 @@ interface ScrapedOffer {
   tags?: string
 }
 
+// ─── Arabic Grocery Tags ─────────────────────────────────────────
+
+const GROCERY_AR_RULES: Array<[RegExp, string[]]> = [
+  [/milk|laban/i, ['حليب', 'لبن']],
+  [/yogurt/i, ['زبادي']],
+  [/cheese/i, ['جبن']],
+  [/butter/i, ['زبدة']],
+  [/cream/i, ['كريم']],
+  [/egg/i, ['بيض']],
+  [/chicken/i, ['دجاج']],
+  [/beef|veal|meat/i, ['لحم']],
+  [/fish|tuna|salmon|shrimp/i, ['سمك']],
+  [/rice/i, ['أرز', 'رز']],
+  [/bread/i, ['خبز']],
+  [/flour/i, ['طحين']],
+  [/pasta|macaroni|spaghetti/i, ['معكرونة']],
+  [/oil/i, ['زيت']],
+  [/olive/i, ['زيتون']],
+  [/sugar/i, ['سكر']],
+  [/tea\b/i, ['شاي']],
+  [/coffee/i, ['قهوة']],
+  [/juice/i, ['عصير']],
+  [/water\b/i, ['ماء']],
+  [/biscuit|cookie/i, ['بسكويت']],
+  [/chocolate/i, ['شوكولاتة']],
+  [/chip|crisp/i, ['شيبس']],
+  [/dates?\b/i, ['تمر']],
+  [/frozen/i, ['مجمد']],
+  [/sauce|ketchup/i, ['صلصة']],
+  [/soap/i, ['صابون']],
+  [/shampoo/i, ['شامبو']],
+  [/detergent|clean/i, ['منظف']],
+  [/tissue/i, ['مناديل']],
+  [/diaper/i, ['حفاضات']],
+  [/potato|fries/i, ['بطاطس']],
+  [/tomato/i, ['طماطم']],
+  [/ice cream/i, ['مثلجات']],
+  [/honey/i, ['عسل']],
+  [/nut|almond|cashew/i, ['مكسرات']],
+  [/hummus/i, ['حمص']],
+]
+
+function getArabicTags(name: string): string {
+  const tags: string[] = []
+  for (const [re, ar] of GROCERY_AR_RULES) {
+    if (re.test(name)) tags.push(...ar)
+  }
+  return [...new Set(tags)].join(',')
+}
+
 // ─── RSC Extraction ───────────────────────────────────────────────
 
 function extractProductsFromRSC(html: string): { products: any[]; total: number } {
@@ -183,6 +233,15 @@ function mapProducts(products: any[]): ScrapedOffer[] {
       const sizeMatch = name.match(/(\d+(?:\.\d+)?\s*(?:ml|l|kg|g|pcs?|pack|rolls?)\b)/i)
       const sizeText = sizeMatch ? sizeMatch[1] : undefined
 
+      const baseTags = [
+        'carrefour',
+        'deals',
+        category ? category.toLowerCase().replace(/\s+&\s+/g, '-') : undefined,
+        product.type === 'NON_FOOD' ? 'non-food' : undefined,
+      ].filter(Boolean).join(',')
+
+      const arabicTags = getArabicTags(name)
+
       offers.push({
         nameAr: name,
         nameEn: name,
@@ -193,12 +252,7 @@ function mapProducts(products: any[]): ScrapedOffer[] {
         sizeText,
         imageUrl,
         sourceUrl: `${BASE_URL}${DEALS_PATH}`,
-        tags: [
-          'carrefour',
-          'deals',
-          category ? category.toLowerCase().replace(/\s+&\s+/g, '-') : undefined,
-          product.type === 'NON_FOOD' ? 'non-food' : undefined,
-        ].filter(Boolean).join(','),
+        tags: arabicTags ? `${baseTags},${arabicTags}` : baseTags,
       })
     } catch {
       // Skip malformed products

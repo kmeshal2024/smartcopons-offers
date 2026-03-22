@@ -1,6 +1,81 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
+// Arabic → English grocery keyword mapping for bilingual search
+const AR_EN_MAP: Record<string, string[]> = {
+  'حليب': ['milk', 'laban'],
+  'لبن': ['milk', 'laban', 'yogurt'],
+  'زبادي': ['yogurt', 'yoghurt'],
+  'جبن': ['cheese', 'kashkawan'],
+  'أرز': ['rice'],
+  'رز': ['rice'],
+  'دجاج': ['chicken'],
+  'لحم': ['meat', 'beef', 'veal'],
+  'سمك': ['fish', 'seafood', 'tuna', 'salmon'],
+  'خبز': ['bread'],
+  'بيض': ['egg'],
+  'زيت': ['oil'],
+  'سكر': ['sugar'],
+  'ملح': ['salt'],
+  'طحين': ['flour'],
+  'معكرونة': ['pasta', 'macaroni', 'spaghetti'],
+  'شاي': ['tea'],
+  'قهوة': ['coffee'],
+  'عصير': ['juice'],
+  'ماء': ['water'],
+  'مشروب': ['drink', 'beverage'],
+  'بسكويت': ['biscuit', 'cookie'],
+  'شوكولاتة': ['chocolate'],
+  'شيبس': ['chips', 'crisp'],
+  'تونة': ['tuna'],
+  'فول': ['foul', 'fava', 'beans'],
+  'حمص': ['hummus', 'chickpea'],
+  'زيتون': ['olive'],
+  'مكسرات': ['nuts', 'almond', 'cashew', 'pistachio'],
+  'فواكه': ['fruit'],
+  'خضار': ['vegetable'],
+  'طماطم': ['tomato'],
+  'بطاطس': ['potato', 'fries'],
+  'بصل': ['onion'],
+  'ثوم': ['garlic'],
+  'تمر': ['dates'],
+  'عسل': ['honey'],
+  'مربى': ['jam'],
+  'كاتشب': ['ketchup'],
+  'صلصة': ['sauce'],
+  'خل': ['vinegar'],
+  'منظف': ['cleaner', 'detergent', 'cleaning'],
+  'صابون': ['soap'],
+  'شامبو': ['shampoo'],
+  'مناديل': ['tissue', 'napkin'],
+  'حفاضات': ['diaper', 'nappy'],
+  'غسيل': ['laundry', 'wash'],
+  'معجون': ['paste', 'toothpaste'],
+  'كريم': ['cream'],
+  'زبدة': ['butter'],
+  'مثلجات': ['ice cream'],
+  'مجمد': ['frozen'],
+  'معلبات': ['canned', 'tinned'],
+  'رقائق': ['cereal', 'flakes', 'corn flakes'],
+  'نودلز': ['noodles'],
+  'كيك': ['cake'],
+  'سمن': ['ghee'],
+}
+
+// Expand Arabic search to include English equivalents
+function expandArabicSearch(query: string): string[] {
+  const terms = [query]
+  const queryLower = query.trim()
+
+  for (const [ar, enList] of Object.entries(AR_EN_MAP)) {
+    if (queryLower.includes(ar)) {
+      terms.push(...enList)
+    }
+  }
+
+  return [...new Set(terms)]
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -42,12 +117,13 @@ export async function GET(request: Request) {
     }
 
     if (search) {
-      where.OR = [
-        { nameAr: { contains: search } },
-        { nameEn: { contains: search } },
-        { brand: { contains: search } },
-        { tags: { contains: search } },
-      ]
+      const searchTerms = expandArabicSearch(search)
+      where.OR = searchTerms.flatMap(term => [
+        { nameAr: { contains: term, mode: 'insensitive' } },
+        { nameEn: { contains: term, mode: 'insensitive' } },
+        { brand: { contains: term, mode: 'insensitive' } },
+        { tags: { contains: term, mode: 'insensitive' } },
+      ])
     }
 
     if (minPrice || maxPrice) {
