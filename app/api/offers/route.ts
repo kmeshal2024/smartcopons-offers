@@ -17,6 +17,8 @@ export async function GET(request: Request) {
     const skip = (page - 1) * limit
 
     // Build filters — enforce data quality baseline
+    // No flyer status/date filter: quality filters are sufficient and
+    // flyer expiry is too aggressive (weekly flyers expire old offers)
     const where: any = {
       isHidden: false,
       price: { gt: 0 },
@@ -24,13 +26,7 @@ export async function GET(request: Request) {
       imageUrl: { not: null },
     }
 
-    // Only filter by active flyers if no direct product search
-    if (!search && !supermarketId) {
-      where.flyer = {
-        status: 'ACTIVE',
-        endDate: { gte: new Date() },
-      }
-    } else if (supermarketId) {
+    if (supermarketId) {
       where.supermarketId = supermarketId
     }
 

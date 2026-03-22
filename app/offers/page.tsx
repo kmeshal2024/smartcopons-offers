@@ -36,10 +36,6 @@ async function getTopDiscounts() {
     where: {
       ...qualityWhere,
       discountPercent: { gte: 50 },
-      flyer: {
-        status: 'ACTIVE',
-        endDate: { gte: new Date() },
-      },
     },
     include: {
       supermarket: { select: { nameAr: true, slug: true, logo: true } },
@@ -55,10 +51,6 @@ async function getBestDeals() {
     where: {
       ...qualityWhere,
       discountPercent: { gte: 20 },
-      flyer: {
-        status: 'ACTIVE',
-        endDate: { gte: new Date() },
-      },
     },
     include: {
       supermarket: { select: { nameAr: true, slug: true, logo: true } },
