@@ -121,12 +121,12 @@ function TopDiscountsSection({ deals }: { deals: any[] }) {
               >
                 <div className="relative h-40 sm:h-48 bg-gray-50 flex items-center justify-center">
                   {product.imageUrl && (
-                    <Image
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
                       src={product.imageUrl}
                       alt={displayName}
-                      fill
-                      className="object-contain p-3"
-                      sizes="(max-width: 640px) 176px, 208px"
+                      className="absolute inset-0 w-full h-full object-contain p-3"
+                      loading="lazy"
                     />
                   )}
                   <div className="absolute top-2 right-2 bg-red-600 text-white px-2.5 py-1 rounded-lg text-sm font-bold shadow-md">
