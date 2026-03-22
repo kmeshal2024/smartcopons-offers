@@ -1,5 +1,6 @@
 import { BaseScraper } from './base-scraper'
 import type { ScrapedOffer } from './types'
+import { generateArabicTags } from './grocery-tags'
 
 /**
  * Panda (بنده) Scraper — uses the clean JSON deals API
@@ -128,6 +129,15 @@ export class PandaScraper extends BaseScraper {
           ? `${variety.size} ${variety.unit}`
           : undefined
 
+        const baseTags = [
+          'panda',
+          'deals',
+          category ? category.toLowerCase() : undefined,
+          discountLabel.includes('Any') ? 'bundle-deal' : undefined,
+        ].filter(Boolean).join(',')
+
+        const arabicTags = generateArabicTags(name, baseTags)
+
         offers.push({
           nameAr: name,     // Panda API only has English names
           nameEn: name,
@@ -138,12 +148,7 @@ export class PandaScraper extends BaseScraper {
           sizeText: size,
           imageUrl,
           sourceUrl: `https://panda.sa/en/plp?deals=1`,
-          tags: [
-            'panda',
-            'deals',
-            category ? category.toLowerCase() : undefined,
-            discountLabel.includes('Any') ? 'bundle-deal' : undefined,
-          ].filter(Boolean).join(','),
+          tags: arabicTags ? `${baseTags},${arabicTags}` : baseTags,
         })
       } catch {
         // Skip malformed products
