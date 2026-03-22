@@ -76,5 +76,5 @@ export function generateArabicTags(name: string, existingTags?: string): string 
     }
   }
 
-  return [...new Set(arabicTags)].join(',')
+  return Array.from(new Set(arabicTags)).join(',')
 }

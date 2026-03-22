@@ -73,7 +73,7 @@ function expandArabicSearch(query: string): string[] {
     }
   }
 
-  return [...new Set(terms)]
+  return Array.from(new Set(terms))
 }
 
 export async function GET(request: Request) {

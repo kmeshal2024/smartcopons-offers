@@ -22,7 +22,7 @@ function expandSearch(query: string): string[] {
   for (const [ar, en] of Object.entries(AR_EN_SEARCH)) {
     if (query.includes(ar)) terms.push(...en)
   }
-  return [...new Set(terms)]
+  return Array.from(new Set(terms))
 }
 
 export async function GET(request: Request) {
