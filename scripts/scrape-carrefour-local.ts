@@ -97,7 +97,7 @@ function getArabicTags(name: string): string {
   for (const [re, ar] of GROCERY_AR_RULES) {
     if (re.test(name)) tags.push(...ar)
   }
-  return [...new Set(tags)].join(',')
+  return Array.from(new Set(tags)).join(',')
 }
 
 // ─── RSC Extraction ───────────────────────────────────────────────
