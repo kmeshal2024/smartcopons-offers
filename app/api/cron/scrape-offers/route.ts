@@ -81,13 +81,14 @@ export async function GET(request: Request) {
       },
     })
 
-    console.log(`[Cron] ${supermarketSlug}: ${result.offers.length} found, ${ingestResult?.newOffers || 0} new`)
+    console.log(`[Cron] ${supermarketSlug}: ${result.offers.length} found, ${ingestResult?.newOffers || 0} new, ${ingestResult?.updatedOffers || 0} updated`)
 
     return NextResponse.json({
       success: true,
       supermarket: supermarketSlug,
       offersFound: result.offers.length,
       offersLimited: offerLimit ? offersToIngest.length : undefined,
+      offersUpdated: ingestResult?.updatedOffers || 0,
       offersCreated: ingestResult?.newOffers || 0,
       duplicatesSkipped: ingestResult?.duplicatesSkipped || 0,
       flyerId: ingestResult?.flyerId || null,
