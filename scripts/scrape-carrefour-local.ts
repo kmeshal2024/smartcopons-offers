@@ -1,225 +1,345 @@
 #!/usr/bin/env npx tsx
 /**
- * Carrefour KSA Local Scraper
- * Must run locally — Akamai blocks Vercel/cloud IPs.
- * Uses Puppeteer to render the page and extract product data.
+ * Local Carrefour KSA Scraper
+ *
+ * Fetches deals from Carrefour KSA website using the local machine's IP
+ * (bypasses Akamai Bot Manager datacenter IP blocking), then sends
+ * extracted products to the production scrape-submit API for ingestion.
  *
  * Usage:
- *   npx tsx scripts/scrape-carrefour-local.ts           # Dry run (print results)
- *   npx tsx scripts/scrape-carrefour-local.ts --ingest   # Scrape + ingest to DB
+ *   npx tsx scripts/scrape-carrefour-local.ts                    # dry-run (no ingest)
+ *   npx tsx scripts/scrape-carrefour-local.ts --ingest            # ingest all
+ *   npx tsx scripts/scrape-carrefour-local.ts --ingest --limit=50 # ingest first 50
+ *
+ * Environment:
+ *   APP_SECRET  - auth secret (defaults to smartcopons-secret-2024-ksa)
+ *   API_BASE    - API base URL (defaults to https://sa.smartcopons.com)
  */
 
-import puppeteer from 'puppeteer'
+const BASE_URL = 'https://www.carrefourksa.com'
+const DEALS_PATH = '/mafsau/en/c/ksa-best-dealss'
+const PAGE_SIZE = 60
+const MAX_PAGES = 20
 
-interface CarrefourProduct {
-  name: string
+const REQUIRED_HEADERS: Record<string, string> = {
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'Connection': 'keep-alive',
+  'Sec-Ch-Ua': '"Chromium";v="120", "Not_A Brand";v="8", "Google Chrome";v="120"',
+  'Sec-Ch-Ua-Mobile': '?0',
+  'Sec-Ch-Ua-Platform': '"Windows"',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-User': '?1',
+  'Upgrade-Insecure-Requests': '1',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+}
+
+interface ScrapedOffer {
+  nameAr: string
+  nameEn?: string
+  brand?: string
   price: number
   oldPrice?: number
   discountPercent?: number
+  sizeText?: string
   imageUrl?: string
+  sourceUrl: string
+  tags?: string
 }
 
-const OFFERS_URL = 'https://www.carrefourksa.com/mafsau/en/n/c/clp_carrefouroffers'
-const INGEST = process.argv.includes('--ingest')
+// ─── RSC Extraction ───────────────────────────────────────────────
 
-async function scrapeCarrefour(): Promise<CarrefourProduct[]> {
-  console.log('[Carrefour] Launching browser...')
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  })
-
+function extractProductsFromRSC(html: string): { products: any[]; total: number } {
   try {
-    const page = await browser.newPage()
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    )
+    const pushPattern = /self\.__next_f\.push\(\[1,"((?:[^"\\]|\\.)*)"\]\)/g
+    let match: RegExpExecArray | null
+    let productsData: any[] = []
+    let totalProducts = 0
 
-    console.log('[Carrefour] Navigating to offers page...')
-    await page.goto(OFFERS_URL, { waitUntil: 'networkidle2', timeout: 60000 })
+    while ((match = pushPattern.exec(html)) !== null) {
+      const escaped = match[1]
 
-    // Wait for product cards to render
-    console.log('[Carrefour] Waiting for products to load...')
-    await page.waitForSelector('[data-testid="product_card"], .product-card, [class*="product"]', {
-      timeout: 30000,
-    }).catch(() => {
-      console.log('[Carrefour] No product card selector found, trying scroll approach...')
-    })
+      // Quick check for product data markers
+      if (!escaped.includes('\\"products\\"') && !escaped.includes('\\\"products\\\"')) {
+        continue
+      }
 
-    // Scroll down to load more products (lazy loading)
-    let prevHeight = 0
-    for (let i = 0; i < 10; i++) {
-      const currentHeight = await page.evaluate(() => document.body.scrollHeight)
-      if (currentHeight === prevHeight) break
-      prevHeight = currentHeight
-      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
-      await new Promise(r => setTimeout(r, 2000))
+      // Unescape RSC stream
+      let rscStream: string
+      try {
+        rscStream = JSON.parse(`"${escaped}"`)
+      } catch {
+        continue
+      }
+
+      // Extract totalProducts
+      const totalMatch = rscStream.match(/"totalProducts":\s*(\d+)/)
+      if (totalMatch) {
+        totalProducts = parseInt(totalMatch[1])
+      }
+
+      // Extract products array
+      const productsStart = rscStream.indexOf('"products":[')
+      if (productsStart === -1) continue
+
+      const arrayStart = productsStart + '"products":'.length
+      const arrayContent = extractJSONArray(rscStream, arrayStart)
+      if (!arrayContent) continue
+
+      try {
+        productsData = JSON.parse(arrayContent)
+        if (Array.isArray(productsData) && productsData.length > 0) {
+          break
+        }
+      } catch {
+        continue
+      }
     }
 
-    // Extract product data from the page
-    const products = await page.evaluate(() => {
-      const results: CarrefourProduct[] = []
-
-      // Strategy 1: Look for product card elements with prices
-      const cards = document.querySelectorAll(
-        '[data-testid="product_card"], .css-b9nx4o, [class*="product-card"], article'
-      )
-
-      if (cards.length > 0) {
-        cards.forEach(card => {
-          try {
-            // Name
-            const nameEl = card.querySelector('[class*="line-clamp"], [class*="product-name"], h3, h2')
-            const name = nameEl?.textContent?.trim()
-            if (!name || name.length < 3) return
-
-            // Image
-            const imgEl = card.querySelector('img[src*="mafrservices"], img[src*="cdn.mafr"], img[src*="carrefour"]')
-            let imageUrl = imgEl?.getAttribute('src') || undefined
-            if (imageUrl) imageUrl = imageUrl.split('?')[0] + '?im=Resize=400'
-
-            // Current price
-            let price = 0
-            const priceEls = card.querySelectorAll('[class*="price"]')
-            priceEls.forEach(el => {
-              const text = el.textContent || ''
-              const match = text.match(/(\d+\.?\d*)/)
-              if (match && !el.classList.toString().includes('line-through') && !el.closest('.line-through')) {
-                const val = parseFloat(match[1])
-                if (val > 0 && (price === 0 || val < price)) price = val
-              }
-            })
-
-            // Fallback: look for price anywhere in card
-            if (price <= 0) {
-              const allText = card.textContent || ''
-              const priceMatch = allText.match(/(\d+\.?\d*)\s*(?:SAR|ر\.س)/)
-              if (priceMatch) price = parseFloat(priceMatch[1])
-            }
-
-            if (price <= 0) return
-
-            // Old price
-            let oldPrice: number | undefined
-            const strikeEl = card.querySelector('.line-through, del, s')
-            if (strikeEl) {
-              const match = strikeEl.textContent?.match(/(\d+\.?\d*)/)
-              if (match) oldPrice = parseFloat(match[1])
-            }
-
-            // Discount badge
-            let discountPercent: number | undefined
-            const badgeEl = card.querySelector('[class*="c4red"], [class*="discount"], [class*="badge"]')
-            if (badgeEl) {
-              const match = badgeEl.textContent?.match(/(\d+)\s*%/)
-              if (match) discountPercent = parseInt(match[1])
-            }
-
-            // Calculate discount if we have old price but no badge
-            if (!discountPercent && oldPrice && oldPrice > price) {
-              discountPercent = Math.round(((oldPrice - price) / oldPrice) * 100)
-            }
-
-            results.push({ name, price, oldPrice, discountPercent, imageUrl })
-          } catch { /* skip */ }
-        })
-      }
-
-      // Strategy 2: Intercept any JSON data in the page
-      if (results.length === 0) {
-        // Try to find product data in script tags or RSC data
-        const scripts = document.querySelectorAll('script')
-        scripts.forEach(script => {
-          const text = script.textContent || ''
-          try {
-            // Look for JSON product arrays
-            const productMatches = text.match(/"products"\s*:\s*\[([\s\S]*?)\]/g)
-            if (productMatches) {
-              for (const pm of productMatches) {
-                const nameMatches = pm.match(/"name"\s*:\s*"([^"]+)"/g)
-                const priceMatches = pm.match(/"price"\s*:\s*(\d+\.?\d*)/g)
-                if (nameMatches && priceMatches) {
-                  const len = Math.min(nameMatches.length, priceMatches.length)
-                  for (let i = 0; i < len; i++) {
-                    const name = nameMatches[i].match(/"name"\s*:\s*"([^"]+)"/)?.[1]
-                    const price = parseFloat(priceMatches[i].match(/(\d+\.?\d*)/)?.[1] || '0')
-                    if (name && price > 0) {
-                      results.push({ name, price })
-                    }
-                  }
-                }
-              }
-            }
-          } catch { /* skip */ }
-        })
-      }
-
-      return results
-    })
-
-    console.log(`[Carrefour] Extracted ${products.length} products`)
-    return products
-  } finally {
-    await browser.close()
+    return { products: productsData, total: totalProducts }
+  } catch (error) {
+    console.error('RSC extraction failed:', error)
+    return { products: [], total: 0 }
   }
 }
 
-async function ingestToDb(products: CarrefourProduct[]) {
-  // Dynamic import to avoid loading Prisma when not needed
-  const { prisma } = await import('../lib/db')
-  const { OfferIngestService } = await import('../lib/services/offer-ingest')
+function extractJSONArray(str: string, startPos: number): string | null {
+  if (str[startPos] !== '[') return null
 
-  const offers = products.map(p => ({
-    nameAr: p.name,
-    nameEn: p.name,
-    price: p.price,
-    oldPrice: p.oldPrice,
-    discountPercent: p.discountPercent,
-    imageUrl: p.imageUrl,
-    sourceUrl: OFFERS_URL,
-    tags: 'carrefour,offers',
-  }))
+  let depth = 0
+  let inString = false
+  let escape = false
 
-  const ingestService = new OfferIngestService()
-  const result = await ingestService.ingest('carrefour', offers, [
-    `[local] Scraped ${products.length} products via Puppeteer`,
-  ])
+  for (let i = startPos; i < str.length; i++) {
+    const ch = str[i]
 
-  console.log(`[Carrefour] Ingested: ${result.newOffers} new, ${result.duplicatesSkipped} duplicates`)
-  await prisma.$disconnect()
+    if (escape) { escape = false; continue }
+    if (ch === '\\') { escape = true; continue }
+    if (ch === '"') { inString = !inString; continue }
+    if (inString) continue
+
+    if (ch === '[') depth++
+    else if (ch === ']') {
+      depth--
+      if (depth === 0) return str.substring(startPos, i + 1)
+    }
+  }
+  return null
 }
+
+// ─── Product Mapping ──────────────────────────────────────────────
+
+function mapProducts(products: any[]): ScrapedOffer[] {
+  const offers: ScrapedOffer[] = []
+
+  for (const product of products) {
+    try {
+      const name = product.name?.trim()
+      if (!name || name.length < 2) continue
+
+      const priceObj = product.price
+      if (!priceObj) continue
+
+      const hasDiscount = priceObj.discount && priceObj.discount.price !== undefined
+      const currentPrice = hasDiscount
+        ? parseFloat(priceObj.discount.price)
+        : parseFloat(priceObj.price)
+
+      if (!currentPrice || currentPrice <= 0) continue
+
+      const oldPrice = hasDiscount ? parseFloat(priceObj.price) : undefined
+
+      let discountPercent: number | undefined
+      if (hasDiscount && priceObj.discount.value) {
+        discountPercent = Math.round(parseFloat(priceObj.discount.value))
+      } else if (oldPrice && oldPrice > currentPrice) {
+        discountPercent = Math.round(((oldPrice - currentPrice) / oldPrice) * 100)
+      }
+
+      // Only include products with actual discounts
+      if (!hasDiscount) continue
+
+      let imageUrl: string | undefined
+      if (product.links?.defaultImages?.[0]) {
+        imageUrl = product.links.defaultImages[0]
+      } else if (product.links?.images?.[0]?.href) {
+        imageUrl = product.links.images[0].href
+      }
+
+      if (imageUrl && imageUrl.includes('im=Resize=')) {
+        imageUrl = imageUrl.replace(/im=Resize=\d+/, 'im=Resize=400')
+      } else if (imageUrl && !imageUrl.includes('im=Resize')) {
+        imageUrl = `${imageUrl}?im=Resize=400`
+      }
+
+      const brand = product.brand?.name || undefined
+      const categoryPath = product.productCategoriesHearchi || ''
+      const categoryParts = categoryPath.split('/')
+      const category = categoryParts[0]?.trim() || undefined
+
+      const sizeMatch = name.match(/(\d+(?:\.\d+)?\s*(?:ml|l|kg|g|pcs?|pack|rolls?)\b)/i)
+      const sizeText = sizeMatch ? sizeMatch[1] : undefined
+
+      offers.push({
+        nameAr: name,
+        nameEn: name,
+        brand,
+        price: currentPrice,
+        oldPrice,
+        discountPercent,
+        sizeText,
+        imageUrl,
+        sourceUrl: `${BASE_URL}${DEALS_PATH}`,
+        tags: [
+          'carrefour',
+          'deals',
+          category ? category.toLowerCase().replace(/\s+&\s+/g, '-') : undefined,
+          product.type === 'NON_FOOD' ? 'non-food' : undefined,
+        ].filter(Boolean).join(','),
+      })
+    } catch {
+      // Skip malformed products
+    }
+  }
+
+  return offers
+}
+
+// ─── Main ─────────────────────────────────────────────────────────
 
 async function main() {
-  const products = await scrapeCarrefour()
+  const args = process.argv.slice(2)
+  const shouldIngest = args.includes('--ingest')
+  const limitArg = args.find(a => a.startsWith('--limit='))
+  const limit = limitArg ? parseInt(limitArg.split('=')[1]) : undefined
 
-  if (products.length === 0) {
-    console.log('[Carrefour] No products found. Site may have changed structure.')
-    process.exit(1)
+  const apiBase = process.env.API_BASE || 'https://sa.smartcopons.com'
+  const appSecret = process.env.APP_SECRET || 'smartcopons-secret-2024-ksa'
+
+  console.log('=== Carrefour KSA Local Scraper ===')
+  console.log(`Mode: ${shouldIngest ? `INGEST${limit ? ` (limit: ${limit})` : ' (all)'}` : 'DRY RUN (add --ingest to send to API)'}`)
+  console.log(`Target: ${apiBase}`)
+  console.log()
+
+  const allOffers: ScrapedOffer[] = []
+  let page = 0
+  let totalProducts = -1
+  let hasMore = true
+
+  while (hasMore && page < MAX_PAGES) {
+    const url = `${BASE_URL}${DEALS_PATH}?currentPage=${page}&pageSize=${PAGE_SIZE}`
+    console.log(`[Page ${page + 1}] Fetching: ${url}`)
+
+    try {
+      const response = await fetch(url, { headers: REQUIRED_HEADERS })
+      const html = await response.text()
+
+      if (html.length < 500) {
+        console.error(`[Page ${page + 1}] BLOCKED by Akamai (${html.length} chars)`)
+        break
+      }
+
+      console.log(`[Page ${page + 1}] HTML: ${html.length} chars`)
+
+      const { products, total } = extractProductsFromRSC(html)
+
+      if (page === 0 && total > 0) {
+        totalProducts = total
+        console.log(`[Info] Total deals available: ${totalProducts}`)
+      }
+
+      if (products.length === 0) {
+        console.log(`[Page ${page + 1}] No products found -- stopping`)
+        break
+      }
+
+      const pageOffers = mapProducts(products)
+      allOffers.push(...pageOffers)
+      console.log(`[Page ${page + 1}] ${products.length} raw -> ${pageOffers.length} with discounts (total: ${allOffers.length})`)
+
+      const expectedTotal = totalProducts > 0 ? totalProducts : Infinity
+      hasMore = allOffers.length < expectedTotal && products.length >= PAGE_SIZE
+      page++
+
+      if (hasMore) {
+        console.log(`[Wait] 2s delay...`)
+        await new Promise(r => setTimeout(r, 2000))
+      }
+    } catch (error) {
+      console.error(`[Page ${page + 1}] Error:`, error instanceof Error ? error.message : error)
+      break
+    }
   }
 
-  // Print summary
-  console.log('\n--- Results ---')
-  console.log(`Total products: ${products.length}`)
-  const withDiscount = products.filter(p => p.discountPercent)
-  console.log(`With discount: ${withDiscount.length}`)
-  const withImage = products.filter(p => p.imageUrl)
-  console.log(`With image: ${withImage.length}`)
+  console.log()
+  console.log(`=== Scrape Complete ===`)
+  console.log(`Pages scraped: ${page}`)
+  console.log(`Offers extracted: ${allOffers.length}`)
+
+  if (allOffers.length === 0) {
+    console.log('No offers to ingest.')
+    process.exit(0)
+  }
 
   // Show sample
-  console.log('\nSample products:')
-  products.slice(0, 5).forEach(p => {
-    console.log(`  ${p.name} — ${p.price} SAR${p.oldPrice ? ` (was ${p.oldPrice})` : ''}${p.discountPercent ? ` [${p.discountPercent}% off]` : ''}`)
-  })
+  console.log()
+  console.log('Sample offers:')
+  for (const offer of allOffers.slice(0, 3)) {
+    console.log(`  - ${offer.nameEn}: ${offer.price} SAR (was ${offer.oldPrice}, -${offer.discountPercent}%)`)
+    console.log(`    Image: ${offer.imageUrl ? 'YES' : 'NO'} | Brand: ${offer.brand || 'N/A'}`)
+  }
 
-  if (INGEST) {
-    console.log('\n[Carrefour] Ingesting to database...')
-    await ingestToDb(products)
-  } else {
-    console.log('\nDry run. Use --ingest to save to database.')
+  if (!shouldIngest) {
+    console.log()
+    console.log('DRY RUN complete. Run with --ingest to send to API.')
+    console.log(`  npx tsx scripts/scrape-carrefour-local.ts --ingest --limit=50`)
+    process.exit(0)
+  }
+
+  // Apply limit
+  let offersToSend = allOffers
+  if (limit && limit > 0 && offersToSend.length > limit) {
+    console.log(`\nLimiting to ${limit} of ${offersToSend.length} offers`)
+    offersToSend = offersToSend.slice(0, limit)
+  }
+
+  // Send to API
+  console.log(`\nSending ${offersToSend.length} offers to ${apiBase}/api/admin/scrape-submit...`)
+
+  try {
+    const response = await fetch(`${apiBase}/api/admin/scrape-submit?secret=${appSecret}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        supermarketSlug: 'carrefour',
+        offers: offersToSend,
+        sourceUrl: `${BASE_URL}${DEALS_PATH}`,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      console.error('API error:', result)
+      process.exit(1)
+    }
+
+    console.log()
+    console.log('=== Ingest Result ===')
+    console.log(`Received: ${result.received}`)
+    console.log(`Valid: ${result.valid}`)
+    console.log(`New offers: ${result.newOffers}`)
+    console.log(`Duplicates skipped: ${result.duplicatesSkipped}`)
+    console.log(`Flyer ID: ${result.flyerId}`)
+    console.log()
+    console.log('Done!')
+  } catch (error) {
+    console.error('Failed to send to API:', error instanceof Error ? error.message : error)
+    process.exit(1)
   }
 }
 
-main().catch(e => {
-  console.error('[Carrefour] Fatal error:', e)
-  process.exit(1)
-})
+main().catch(console.error)

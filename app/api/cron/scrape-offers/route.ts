@@ -37,6 +37,10 @@ export async function GET(request: Request) {
     )
   }
 
+  // Optional limit param for conservative batched imports
+  const limitParam = searchParams.get('limit')
+  const offerLimit = limitParam ? parseInt(limitParam) : undefined
+
   const startTime = Date.now()
 
   try {
@@ -44,14 +48,21 @@ export async function GET(request: Request) {
     console.log(`[Cron] Starting scrape for ${supermarketSlug}...`)
     const result = await scraper.scrape()
 
+    // Apply limit if specified (for conservative batch testing)
+    let offersToIngest = result.offers
+    if (offerLimit && offerLimit > 0 && offersToIngest.length > offerLimit) {
+      console.log(`[Cron] Limiting from ${offersToIngest.length} to ${offerLimit} offers`)
+      offersToIngest = offersToIngest.slice(0, offerLimit)
+    }
+
     let ingestResult = null
 
-    if (result.offers.length > 0) {
+    if (offersToIngest.length > 0) {
       // Ingest into DB
       const ingestService = new OfferIngestService()
       ingestResult = await ingestService.ingest(
         supermarketSlug,
-        result.offers,
+        offersToIngest,
         result.logs
       )
     }
@@ -76,6 +87,7 @@ export async function GET(request: Request) {
       success: true,
       supermarket: supermarketSlug,
       offersFound: result.offers.length,
+      offersLimited: offerLimit ? offersToIngest.length : undefined,
       offersCreated: ingestResult?.newOffers || 0,
       duplicatesSkipped: ingestResult?.duplicatesSkipped || 0,
       flyerId: ingestResult?.flyerId || null,
