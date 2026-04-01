@@ -7,7 +7,6 @@ interface IngestResult {
   supermarket: string
   totalScraped: number
   newOffers: number
-  updatedOffers: number
   duplicatesSkipped: number
   flyerId: string
 }
@@ -46,38 +45,18 @@ export class OfferIngestService {
       hash: computeOfferHash(supermarket.id, o.nameAr, o.price, o.sourceUrl),
     }))
 
-    // Check existing — fetch full records so we can update missing fields
-    const existingOffers = await prisma.productOffer.findMany({
-      where: { sourceHash: { in: offerHashes.map(h => h.hash) } },
-      select: { id: true, sourceHash: true, imageUrl: true, discountPercent: true, oldPrice: true, brand: true },
-    })
-    const existingByHash = new Map(existingOffers.map(p => [p.sourceHash, p]))
+    // Check existing
+    const existingHashes = new Set(
+      (await prisma.productOffer.findMany({
+        where: { sourceHash: { in: offerHashes.map(h => h.hash) } },
+        select: { sourceHash: true },
+      })).map(p => p.sourceHash)
+    )
 
-    // Create new offers or update existing ones with better data
+    // Create new offers
     let created = 0
-    let updated = 0
     for (const { offer, hash } of offerHashes) {
-      const existing = existingByHash.get(hash)
-
-      if (existing) {
-        // Update existing offer if new scrape has better data
-        const updates: Record<string, any> = {}
-        if (!existing.imageUrl && offer.imageUrl) updates.imageUrl = offer.imageUrl
-        if (!existing.discountPercent && offer.discountPercent) updates.discountPercent = offer.discountPercent
-        if (!existing.oldPrice && offer.oldPrice) updates.oldPrice = offer.oldPrice
-        if (!existing.brand && offer.brand) updates.brand = offer.brand
-
-        if (Object.keys(updates).length > 0) {
-          try {
-            await prisma.productOffer.update({
-              where: { id: existing.id },
-              data: updates,
-            })
-            updated++
-          } catch { /* skip update errors */ }
-        }
-        continue
-      }
+      if (existingHashes.has(hash)) continue
 
       try {
         const categoryId = await categoryMapper.mapToCategory(
@@ -124,8 +103,7 @@ export class OfferIngestService {
       supermarket: supermarketSlug,
       totalScraped: offers.length,
       newOffers: created,
-      updatedOffers: updated,
-      duplicatesSkipped: offers.length - created - updated,
+      duplicatesSkipped: offers.length - created,
       flyerId: flyer.id,
     }
   }

@@ -1,81 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
-// Arabic → English grocery keyword mapping for bilingual search
-const AR_EN_MAP: Record<string, string[]> = {
-  'حليب': ['milk', 'laban'],
-  'لبن': ['milk', 'laban', 'yogurt'],
-  'زبادي': ['yogurt', 'yoghurt'],
-  'جبن': ['cheese', 'kashkawan'],
-  'أرز': ['rice'],
-  'رز': ['rice'],
-  'دجاج': ['chicken'],
-  'لحم': ['meat', 'beef', 'veal'],
-  'سمك': ['fish', 'seafood', 'tuna', 'salmon'],
-  'خبز': ['bread'],
-  'بيض': ['egg'],
-  'زيت': ['oil'],
-  'سكر': ['sugar'],
-  'ملح': ['salt'],
-  'طحين': ['flour'],
-  'معكرونة': ['pasta', 'macaroni', 'spaghetti'],
-  'شاي': ['tea'],
-  'قهوة': ['coffee'],
-  'عصير': ['juice'],
-  'ماء': ['water'],
-  'مشروب': ['drink', 'beverage'],
-  'بسكويت': ['biscuit', 'cookie'],
-  'شوكولاتة': ['chocolate'],
-  'شيبس': ['chips', 'crisp'],
-  'تونة': ['tuna'],
-  'فول': ['foul', 'fava', 'beans'],
-  'حمص': ['hummus', 'chickpea'],
-  'زيتون': ['olive'],
-  'مكسرات': ['nuts', 'almond', 'cashew', 'pistachio'],
-  'فواكه': ['fruit'],
-  'خضار': ['vegetable'],
-  'طماطم': ['tomato'],
-  'بطاطس': ['potato', 'fries'],
-  'بصل': ['onion'],
-  'ثوم': ['garlic'],
-  'تمر': ['dates'],
-  'عسل': ['honey'],
-  'مربى': ['jam'],
-  'كاتشب': ['ketchup'],
-  'صلصة': ['sauce'],
-  'خل': ['vinegar'],
-  'منظف': ['cleaner', 'detergent', 'cleaning'],
-  'صابون': ['soap'],
-  'شامبو': ['shampoo'],
-  'مناديل': ['tissue', 'napkin'],
-  'حفاضات': ['diaper', 'nappy'],
-  'غسيل': ['laundry', 'wash'],
-  'معجون': ['paste', 'toothpaste'],
-  'كريم': ['cream'],
-  'زبدة': ['butter'],
-  'مثلجات': ['ice cream'],
-  'مجمد': ['frozen'],
-  'معلبات': ['canned', 'tinned'],
-  'رقائق': ['cereal', 'flakes', 'corn flakes'],
-  'نودلز': ['noodles'],
-  'كيك': ['cake'],
-  'سمن': ['ghee'],
-}
-
-// Expand Arabic search to include English equivalents
-function expandArabicSearch(query: string): string[] {
-  const terms = [query]
-  const queryLower = query.trim()
-
-  for (const [ar, enList] of Object.entries(AR_EN_MAP)) {
-    if (queryLower.includes(ar)) {
-      terms.push(...enList)
-    }
-  }
-
-  return Array.from(new Set(terms))
-}
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -91,17 +16,18 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '24')
     const skip = (page - 1) * limit
 
-    // Build filters — enforce data quality baseline
-    // No flyer status/date filter: quality filters are sufficient and
-    // flyer expiry is too aggressive (weekly flyers expire old offers)
+    // Build filters
     const where: any = {
       isHidden: false,
-      price: { gt: 0 },
-      discountPercent: { gte: 5 },
-      imageUrl: { not: null },
     }
 
-    if (supermarketId) {
+    // Only filter by active flyers if no direct product search
+    if (!search && !supermarketId) {
+      where.flyer = {
+        status: 'ACTIVE',
+        endDate: { gte: new Date() },
+      }
+    } else if (supermarketId) {
       where.supermarketId = supermarketId
     }
 
@@ -117,13 +43,12 @@ export async function GET(request: Request) {
     }
 
     if (search) {
-      const searchTerms = expandArabicSearch(search)
-      where.OR = searchTerms.flatMap(term => [
-        { nameAr: { contains: term, mode: 'insensitive' } },
-        { nameEn: { contains: term, mode: 'insensitive' } },
-        { brand: { contains: term, mode: 'insensitive' } },
-        { tags: { contains: term, mode: 'insensitive' } },
-      ])
+      where.OR = [
+        { nameAr: { contains: search } },
+        { nameEn: { contains: search } },
+        { brand: { contains: search } },
+        { tags: { contains: search } },
+      ]
     }
 
     if (minPrice || maxPrice) {
@@ -143,7 +68,7 @@ export async function GET(request: Request) {
         orderBy = { price: 'desc' }
         break
       case 'discount':
-        orderBy = { discountPercent: { sort: 'desc', nulls: 'last' } }
+        orderBy = { discountPercent: 'desc' }
         break
       case 'popular':
         orderBy = { viewCount: 'desc' }

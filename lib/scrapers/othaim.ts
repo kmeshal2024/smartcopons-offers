@@ -2,6 +2,16 @@ import * as cheerio from 'cheerio'
 import { BaseScraper } from './base-scraper'
 import type { ScrapedOffer } from './types'
 
+/**
+ * Al Othaim Markets Scraper
+ *
+ * Othaim publishes offers as PDF flyers hosted on Contentful CDN.
+ * Since PDF parsing doesn't work on serverless (needs canvas/DOMMatrix),
+ * we extract catalog data from the HTML pages:
+ * 1. Main offers page: catalog sections with images
+ * 2. Detail pages: individual catalog entries with thumbnails
+ * 3. RSC stream data: offer metadata from Next.js
+ */
 export class OthaimScraper extends BaseScraper {
   constructor() {
     super({
@@ -9,8 +19,8 @@ export class OthaimScraper extends BaseScraper {
       name: 'Al Othaim Markets',
       nameAr: 'العثيم',
       baseUrl: 'https://www.othaimmarkets.com',
-      offersUrl: 'https://www.othaimmarkets.com/offers',
-      maxPages: 3,
+      offersUrl: 'https://www.othaimmarkets.com/ar/offers',
+      maxPages: 5,
       requestDelayMs: 2000,
     })
   }
@@ -18,152 +28,227 @@ export class OthaimScraper extends BaseScraper {
   protected async extractOffers(): Promise<ScrapedOffer[]> {
     const allOffers: ScrapedOffer[] = []
 
-    // Othaim's main site is corporate — offers page shows flyer thumbnails
-    // Try to find direct links to offer detail pages and scrape those
     try {
-      const response = await this.fetchWithRetry(this.config.offersUrl)
+      // Step 1: Fetch main offers page
+      const response = await this.fetchWithRetry(this.config.offersUrl, {
+        headers: {
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'ar-SA,ar;q=0.9,en;q=0.8',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        },
+      })
       const html = await response.text()
       this.pagesScraped++
       this.log(`Fetched offers page: ${html.length} chars`)
 
       const $ = cheerio.load(html)
 
-      // Strategy 1: Look for offer detail links from the offers page
-      const offerLinks: string[] = []
-      $('a[href*="offer"], a[href*="عروض"], a[href*="promotion"]').each((_, el) => {
+      // Extract offer categories from the page
+      const offerPageUrls: string[] = []
+      $('a[href*="/offers/"]').each((_, el) => {
         const href = $(el).attr('href')
-        if (href && !offerLinks.includes(href)) {
+        if (href && !href.endsWith('.pdf') && href !== '/offers' && href !== '/ar/offers') {
           const fullUrl = href.startsWith('http') ? href : `${this.config.baseUrl}${href}`
-          offerLinks.push(fullUrl)
+          if (!offerPageUrls.includes(fullUrl)) offerPageUrls.push(fullUrl)
         }
       })
-      this.log(`Found ${offerLinks.length} offer links`)
 
-      // Scrape each offer detail page (max 3)
-      for (const link of offerLinks.slice(0, 3)) {
+      this.log(`Found ${offerPageUrls.length} offer category pages`)
+
+      // Step 2: Scrape each detail page for catalog entries with images
+      for (const pageUrl of offerPageUrls.slice(0, 5)) {
         try {
-          await this.delay(this.config.requestDelayMs || 2000)
-          const offers = await this.scrapeDetailPage(link)
+          await this.delay(1000)
+          const offers = await this.scrapeDetailPage(pageUrl)
           allOffers.push(...offers)
         } catch (e) {
-          this.log(`Detail page ${link} failed: ${e instanceof Error ? e.message : e}`)
+          this.log(`Detail page failed: ${e instanceof Error ? e.message : e}`)
         }
       }
 
-      // Strategy 2: Extract directly from main offers page
+      // Step 3: Extract from main page RSC data
       if (allOffers.length === 0) {
-        allOffers.push(...this.extractFromPage($, this.config.offersUrl))
+        allOffers.push(...this.extractFromRSC(html))
       }
 
-      // Strategy 3: Check __NEXT_DATA__ (Othaim uses Next.js)
+      // Step 4: Extract catalog entries from main page HTML
       if (allOffers.length === 0) {
-        const nextData = $('#__NEXT_DATA__')
-        if (nextData.length) {
-          try {
-            const data = JSON.parse(nextData.text())
-            allOffers.push(...this.extractFromJSON(data, this.config.offersUrl))
-          } catch { /* skip */ }
-        }
-      }
-
-      // Strategy 4: Check Contentful API data embedded in page
-      if (allOffers.length === 0) {
-        $('script').each((_, script) => {
-          const text = $(script).text()
-          if (text.includes('contentful') || text.includes('ctfassets')) {
-            // Try to find product/offer data
-            const priceMatches = text.match(/"price":\s*"?(\d+\.?\d*)"?/g)
-            const nameMatches = text.match(/"title":\s*"([^"]+)"/g)
-            if (priceMatches && nameMatches) {
-              const minLen = Math.min(priceMatches.length, nameMatches.length)
-              for (let i = 0; i < minLen; i++) {
-                const pm = priceMatches[i].match(/(\d+\.?\d*)/)
-                const nm = nameMatches[i].match(/"title":\s*"([^"]+)"/)
-                if (pm && nm) {
-                  allOffers.push({
-                    nameAr: nm[1],
-                    price: parseFloat(pm[1]),
-                    sourceUrl: this.config.offersUrl,
-                    tags: 'othaim,offers',
-                  })
-                }
-              }
-            }
-          }
-        })
+        allOffers.push(...this.extractCatalogsFromPage($, this.config.offersUrl))
       }
 
     } catch (e) {
-      this.logError(`Main offers page failed: ${e instanceof Error ? e.message : e}`)
+      this.logError(`Main page failed: ${e instanceof Error ? e.message : e}`)
     }
 
-    this.log(`Total extracted: ${allOffers.length} offers from Othaim`)
+    this.log(`Total: ${allOffers.length} offers from Othaim`)
     return allOffers
   }
 
   private async scrapeDetailPage(url: string): Promise<ScrapedOffer[]> {
-    const response = await this.fetchWithRetry(url)
+    const response = await this.fetchWithRetry(url, {
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'ar-SA,ar;q=0.9,en;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      },
+    })
     const html = await response.text()
     this.pagesScraped++
-
     const $ = cheerio.load(html)
-    return this.extractFromPage($, url)
-  }
 
-  private extractFromPage($: cheerio.CheerioAPI, sourceUrl: string): ScrapedOffer[] {
     const offers: ScrapedOffer[] = []
 
-    // Look for product cards/items with price data
-    $('[class*="product"], [class*="offer"], [class*="item"], [class*="card"]').each((_, el) => {
-      try {
-        const $el = $(el)
-        const name = $el.find('[class*="name"], [class*="title"], h3, h4, h5').first().text().trim()
-        if (!name || name.length < 3) return
+    // Look for catalog/region cards with images and PDF links
+    // Each region typically has: title, thumbnail image, PDF link
+    const pdfLinks = html.match(/\/api\/pdfOffers\/[^\s"']+\.pdf/g) || []
+    const uniquePdfs = Array.from(new Set(pdfLinks))
 
-        let price = 0
-        const priceText = $el.text()
-        const priceMatch = priceText.match(/(\d+\.?\d*)\s*(SAR|ر\.س|ريال)/)
-        if (priceMatch) price = parseFloat(priceMatch[1])
-        if (price <= 0) return
+    // Find all content images (not logos/icons)
+    const contentImages: string[] = []
+    $('img').each((_, el) => {
+      const src = $(el).attr('src') || ''
+      if (src.includes('ctfassets.net') && !src.includes('.svg') && !src.includes('logo') && !src.includes('appstore') && !src.includes('google') && !src.includes('footer')) {
+        contentImages.push(src)
+      }
+    })
 
-        const img = $el.find('img').first()
-        const imageUrl = img.attr('src') || img.attr('data-src') || undefined
+    // Extract section titles
+    const titles: string[] = []
+    $('h1, h2, h3, h4, [class*="title"], [class*="heading"]').each((_, el) => {
+      const text = $(el).text().trim()
+      if (text.length >= 3 && text.length < 100) titles.push(text)
+    })
+
+    this.log(`Detail page ${url}: ${uniquePdfs.length} PDFs, ${contentImages.length} images, ${titles.length} titles`)
+
+    // Create an offer for each unique PDF (each represents a regional flyer)
+    if (uniquePdfs.length > 0) {
+      for (let i = 0; i < uniquePdfs.length; i++) {
+        const pdfUrl = `${this.config.baseUrl}${uniquePdfs[i]}`
+        const title = titles[i] || this.getTitleFromUrl(url)
+        const image = contentImages[i] || contentImages[0]
 
         offers.push({
-          nameAr: name,
-          price,
-          imageUrl: imageUrl?.startsWith('http') ? imageUrl : imageUrl ? `${this.config.baseUrl}${imageUrl}` : undefined,
-          sourceUrl,
+          nameAr: title,
+          imageUrl: image,
+          sourceUrl: pdfUrl,
+          price: 0,
+          tags: 'othaim,offers,flyer',
+        })
+      }
+    } else if (contentImages.length > 0) {
+      // No PDFs but has images - create entries from images
+      for (let i = 0; i < contentImages.length; i++) {
+        const title = titles[i] || this.getTitleFromUrl(url)
+        offers.push({
+          nameAr: title,
+          imageUrl: contentImages[i],
+          sourceUrl: url,
+          price: 0,
           tags: 'othaim,offers',
         })
-      } catch { /* skip */ }
-    })
+      }
+    }
+
+    // Also try to extract from RSC data on this page
+    if (offers.length === 0) {
+      offers.push(...this.extractFromRSC(html))
+    }
 
     return offers
   }
 
-  private extractFromJSON(data: any, sourceUrl: string, depth = 0): ScrapedOffer[] {
+  private extractFromRSC(html: string): ScrapedOffer[] {
     const offers: ScrapedOffer[] = []
-    if (depth > 8 || !data) return offers
-    if (Array.isArray(data)) {
-      for (const item of data) offers.push(...this.extractFromJSON(item, sourceUrl, depth + 1))
-      return offers
-    }
-    if (typeof data !== 'object') return offers
 
-    if ((data.title || data.name) && data.price) {
-      offers.push({
-        nameAr: data.title || data.name,
-        price: parseFloat(data.price),
-        imageUrl: data.image?.url || data.imageUrl,
-        sourceUrl,
-        tags: 'othaim,offers',
+    try {
+      // Parse RSC stream for offer data
+      const pushPattern = /self\.__next_f\.push\(\[1,"((?:[^"\\]|\\.)*)"\]\)/g
+      let match: RegExpExecArray | null
+
+      while ((match = pushPattern.exec(html)) !== null) {
+        let decoded: string
+        try { decoded = JSON.parse(`"${match[1]}"`) } catch { continue }
+
+        // Look for offer/catalog entries in the RSC data
+        if (decoded.includes('pdfOffers') || decoded.includes('ctfassets')) {
+          // Extract image URLs
+          const imgMatches = decoded.match(/https:\/\/images\.ctfassets\.net\/[^\s"\\]+\.(jpg|png|jpeg|webp)/g)
+          const pdfMatches = decoded.match(/\/api\/pdfOffers\/[^\s"\\]+\.pdf/g)
+
+          if (imgMatches) {
+            for (const img of imgMatches) {
+              if (!img.includes('.svg') && !img.includes('logo')) {
+                offers.push({
+                  nameAr: 'عروض العثيم',
+                  imageUrl: img,
+                  sourceUrl: pdfMatches?.[0] ? `${this.config.baseUrl}${pdfMatches[0]}` : this.config.offersUrl,
+                  price: 0,
+                  tags: 'othaim,offers,flyer',
+                })
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      this.log(`RSC extraction failed: ${e instanceof Error ? e.message : e}`)
+    }
+
+    return offers
+  }
+
+  private extractCatalogsFromPage($: cheerio.CheerioAPI, sourceUrl: string): ScrapedOffer[] {
+    const offers: ScrapedOffer[] = []
+
+    // Find sections with images that link to offer pages or PDFs
+    $('a[href*="/offers/"], a[href*="pdfOffers"]').each((_, el) => {
+      const $a = $(el)
+      const href = $a.attr('href') || ''
+      const img = $a.find('img').first()
+      const imgSrc = img.attr('src') || ''
+      const title = $a.text().trim() || img.attr('alt') || ''
+
+      if (imgSrc && imgSrc.includes('ctfassets.net') && !imgSrc.includes('.svg')) {
+        const fullUrl = href.startsWith('http') ? href : `${this.config.baseUrl}${href}`
+        offers.push({
+          nameAr: title || 'عروض العثيم',
+          imageUrl: imgSrc,
+          sourceUrl: fullUrl,
+          price: 0,
+          tags: 'othaim,offers',
+        })
+      }
+    })
+
+    // Also find standalone content images
+    if (offers.length === 0) {
+      $('img[src*="ctfassets.net"]').each((_, el) => {
+        const src = $(el).attr('src') || ''
+        if (!src.includes('.svg') && !src.includes('logo') && !src.includes('footer') && !src.includes('appstore') && !src.includes('google')) {
+          const alt = $(el).attr('alt') || 'عروض العثيم'
+          offers.push({
+            nameAr: alt,
+            imageUrl: src,
+            sourceUrl,
+            price: 0,
+            tags: 'othaim,offers',
+          })
+        }
       })
     }
 
-    for (const key of Object.keys(data)) {
-      offers.push(...this.extractFromJSON(data[key], sourceUrl, depth + 1))
-    }
     return offers
+  }
+
+  private getTitleFromUrl(url: string): string {
+    const path = new URL(url).pathname
+    const slug = path.split('/').pop() || ''
+    const titleMap: Record<string, string> = {
+      'weekly-promotions': 'العروض الأسبوعية',
+      'health-and-beauty': 'عروض الصحة والجمال',
+      'fresh-offers': 'عروض الطازج',
+    }
+    return titleMap[slug] || 'عروض العثيم'
   }
 }

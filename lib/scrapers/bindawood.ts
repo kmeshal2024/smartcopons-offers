@@ -2,47 +2,44 @@ import { BaseScraper } from './base-scraper'
 import type { ScrapedOffer } from './types'
 
 /**
- * Danube Scraper — Uses Algolia Search API for reliable product data.
+ * BinDawood Scraper — Uses its own Algolia Search API (separate from Danube)
  *
- * Strategy: Query Algolia index for products, filter for discounted items only
- * (where compare_at_price > price). This ensures we import DEALS, not the full catalog.
- *
- * Algolia provides: Arabic + English names, prices, discount info, images, categories.
+ * Algolia App: KBGHG5MR5E, Index: spree_products, tenant_key: BIN, tenant_id: 2
+ * 21,525 total products with full data: name_en, name_ar, price, image (S3), url_en
  */
-export class DanubeScraper extends BaseScraper {
+export class BinDawoodScraper extends BaseScraper {
   constructor() {
     super({
-      supermarketSlug: 'danube',
-      name: 'Danube',
-      nameAr: 'الدانوب',
-      baseUrl: 'https://www.danube.sa',
-      offersUrl: 'https://1d2iewlqad-dsn.algolia.net/1/indexes/spree_products/query',
+      supermarketSlug: 'bindawood',
+      name: 'BinDawood',
+      nameAr: 'بن داود',
+      baseUrl: 'https://www.bindawood.sa',
+      offersUrl: 'https://kbghg5mr5e-dsn.algolia.net/1/indexes/spree_products/query',
       maxPages: 10,
       requestDelayMs: 500,
     })
   }
 
-  private readonly algoliaAppId = '1D2IEWLQAD'
-  private readonly algoliaApiKey = '87ca3b6b2ce56f0bb76fc194a8d170e2'
-  private readonly algoliaIndex = 'spree_products'
+  private readonly algoliaAppId = 'KBGHG5MR5E'
+  private readonly algoliaApiKey = '8c6b85b7bdebb06d260ccde6b810884b'
 
   protected async extractOffers(): Promise<ScrapedOffer[]> {
     const allOffers: ScrapedOffer[] = []
     const hitsPerPage = 50
-    const url = `https://${this.algoliaAppId.toLowerCase()}-dsn.algolia.net/1/indexes/${this.algoliaIndex}/query`
+    const url = `https://${this.algoliaAppId.toLowerCase()}-dsn.algolia.net/1/indexes/spree_products/query`
     const headers = {
       'X-Algolia-Application-Id': this.algoliaAppId,
       'X-Algolia-API-Key': this.algoliaApiKey,
       'Content-Type': 'application/json',
     }
 
-    // Strategy 1: Try on_sale items first
+    // Strategy 1: Try on_sale items
     try {
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          params: `hitsPerPage=${hitsPerPage}&page=0&filters=tenant_id%20%3D%201%20AND%20on_sale%20%3D%201`,
+          params: `hitsPerPage=${hitsPerPage}&page=0&filters=tenant_id%20%3D%202%20AND%20on_sale%20%3D%201`,
         }),
       })
       const data = await response.json()
@@ -58,34 +55,32 @@ export class DanubeScraper extends BaseScraper {
     }
 
     // Strategy 2: Search for promotional keywords
-    if (allOffers.length === 0) {
-      const queries = ['عرض', 'offer', 'خصم', 'تخفيض', 'sale']
-      for (const q of queries) {
-        try {
-          const response = await this.fetchWithRetry(url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              params: `hitsPerPage=${hitsPerPage}&page=0&query=${encodeURIComponent(q)}&filters=tenant_id%20%3D%201`,
-            }),
-          })
-          const data = await response.json()
-          if (data.hits && data.hits.length > 0) {
-            this.log(`Query "${q}": ${data.nbHits} hits`)
-            for (const hit of data.hits) {
-              const offer = this.transformHit(hit)
-              if (offer) allOffers.push(offer)
-            }
+    const queries = ['عرض', 'offer', 'خصم', 'تخفيض', 'sale']
+    for (const q of queries) {
+      try {
+        const response = await this.fetchWithRetry(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            params: `hitsPerPage=${hitsPerPage}&page=0&query=${encodeURIComponent(q)}&filters=tenant_id%20%3D%202`,
+          }),
+        })
+        const data = await response.json()
+        if (data.hits && data.hits.length > 0) {
+          this.log(`Query "${q}": ${data.nbHits} hits`)
+          for (const hit of data.hits) {
+            const offer = this.transformHit(hit)
+            if (offer) allOffers.push(offer)
           }
-          await this.delay(300)
-        } catch { /* skip */ }
-      }
+        }
+        await this.delay(300)
+      } catch { /* skip */ }
     }
 
-    // Strategy 3: Import popular products with images (paginated) — always runs to supplement
+    // Strategy 3: Import popular products with images (paginated)
     {
       const maxPages = this.config.maxPages || 10
-      const seenIds = new Set(allOffers.map(o => o.sourceUrl))
+      const seenUrls = new Set(allOffers.map(o => o.sourceUrl))
       for (let page = 0; page < maxPages; page++) {
         try {
           this.log(`Fetching all products page ${page + 1}/${maxPages}...`)
@@ -93,7 +88,7 @@ export class DanubeScraper extends BaseScraper {
             method: 'POST',
             headers,
             body: JSON.stringify({
-              params: `hitsPerPage=${hitsPerPage}&page=${page}&filters=tenant_id%20%3D%201`,
+              params: `hitsPerPage=${hitsPerPage}&page=${page}&filters=tenant_id%20%3D%202`,
             }),
           })
           const data = await response.json()
@@ -103,8 +98,8 @@ export class DanubeScraper extends BaseScraper {
           this.pagesScraped++
           for (const hit of hits) {
             const offer = this.transformHit(hit)
-            if (offer && !seenIds.has(offer.sourceUrl)) {
-              seenIds.add(offer.sourceUrl)
+            if (offer && !seenUrls.has(offer.sourceUrl)) {
+              seenUrls.add(offer.sourceUrl)
               allOffers.push(offer)
             }
           }
@@ -126,12 +121,10 @@ export class DanubeScraper extends BaseScraper {
     const price = parseFloat(hit.price) || 0
     if (price <= 0) return null
 
-    // Algolia fields: name_en, name_ar, full_name_en, full_name_ar
     const nameEn = hit.name_en || hit.full_name_en || ''
     const nameAr = hit.name_ar || hit.full_name_ar || nameEn
     if (!nameAr && !nameEn) return null
 
-    // Algolia field: original_price (not compare_at_price)
     const origPrice = parseFloat(hit.original_price) || 0
     const oldPrice = origPrice > price ? origPrice : undefined
     let discountPercent: number | undefined
@@ -139,21 +132,18 @@ export class DanubeScraper extends BaseScraper {
       discountPercent = Math.round(((oldPrice - price) / oldPrice) * 100)
     }
 
-    // Algolia field: image (not image_url or images array)
+    // BinDawood uses S3 images
     let imageUrl: string | undefined = hit.image || undefined
     if (imageUrl && !imageUrl.startsWith('http')) {
-      imageUrl = `https://www.danube.sa${imageUrl}`
+      imageUrl = `https://www.bindawood.sa${imageUrl}`
     }
-    // Skip products without images
     if (!imageUrl) return null
 
-    // Extract size/weight from name
     const sizeMatch = (nameEn || nameAr).match(/(\d+(?:\.\d+)?\s*(?:kg|g|ml|l|ltr|litre|pcs?|pack)\b)/i)
 
-    // Algolia field: url_en (not slug)
     const sourceUrl = hit.url_en
-      ? `https://www.danube.sa${hit.url_en}`
-      : `https://www.danube.sa/en/products/${hit.objectID}`
+      ? `https://www.bindawood.sa${hit.url_en}`
+      : `https://www.bindawood.sa/en/products/${hit.objectID}`
 
     return {
       nameAr,

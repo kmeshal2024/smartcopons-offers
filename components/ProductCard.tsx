@@ -23,49 +23,24 @@ interface ProductCardProps {
   }
 }
 
-// CDN domains that block Vercel's image proxy (Akamai WAF)
-// These must load directly in the browser, bypassing Next.js optimization
-const PROTECTED_CDN_DOMAINS = ['cdn.mafrservices.com', 'www.carrefourksa.com']
-
-function isProtectedCDN(url: string): boolean {
-  try {
-    const hostname = new URL(url).hostname
-    return PROTECTED_CDN_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d))
-  } catch {
-    return false
-  }
-}
-
 export default function ProductCard({ product }: ProductCardProps) {
   const displayName = product.nameAr || product.nameEn || 'منتج'
   const hasDiscount = product.discountPercent && product.discountPercent > 0
   const [imgError, setImgError] = useState(false)
-  const useUnoptimized = product.imageUrl ? isProtectedCDN(product.imageUrl) : false
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 overflow-hidden group flex flex-col">
       {/* Product Image */}
       <div className="relative h-44 sm:h-52 bg-gray-50 flex items-center justify-center">
         {product.imageUrl && !imgError ? (
-          useUnoptimized ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={product.imageUrl}
-              alt={displayName}
-              className="absolute inset-0 w-full h-full object-contain p-4 group-hover:scale-[1.03] transition-transform duration-200"
-              loading="lazy"
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <Image
-              src={product.imageUrl}
-              alt={displayName}
-              fill
-              className="object-contain p-4 group-hover:scale-[1.03] transition-transform duration-200"
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              onError={() => setImgError(true)}
-            />
-          )
+          <Image
+            src={product.imageUrl}
+            alt={displayName}
+            fill
+            className="object-contain p-4 group-hover:scale-[1.03] transition-transform duration-200"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            onError={() => setImgError(true)}
+          />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-300">
             <svg className="w-12 h-12 sm:w-14 sm:h-14" fill="none" stroke="currentColor" viewBox="0 0 24 24">

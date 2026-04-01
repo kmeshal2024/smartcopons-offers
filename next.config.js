@@ -68,9 +68,14 @@ const nextConfig = {
       'tamimi-corp-images.s3.me-south-1.amazonaws.com', // Tamimi logo
       'cdn.d4donline.com',          // Manuel Market logo
       'danube.sa',                  // Danube logo
+      's3.eu-west-1.amazonaws.com',  // BinDawood product images (S3)
+      'aym-bindawood-production.s3.eu-west-1.amazonaws.com', // BinDawood S3 bucket
+      'www.bindawood.sa',            // BinDawood
+      'media.extra.com',             // Extra product images (Amplience CDN)
+      'aym-bindawood-production.herokuapp.com', // BinDawood logo (Heroku)
     ],
-    // Vercel handles image optimization automatically
-    unoptimized: false,
+    // Skip Vercel image optimization (402 on free plan)
+    unoptimized: true,
   },
 
   // Disable source maps in production
