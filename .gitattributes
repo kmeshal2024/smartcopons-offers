@@ -1,0 +1,20 @@
+# Normalize line endings: treat as text, check out with the OS default,
+# store LF in the repo. Silences "LF will be replaced by CRLF" warnings.
+* text=auto eol=lf
+
+# Binary assets — never normalize
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+
+# Windows-specific scripts keep CRLF
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf

@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
+import CityFilterBar from '@/components/CityFilterBar'
+import { useCity } from '@/hooks/useCity'
 import Link from 'next/link'
 
 interface Product {
@@ -25,6 +27,12 @@ interface Product {
   category?: {
     nameAr: string
     icon?: string | null
+  } | null
+  flyer?: {
+    id?: string
+    titleAr?: string | null
+    startDate?: string | null
+    endDate?: string | null
   } | null
 }
 
@@ -87,6 +95,7 @@ export default function OffersClient() {
   const [page, setPage] = useState(1)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [showMobileFilters, setShowMobileFilters] = useState(false)
+  const [city] = useCity()
 
   const searchInputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
@@ -129,6 +138,7 @@ export default function OffersClient() {
     if (search) params.set('search', search)
     if (selectedCategory) params.set('category', selectedCategory)
     if (selectedSupermarket) params.set('supermarket', selectedSupermarket)
+    if (city && city !== 'all') params.set('city', city)
     params.set('minPrice', '0')
     params.set('maxPrice', maxPrice.toString())
     params.set('page', currentPage.toString())
@@ -141,11 +151,12 @@ export default function OffersClient() {
     setPagination(data.pagination || null)
     if (resetPage) setPage(1)
     setLoading(false)
-  }, [sort, search, selectedCategory, selectedSupermarket, maxPrice, page])
+  }, [sort, search, selectedCategory, selectedSupermarket, maxPrice, page, city])
 
   useEffect(() => {
     fetchProducts()
-  }, [sort, selectedCategory, selectedSupermarket, page])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sort, selectedCategory, selectedSupermarket, page, city])
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
@@ -323,6 +334,7 @@ export default function OffersClient() {
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
       <Header />
+      <CityFilterBar topClass="top-0" />
 
       <main className="container mx-auto px-4 py-5">
         {/* Page Header */}

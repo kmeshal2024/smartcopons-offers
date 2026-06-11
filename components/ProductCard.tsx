@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import ExpiryBadge, { dealCardClasses } from '@/components/ExpiryBadge'
+import { getValidity } from '@/lib/flyer-utils'
+import { useShoppingList } from '@/hooks/useShoppingList'
 
 interface ProductCardProps {
   product: {
@@ -20,6 +23,12 @@ interface ProductCardProps {
       slug: string
       logo?: string | null
     }
+    flyer?: {
+      id?: string
+      titleAr?: string | null
+      startDate?: string | null
+      endDate?: string | null
+    } | null
   }
 }
 
@@ -27,9 +36,12 @@ export default function ProductCard({ product }: ProductCardProps) {
   const displayName = product.nameAr || product.nameEn || 'منتج'
   const hasDiscount = product.discountPercent && product.discountPercent > 0
   const [imgError, setImgError] = useState(false)
+  const validity = getValidity(product.flyer?.startDate, product.flyer?.endDate)
+  const { add, has } = useShoppingList()
+  const inList = has(product.id)
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 overflow-hidden group flex flex-col">
+    <div className={`bg-white rounded-xl border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 overflow-hidden group flex flex-col ${dealCardClasses(validity)}`}>
       {/* Product Image */}
       <div className="relative h-44 sm:h-52 bg-gray-50 flex items-center justify-center">
         {product.imageUrl && !imgError ? (
@@ -55,6 +67,13 @@ export default function ProductCard({ product }: ProductCardProps) {
         {hasDiscount && (
           <div className="absolute top-2 right-2 bg-pink-600 text-white px-2 py-0.5 rounded-md text-xs font-bold shadow-sm">
             {product.discountPercent}%-
+          </div>
+        )}
+
+        {/* Expiry Badge (deal validity) */}
+        {product.flyer?.endDate && (
+          <div className="absolute bottom-2 left-2">
+            <ExpiryBadge validFrom={product.flyer.startDate} validTo={product.flyer.endDate} />
           </div>
         )}
 
@@ -115,6 +134,30 @@ export default function ProductCard({ product }: ProductCardProps) {
             </span>
           )}
         </div>
+
+        {/* Add to shopping list */}
+        <button
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            add({
+              id: product.id,
+              name: displayName,
+              price: product.price,
+              oldPrice: product.oldPrice,
+              storeName: product.supermarket.nameAr,
+              image: product.imageUrl,
+            })
+          }}
+          disabled={inList}
+          className={`mt-2.5 w-full rounded-lg py-1.5 text-[11px] sm:text-xs font-bold transition ${
+            inList
+              ? 'bg-green-50 text-green-600 cursor-default'
+              : 'bg-pink-50 text-[#E91E8C] hover:bg-[#E91E8C] hover:text-white'
+          }`}
+        >
+          {inList ? 'في القائمة ✓' : '＋ أضف للقائمة'}
+        </button>
       </div>
     </div>
   )

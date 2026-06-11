@@ -59,3 +59,31 @@ body {
     padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* ===== Added features: flyer flip + slide-in panel ===== */
+@keyframes flyerFlipNext {
+  0% { opacity: 0; transform: translateX(28px) scale(0.98); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes flyerFlipPrev {
+  0% { opacity: 0; transform: translateX(-28px) scale(0.98); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+.flyer-flip-next { animation: flyerFlipNext 0.32s ease; }
+.flyer-flip-prev { animation: flyerFlipPrev 0.32s ease; }
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-in-right {
+  animation: slideInRight 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flyer-flip-next,
+  .flyer-flip-prev,
+  .animate-slide-in-right {
+    animation: none;
+  }
+}
