@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import MobileBottomNav from '@/components/MobileBottomNav'
 import BackToTop from '@/components/BackToTop'
+import ShoppingListWidget from '@/components/ShoppingListWidget'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -39,6 +40,7 @@ export default function RootLayout({
     <html lang="ar" dir="rtl">
       <body className={inter.className}>
         {children}
+        <ShoppingListWidget />
         <MobileBottomNav />
         <BackToTop />
       </body>

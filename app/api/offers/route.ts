@@ -7,7 +7,7 @@ export async function GET(request: Request) {
 
     const supermarketId = searchParams.get('supermarket')
     const categoryId = searchParams.get('category')
-    const cityId = searchParams.get('city')
+    const cityParam = searchParams.get('city')
     const search = searchParams.get('search')
     const minPrice = searchParams.get('minPrice')
     const maxPrice = searchParams.get('maxPrice')
@@ -21,13 +21,17 @@ export async function GET(request: Request) {
       isHidden: false,
     }
 
-    // Only filter by active flyers if no direct product search
-    if (!search && !supermarketId) {
+    // Only filter by active flyers for the default (unfiltered) listing.
+    // When user applies any filter (search, category, supermarket), show all matching
+    // products regardless of flyer status so they're not hidden by stale flyer records.
+    if (!search && !supermarketId && !categoryId) {
       where.flyer = {
         status: 'ACTIVE',
         endDate: { gte: new Date() },
       }
-    } else if (supermarketId) {
+    }
+
+    if (supermarketId) {
       where.supermarketId = supermarketId
     }
 
@@ -35,19 +39,21 @@ export async function GET(request: Request) {
       where.categoryId = categoryId
     }
 
-    if (cityId) {
+    // `city` may be a slug (from CityFilterBar) or a raw DB id. Resolve slug→id.
+    if (cityParam && cityParam !== 'all') {
+      const city = await prisma.city.findUnique({ where: { slug: cityParam }, select: { id: true } })
       where.flyer = {
         ...(where.flyer || {}),
-        cityId,
+        cityId: city?.id ?? cityParam,
       }
     }
 
     if (search) {
       where.OR = [
-        { nameAr: { contains: search } },
-        { nameEn: { contains: search } },
-        { brand: { contains: search } },
-        { tags: { contains: search } },
+        { nameAr: { contains: search, mode: 'insensitive' } },
+        { nameEn: { contains: search, mode: 'insensitive' } },
+        { brand: { contains: search, mode: 'insensitive' } },
+        { tags: { contains: search, mode: 'insensitive' } },
       ]
     }
 
@@ -106,6 +112,7 @@ export async function GET(request: Request) {
               id: true,
               title: true,
               titleAr: true,
+              startDate: true,
               endDate: true,
             },
           },

@@ -268,6 +268,8 @@ export default async function RetailerPage({ params, searchParams }: Props) {
                   key={flyer.id}
                   pdfUrl={flyer.pdfUrl}
                   title={flyer.titleAr || flyer.title}
+                  startDate={flyer.startDate}
+                  endDate={flyer.endDate}
                 />
               ))}
           </div>

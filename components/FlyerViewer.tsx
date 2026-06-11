@@ -1,15 +1,24 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import ExpiryBadge from '@/components/ExpiryBadge'
 
 interface FlyerViewerProps {
   pdfUrl: string
   title?: string
+  /** Optional validity dates → renders an urgency badge. */
+  startDate?: string | null
+  endDate?: string | null
 }
 
-export default function FlyerViewer({ pdfUrl, title }: FlyerViewerProps) {
+export default function FlyerViewer({ pdfUrl, title, startDate, endDate }: FlyerViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const thumbRefs = useRef<Array<HTMLCanvasElement | null>>([])
+  const thumbBtnRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const touchStart = useRef<{ x: number; y: number } | null>(null)
+
   const [pdfDoc, setPdfDoc] = useState<any>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [numPages, setNumPages] = useState(0)
@@ -53,7 +62,7 @@ export default function FlyerViewer({ pdfUrl, title }: FlyerViewerProps) {
     return () => { cancelled = true }
   }, [pdfUrl])
 
-  // Render current page
+  // Render current page (main canvas)
   const renderPage = useCallback(async (pageNum: number) => {
     if (!pdfDoc || !canvasRef.current || rendering) return
 
@@ -64,20 +73,16 @@ export default function FlyerViewer({ pdfUrl, title }: FlyerViewerProps) {
       const ctx = canvas.getContext('2d')
       if (!ctx) return
 
-      // Calculate scale to fit container width
       const containerWidth = containerRef.current?.clientWidth || 600
       const viewport = page.getViewport({ scale: 1 })
-      const fitScale = (containerWidth - 32) / viewport.width // 32px padding
+      const fitScale = (containerWidth - 32) / viewport.width
       const actualScale = Math.min(fitScale, scale)
       const scaledViewport = page.getViewport({ scale: actualScale })
 
       canvas.height = scaledViewport.height
       canvas.width = scaledViewport.width
 
-      await page.render({
-        canvasContext: ctx,
-        viewport: scaledViewport,
-      }).promise
+      await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise
     } catch (err: any) {
       console.error('Render error:', err)
     } finally {
@@ -86,9 +91,7 @@ export default function FlyerViewer({ pdfUrl, title }: FlyerViewerProps) {
   }, [pdfDoc, scale, rendering])
 
   useEffect(() => {
-    if (pdfDoc && currentPage > 0) {
-      renderPage(currentPage)
-    }
+    if (pdfDoc && currentPage > 0) renderPage(currentPage)
   }, [pdfDoc, currentPage, renderPage])
 
   // Re-render on resize
@@ -100,9 +103,75 @@ export default function FlyerViewer({ pdfUrl, title }: FlyerViewerProps) {
     return () => window.removeEventListener('resize', handleResize)
   }, [pdfDoc, currentPage, renderPage])
 
-  const goPage = (delta: number) => {
-    const next = currentPage + delta
-    if (next >= 1 && next <= numPages) setCurrentPage(next)
+  // Render thumbnails once the document is available
+  useEffect(() => {
+    if (!pdfDoc) return
+    let cancelled = false
+    ;(async () => {
+      for (let p = 1; p <= pdfDoc.numPages; p++) {
+        if (cancelled) return
+        const canvas = thumbRefs.current[p - 1]
+        if (!canvas) continue
+        try {
+          const page = await pdfDoc.getPage(p)
+          const viewport = page.getViewport({ scale: 0.22 })
+          const ctx = canvas.getContext('2d')
+          if (!ctx) continue
+          canvas.width = viewport.width
+          canvas.height = viewport.height
+          await page.render({ canvasContext: ctx, viewport }).promise
+        } catch {
+          /* ignore individual thumb failures */
+        }
+      }
+    })()
+    return () => { cancelled = true }
+  }, [pdfDoc])
+
+  const goPage = useCallback((delta: number) => {
+    setCurrentPage((cur) => {
+      const next = cur + delta
+      return next >= 1 && next <= numPages ? next : cur
+    })
+  }, [numPages])
+
+  const jumpTo = (p: number) => {
+    if (p >= 1 && p <= numPages) setCurrentPage(p)
+  }
+
+  // Keyboard navigation when the viewer is focused (RTL: ← next, → prev)
+  useEffect(() => {
+    const stage = stageRef.current
+    if (!stage) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goPage(1) }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); goPage(-1) }
+      else if (e.key === '+' || e.key === '=') setScale((s) => Math.min(3, s + 0.25))
+      else if (e.key === '-') setScale((s) => Math.max(0.5, s - 0.25))
+    }
+    stage.addEventListener('keydown', onKey)
+    return () => stage.removeEventListener('keydown', onKey)
+  }, [goPage])
+
+  // Keep active thumbnail in view
+  useEffect(() => {
+    thumbBtnRefs.current[currentPage - 1]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  }, [currentPage])
+
+  // Touch swipe (left = next, right = prev)
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0]
+    touchStart.current = { x: t.clientX, y: t.clientY }
+  }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart.current) return
+    const t = e.changedTouches[0]
+    const dx = t.clientX - touchStart.current.x
+    const dy = t.clientY - touchStart.current.y
+    touchStart.current = null
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return
+    if (dx < 0) goPage(1)
+    else goPage(-1)
   }
 
   if (error) {
@@ -116,17 +185,25 @@ export default function FlyerViewer({ pdfUrl, title }: FlyerViewerProps) {
   return (
     <div ref={containerRef} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       {/* Header */}
-      {title && (
-        <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-800 text-sm">{title}</h3>
-          {numPages > 0 && (
-            <span className="text-xs text-gray-500">{numPages} صفحة</span>
-          )}
+      {(title || startDate || endDate) && (
+        <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {title && <h3 className="font-semibold text-gray-800 text-sm truncate">{title}</h3>}
+            {endDate && <ExpiryBadge validFrom={startDate} validTo={endDate} />}
+          </div>
+          {numPages > 0 && <span className="text-xs text-gray-500 flex-shrink-0">{numPages} صفحة</span>}
         </div>
       )}
 
-      {/* Canvas Area */}
-      <div className="relative flex items-center justify-center min-h-[300px] bg-gray-100">
+      {/* Canvas Area (focusable for keyboard nav, swipeable) */}
+      <div
+        ref={stageRef}
+        tabIndex={0}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        className="relative flex items-center justify-center min-h-[300px] bg-gray-100 outline-none focus:ring-2 focus:ring-pink-300"
+        style={{ touchAction: 'pan-y' }}
+      >
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
             <div className="text-center">
@@ -140,25 +217,68 @@ export default function FlyerViewer({ pdfUrl, title }: FlyerViewerProps) {
             جاري التحميل...
           </div>
         )}
-        <canvas
-          ref={canvasRef}
-          className="max-w-full h-auto"
-          style={{ display: loading ? 'none' : 'block' }}
-        />
+
+        {/* Prev (right in RTL) */}
+        {numPages > 1 && !loading && (
+          <button
+            onClick={() => goPage(-1)}
+            disabled={currentPage <= 1}
+            aria-label="الصفحة السابقة"
+            className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 shadow flex items-center justify-center text-gray-700 hover:bg-white disabled:opacity-30"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          </button>
+        )}
+
+        <canvas ref={canvasRef} className="max-w-full h-auto" style={{ display: loading ? 'none' : 'block' }} />
+
+        {/* Next (left in RTL) */}
+        {numPages > 1 && !loading && (
+          <button
+            onClick={() => goPage(1)}
+            disabled={currentPage >= numPages}
+            aria-label="الصفحة التالية"
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 shadow flex items-center justify-center text-gray-700 hover:bg-white disabled:opacity-30"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+          </button>
+        )}
       </div>
 
-      {/* Navigation */}
+      {/* Thumbnail strip */}
+      {numPages > 1 && (
+        <div className="border-t border-gray-200 bg-gray-50 px-3 py-2 flex gap-2 overflow-x-auto scrollbar-hide">
+          {Array.from({ length: numPages }).map((_, i) => {
+            const p = i + 1
+            const active = p === currentPage
+            return (
+              <button
+                key={p}
+                ref={(el) => { thumbBtnRefs.current[i] = el }}
+                onClick={() => jumpTo(p)}
+                aria-label={`صفحة ${p}`}
+                aria-current={active}
+                className={`relative flex-shrink-0 rounded-md overflow-hidden border-2 transition bg-white ${
+                  active ? 'border-pink-600 scale-105' : 'border-transparent opacity-70 hover:opacity-100'
+                }`}
+              >
+                <canvas ref={(el) => { thumbRefs.current[i] = el }} className="block h-16 w-auto" />
+                <span className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-[10px] text-center">{p}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Navigation + page counter */}
       {numPages > 1 && (
         <div className="border-t border-gray-200 px-4 py-3 flex items-center justify-between bg-white">
-          {/* RTL: Next page is on left, Prev on right */}
           <button
             onClick={() => goPage(1)}
             disabled={currentPage >= numPages || rendering}
             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             التالي
           </button>
 
@@ -174,9 +294,7 @@ export default function FlyerViewer({ pdfUrl, title }: FlyerViewerProps) {
             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
             السابق
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </button>
         </div>
       )}
