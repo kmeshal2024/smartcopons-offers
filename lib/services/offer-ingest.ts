@@ -80,41 +80,56 @@ export class OfferIngestService {
     // showing almost none.
     const stillOffered: string[] = []
 
+    // Build the rows first, then insert in batches. One `create` per offer meant
+    // a database round trip per product; a full catalogue run (~1200 offers)
+    // took long enough to push the cron against its 120s limit.
+    const rows: any[] = []
+    const seenHashes = new Set<string>()
+
     for (const { offer, hash } of offerHashes) {
       if (existingHashes.has(hash)) {
         stillOffered.push(hash)
         continue
       }
+      // A single scrape can return the same item twice (e.g. listed under two
+      // categories). sourceHash is only indexed, not unique, so the database
+      // would happily store both — dedupe in memory instead.
+      if (seenHashes.has(hash)) continue
+      seenHashes.add(hash)
 
+      const categoryId = await categoryMapper.mapToCategory(
+        offer.nameAr || offer.nameEn || ''
+      )
+
+      rows.push({
+        flyerId: flyer.id,
+        supermarketId: supermarket.id,
+        categoryId,
+        nameAr: offer.nameAr || null,
+        nameEn: offer.nameEn || null,
+        brand: offer.brand || null,
+        price: offer.price,
+        oldPrice: offer.oldPrice || null,
+        discountPercent: offer.discountPercent || null,
+        sizeText: offer.sizeText || null,
+        imageUrl: offer.imageUrl || null,
+        sourceUrl: offer.sourceUrl,
+        sourceHash: hash,
+        pageNumber: offer.pageNumber || 1,
+        tags: offer.tags || null,
+        confidence: 0.7,
+        isHidden: false,
+      })
+    }
+
+    for (let i = 0; i < rows.length; i += 500) {
       try {
-        const categoryId = await categoryMapper.mapToCategory(
-          offer.nameAr || offer.nameEn || ''
-        )
-
-        await prisma.productOffer.create({
-          data: {
-            flyerId: flyer.id,
-            supermarketId: supermarket.id,
-            categoryId,
-            nameAr: offer.nameAr || null,
-            nameEn: offer.nameEn || null,
-            brand: offer.brand || null,
-            price: offer.price,
-            oldPrice: offer.oldPrice || null,
-            discountPercent: offer.discountPercent || null,
-            sizeText: offer.sizeText || null,
-            imageUrl: offer.imageUrl || null,
-            sourceUrl: offer.sourceUrl,
-            sourceHash: hash,
-            pageNumber: offer.pageNumber || 1,
-            tags: offer.tags || null,
-            confidence: 0.7,
-            isHidden: false,
-          },
+        const res = await prisma.productOffer.createMany({
+          data: rows.slice(i, i + 500),
         })
-        created++
+        created += res.count
       } catch (error) {
-        console.error('Error creating product:', error)
+        console.error('Error creating product batch:', error)
       }
     }
 
