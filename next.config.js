@@ -5,19 +5,20 @@ const nextConfig = {
 
   // Clean store URLs: /offers/danube → /offers/retailer/danube
   async rewrites() {
+    // Canonical retailer URLs are /offers/{slug}; the page itself lives at
+    // /offers/retailer/{slug}. This used to be twelve hand-written entries, so
+    // any retailer added later 404'd on its own canonical URL until someone
+    // remembered to edit this file.
+    //
+    // `:slug` matches a single segment, so /offers, /offers/retailer/x and
+    // /offers/category/x are untouched. The lookahead additionally protects the
+    // bare /offers/retailer and /offers/category paths, which would otherwise
+    // rewrite to /offers/retailer/retailer.
     return [
-      { source: '/offers/danube', destination: '/offers/retailer/danube' },
-      { source: '/offers/carrefour', destination: '/offers/retailer/carrefour' },
-      { source: '/offers/panda', destination: '/offers/retailer/panda' },
-      { source: '/offers/tamimi', destination: '/offers/retailer/tamimi' },
-      { source: '/offers/lulu', destination: '/offers/retailer/lulu' },
-      { source: '/offers/alothaim', destination: '/offers/retailer/alothaim' },
-      { source: '/offers/bindawood', destination: '/offers/retailer/bindawood' },
-      { source: '/offers/nesto', destination: '/offers/retailer/nesto' },
-      { source: '/offers/extra', destination: '/offers/retailer/extra' },
-      { source: '/offers/saco', destination: '/offers/retailer/saco' },
-      { source: '/offers/farm', destination: '/offers/retailer/farm' },
-      { source: '/offers/manuel', destination: '/offers/retailer/manuel' },
+      {
+        source: '/offers/:slug((?!retailer|category)[a-z0-9][a-z0-9-]*)',
+        destination: '/offers/retailer/:slug',
+      },
     ]
   },
 
