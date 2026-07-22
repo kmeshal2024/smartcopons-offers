@@ -113,8 +113,12 @@ export default function ProductCard({ product }: ProductCardProps) {
         </Link>
 
         {/* Product Name */}
+        {/* Links to the product page — without this the pages are orphans that
+            crawlers never reach. */}
         <h3 className="text-xs sm:text-sm font-semibold text-gray-800 line-clamp-2 mt-0.5 mb-1 min-h-[2rem] sm:min-h-[2.5rem] leading-snug">
-          {displayName}
+          <Link href={`/product/${product.id}`} className="hover:text-pink-600 transition-colors">
+            {displayName}
+          </Link>
         </h3>
 
         {/* Brand + Size */}
