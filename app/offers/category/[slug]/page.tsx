@@ -28,7 +28,12 @@ async function getCategoryData(slug: string, sort: string) {
   })
   if (!category) return null
 
-  const where = { categoryId: category.id, isHidden: false }
+  // Only current offers — expired prices mislead shoppers.
+  const where = {
+    categoryId: category.id,
+    isHidden: false,
+    flyer: { endDate: { gte: new Date() } },
+  }
   const [products, total] = await Promise.all([
     prisma.productOffer.findMany({
       where,
@@ -50,7 +55,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const category = await prisma.category.findUnique({
     where: { slug },
-    select: { nameAr: true, _count: { select: { products: { where: { isHidden: false } } } } },
+    select: {
+      nameAr: true,
+      // Count live offers only — this drives both the description and the
+      // noindex decision, so a stale count would keep empty pages indexed.
+      _count: {
+        select: {
+          products: { where: { isHidden: false, flyer: { endDate: { gte: new Date() } } } },
+        },
+      },
+    },
   })
   if (!category) return { title: 'تصنيف غير موجود' }
 

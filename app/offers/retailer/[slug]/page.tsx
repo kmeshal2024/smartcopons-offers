@@ -79,6 +79,9 @@ async function getRetailerData(slug: string, sort: string, categorySlug: string,
   const where: any = {
     supermarketId: supermarket.id,
     isHidden: false,
+    // Only current offers — an expired price is worse than no price.
+    // Date-based so it holds even if a flyer's status flag is stale.
+    flyer: { endDate: { gte: new Date() } },
   }
 
   // Search filter

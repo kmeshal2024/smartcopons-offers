@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { isAuthorizedCron } from '@/lib/cron-auth'
 
 /**
  * Cron endpoint: Auto-expire flyers past their end date.
@@ -9,11 +10,8 @@ import { prisma } from '@/lib/db'
  *   Command:  curl -s https://sa.smartcopons.com/api/cron/expire-flyers?key=YOUR_CRON_SECRET
  */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const key = searchParams.get('key')
 
-  const cronSecret = process.env.APP_SECRET
-  if (!cronSecret || key !== cronSecret) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

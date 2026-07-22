@@ -47,7 +47,7 @@ async function getHomeData() {
       take: 24,
     }),
     prisma.productOffer.findMany({
-      where: { isHidden: false },
+      where: { isHidden: false, flyer: { endDate: { gte: new Date() } } },
       include: {
         supermarket: { select: { nameAr: true, slug: true, logo: true } },
         category: { select: { nameAr: true, icon: true } },
@@ -56,7 +56,7 @@ async function getHomeData() {
       take: 10,
     }),
     prisma.productOffer.findMany({
-      where: { isHidden: false, discountPercent: { gt: 0 } },
+      where: { isHidden: false, discountPercent: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
       include: {
         supermarket: { select: { nameAr: true, slug: true, logo: true } },
         category: { select: { nameAr: true, icon: true } },
@@ -65,7 +65,7 @@ async function getHomeData() {
       take: 4,
     }),
     prisma.productOffer.findMany({
-      where: { isHidden: false, viewCount: { gt: 0 } },
+      where: { isHidden: false, viewCount: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
       include: {
         supermarket: { select: { nameAr: true, slug: true, logo: true } },
         category: { select: { nameAr: true, icon: true } },
@@ -76,12 +76,20 @@ async function getHomeData() {
     prisma.category.findMany({
       where: { isActive: true, parentId: null },
       include: {
-        _count: { select: { products: { where: { isHidden: false } } } },
+        _count: {
+          select: {
+            products: { where: { isHidden: false, flyer: { endDate: { gte: new Date() } } } },
+          },
+        },
       },
       orderBy: { order: 'asc' },
       take: 8,
     }),
-    prisma.productOffer.count({ where: { isHidden: false } }),
+    // The banner stat must count only live offers — otherwise it advertises
+    // thousands of expired prices.
+    prisma.productOffer.count({
+      where: { isHidden: false, flyer: { endDate: { gte: new Date() } } },
+    }),
     prisma.supermarket.count({ where: { isActive: true } }),
   ])
 
