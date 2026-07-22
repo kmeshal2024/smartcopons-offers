@@ -93,6 +93,7 @@ export async function GET(request: Request) {
       offersLimited: offerLimit ? offersToIngest.length : undefined,
       offersCreated: ingestResult?.newOffers || 0,
       duplicatesSkipped: ingestResult?.duplicatesSkipped || 0,
+      refreshedOffers: ingestResult?.refreshedOffers || 0,
       flyerId: ingestResult?.flyerId || null,
       flyerPdfUrl: result.flyerAsset?.pdfUrl || null,
       scraperErrors: result.errors,

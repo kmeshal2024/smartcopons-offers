@@ -8,6 +8,8 @@ interface IngestResult {
   totalScraped: number
   newOffers: number
   duplicatesSkipped: number
+  /** Existing products seen again and moved onto the current flyer. */
+  refreshedOffers: number
   flyerId: string
 }
 
@@ -56,8 +58,19 @@ export class OfferIngestService {
 
     // Create new offers
     let created = 0
+    // Products seen again in this run are still on offer — they must move to the
+    // current flyer. Previously they were simply skipped, which left them
+    // attached to the first flyer they ever appeared in. Once that flyer ended
+    // they vanished from the site even though the retailer still sells them at
+    // that price, which is why stores with thousands of scraped products were
+    // showing almost none.
+    const stillOffered: string[] = []
+
     for (const { offer, hash } of offerHashes) {
-      if (existingHashes.has(hash)) continue
+      if (existingHashes.has(hash)) {
+        stillOffered.push(hash)
+        continue
+      }
 
       try {
         const categoryId = await categoryMapper.mapToCategory(
@@ -91,6 +104,21 @@ export class OfferIngestService {
       }
     }
 
+    // Re-attach still-offered products to this week's flyer so they stay live.
+    // Chunked because `in` lists get large for a full catalogue scrape.
+    let refreshed = 0
+    for (let i = 0; i < stillOffered.length; i += 500) {
+      const batch = stillOffered.slice(i, i + 500)
+      const res = await prisma.productOffer.updateMany({
+        where: { sourceHash: { in: batch }, supermarketId: supermarket.id },
+        data: { flyerId: flyer.id },
+      })
+      refreshed += res.count
+    }
+    if (refreshed > 0) {
+      logs.push(`[ingest] Re-attached ${refreshed} still-offered products to the current flyer`)
+    }
+
     // Update flyer log, and attach the brochure assets when the scraper found
     // one so FlyerViewer has a PDF to render.
     await prisma.flyer.update({
@@ -110,6 +138,7 @@ export class OfferIngestService {
       totalScraped: offers.length,
       newOffers: created,
       duplicatesSkipped: offers.length - created,
+      refreshedOffers: refreshed,
       flyerId: flyer.id,
     }
   }
