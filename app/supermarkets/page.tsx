@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { hasEnoughContent } from '@/lib/retailer-visibility'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 export const revalidate = 60
 
 async function getSupermarkets() {
-  return prisma.supermarket.findMany({
+  const all = await prisma.supermarket.findMany({
     where: { isActive: true },
     include: {
       _count: {
@@ -29,6 +30,9 @@ async function getSupermarkets() {
     },
     orderBy: { viewCount: 'desc' },
   })
+
+  // Hide retailers without real content — see lib/retailer-visibility.ts.
+  return all.filter(sm => hasEnoughContent(sm._count))
 }
 
 export default async function SupermarketsPage() {

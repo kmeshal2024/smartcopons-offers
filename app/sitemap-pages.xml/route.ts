@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { buildUrlSet, XML_HEADERS, SITE_URL, type SitemapEntry } from '@/lib/sitemap-xml'
+import { hasEnoughContent } from '@/lib/retailer-visibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +23,12 @@ export async function GET() {
         select: {
           slug: true,
           updatedAt: true,
-          _count: { select: { productOffers: { where: { isHidden: false } } } },
+          _count: {
+            select: {
+              productOffers: { where: { isHidden: false } },
+              flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
+            },
+          },
         },
       }),
       prisma.category.findMany({
@@ -31,10 +37,11 @@ export async function GET() {
       }),
     ])
 
-    // Skip retailers with no offers — those pages are noindex'd, so submitting
-    // them would just report "excluded by noindex" in Search Console.
+    // Skip thin retailers — those pages are noindex'd, so submitting them would
+    // just report "excluded by noindex" in Search Console. Same rule as the
+    // public listings (lib/retailer-visibility.ts).
     for (const sm of supermarkets) {
-      if (sm._count.productOffers === 0) continue
+      if (!hasEnoughContent(sm._count)) continue
       entries.push({
         loc: `${SITE_URL}/offers/${sm.slug}`,
         lastmod: sm.updatedAt,

@@ -7,6 +7,7 @@ import FlyerViewer from '@/components/FlyerViewer'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import RetailerFilters from './RetailerFilters'
+import { hasEnoughContent } from '@/lib/retailer-visibility'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -22,12 +23,18 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
   if (!supermarket) return { title: 'متجر غير موجود' }
 
-  // A retailer page with no offers is thin content — keep it out of the index
-  // until the scraper fills it, so it can't drag down site-wide quality.
-  const offerCount = await prisma.productOffer.count({
-    where: { supermarketId: supermarket.id, isHidden: false },
-  })
-  const isEmpty = offerCount === 0
+  // A near-empty retailer page is thin content — keep it out of the index until
+  // the scraper fills it (or a flyer is uploaded), so it can't drag down
+  // site-wide quality. Same rule as the public listings.
+  const [offerCount, flyerCount] = await Promise.all([
+    prisma.productOffer.count({
+      where: { supermarketId: supermarket.id, isHidden: false },
+    }),
+    prisma.flyer.count({
+      where: { supermarketId: supermarket.id, status: 'ACTIVE', endDate: { gte: new Date() } },
+    }),
+  ])
+  const isEmpty = !hasEnoughContent({ productOffers: offerCount, flyers: flyerCount })
 
   const search = sp.search || ''
   return {

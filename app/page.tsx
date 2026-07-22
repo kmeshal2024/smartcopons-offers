@@ -4,6 +4,7 @@ import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
 import Footer from '@/components/Footer'
 import CityFilterBar from '@/components/CityFilterBar'
+import { hasEnoughContent } from '@/lib/retailer-visibility'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -41,7 +42,9 @@ async function getHomeData() {
         },
       },
       orderBy: { viewCount: 'desc' },
-      take: 8,
+      // Over-fetch: empty retailers are filtered out below, and we still want
+      // to fill the 8 slots on the homepage.
+      take: 24,
     }),
     prisma.productOffer.findMany({
       where: { isHidden: false },
@@ -82,7 +85,19 @@ async function getHomeData() {
     prisma.supermarket.count({ where: { isActive: true } }),
   ])
 
-  return { coupons, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores }
+  // Only surface retailers that actually have offers or a live flyer.
+  const visibleSupermarkets = supermarkets.filter(sm => hasEnoughContent(sm._count)).slice(0, 8)
+
+  return {
+    coupons,
+    supermarkets: visibleSupermarkets,
+    latestProducts,
+    topDiscounts,
+    mostViewed,
+    categories,
+    totalProducts,
+    totalStores,
+  }
 }
 
 export default async function HomePage() {
