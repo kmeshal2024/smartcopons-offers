@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { CategoryMapper } from './category-mapper'
-import type { ScrapedOffer } from '@/lib/scrapers/types'
+import type { ScrapedOffer, ScrapedFlyerAsset } from '@/lib/scrapers/types'
 import { createHash } from 'crypto'
 
 interface IngestResult {
@@ -25,7 +25,8 @@ export class OfferIngestService {
   async ingest(
     supermarketSlug: string,
     offers: ScrapedOffer[],
-    logs: string[]
+    logs: string[],
+    flyerAsset?: ScrapedFlyerAsset
   ): Promise<IngestResult> {
     const supermarket = await prisma.supermarket.findUnique({
       where: { slug: supermarketSlug },
@@ -90,12 +91,17 @@ export class OfferIngestService {
       }
     }
 
-    // Update flyer log
+    // Update flyer log, and attach the brochure assets when the scraper found
+    // one so FlyerViewer has a PDF to render.
     await prisma.flyer.update({
       where: { id: flyer.id },
       data: {
         extractedAt: new Date(),
         extractionLog: logs.join('\n'),
+        ...(flyerAsset?.pdfUrl ? { pdfUrl: flyerAsset.pdfUrl } : {}),
+        ...(flyerAsset?.coverImage ? { coverImage: flyerAsset.coverImage } : {}),
+        ...(flyerAsset?.totalPages ? { totalPages: flyerAsset.totalPages } : {}),
+        ...(flyerAsset?.titleAr ? { titleAr: flyerAsset.titleAr } : {}),
       },
     })
 

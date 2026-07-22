@@ -23,11 +23,13 @@ interface ProductCardProps {
       slug: string
       logo?: string | null
     }
+    // Dates arrive as `Date` from Prisma on server components and as ISO
+    // strings once serialised to the client — accept both.
     flyer?: {
       id?: string
       titleAr?: string | null
-      startDate?: string | null
-      endDate?: string | null
+      startDate?: string | Date | null
+      endDate?: string | Date | null
     } | null
   }
 }

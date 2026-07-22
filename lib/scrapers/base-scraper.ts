@@ -1,10 +1,18 @@
-import type { ScrapedOffer, ScraperConfig, ScraperResult, ISupermarketScraper } from './types'
+import type {
+  ScrapedOffer,
+  ScrapedFlyerAsset,
+  ScraperConfig,
+  ScraperResult,
+  ISupermarketScraper,
+} from './types'
 
 export abstract class BaseScraper implements ISupermarketScraper {
   config: ScraperConfig
   protected logs: string[] = []
   protected errors: string[] = []
   protected pagesScraped = 0
+  /** Subclasses set this when they discover a downloadable flyer (PDF/cover). */
+  protected flyerAsset?: ScrapedFlyerAsset
 
   constructor(config: ScraperConfig) {
     this.config = config
@@ -67,6 +75,7 @@ export abstract class BaseScraper implements ISupermarketScraper {
     this.logs = []
     this.errors = []
     this.pagesScraped = 0
+    this.flyerAsset = undefined
     let offers: ScrapedOffer[] = []
 
     try {
@@ -85,6 +94,7 @@ export abstract class BaseScraper implements ISupermarketScraper {
       scrapedAt: new Date(),
       durationMs: Date.now() - startTime,
       pagesScraped: this.pagesScraped,
+      flyerAsset: this.flyerAsset,
     }
   }
 

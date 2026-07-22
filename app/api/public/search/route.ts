@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { arabicContainsFilter } from '@/lib/arabic-search'
 
 export async function GET(request: Request) {
   try {
@@ -17,12 +18,8 @@ export async function GET(request: Request) {
       const products = await prisma.productOffer.findMany({
         where: {
           isHidden: false,
-          OR: [
-            { nameAr: { contains: query, mode: 'insensitive' } },
-            { nameEn: { contains: query, mode: 'insensitive' } },
-            { brand: { contains: query, mode: 'insensitive' } },
-            { tags: { contains: query, mode: 'insensitive' } },
-          ],
+          // Arabic-variant aware: "ارز" also matches "أرز", "بندة" matches "بنده".
+          OR: arabicContainsFilter(query, ['nameAr', 'nameEn', 'brand', 'tags']),
         },
         take: 10,
         orderBy: { viewCount: 'desc' },
@@ -78,10 +75,7 @@ export async function GET(request: Request) {
         prisma.supermarket.findMany({
           where: {
             isActive: true,
-            OR: [
-              { nameAr: { contains: query, mode: 'insensitive' } },
-              { name: { contains: query, mode: 'insensitive' } },
-            ],
+            OR: arabicContainsFilter(query, ['nameAr', 'name']),
           },
           take: 5,
           orderBy: { viewCount: 'desc' },
@@ -90,10 +84,7 @@ export async function GET(request: Request) {
         prisma.category.findMany({
           where: {
             isActive: true,
-            OR: [
-              { nameAr: { contains: query, mode: 'insensitive' } },
-              { nameEn: { contains: query, mode: 'insensitive' } },
-            ],
+            OR: arabicContainsFilter(query, ['nameAr', 'nameEn']),
           },
           take: 5,
           orderBy: { order: 'asc' },

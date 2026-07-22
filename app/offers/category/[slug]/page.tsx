@@ -1,99 +1,124 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { prisma } from '@/lib/db'
+import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import type { Metadata } from 'next'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
 import CategorySidebar from '@/components/CategorySidebar'
-import Link from 'next/link'
+import CategorySort from './CategorySort'
 
-interface Product {
-  id: string
-  nameAr?: string | null
-  nameEn?: string | null
-  brand?: string | null
-  price: number
-  oldPrice?: number | null
-  discountPercent?: number | null
-  sizeText?: string | null
-  imageUrl?: string | null
-  supermarket: {
-    nameAr: string
-    slug: string
-    logo?: string | null
+interface Props {
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ sort?: string }>
+}
+
+export const revalidate = 300
+
+const SORTS: Record<string, any> = {
+  'price-low': { price: 'asc' },
+  'price-high': { price: 'desc' },
+  discount: { discountPercent: 'desc' },
+  newest: { createdAt: 'desc' },
+}
+
+async function getCategoryData(slug: string, sort: string) {
+  const category = await prisma.category.findUnique({
+    where: { slug },
+    select: { id: true, nameAr: true, nameEn: true, icon: true },
+  })
+  if (!category) return null
+
+  const where = { categoryId: category.id, isHidden: false }
+  const [products, total] = await Promise.all([
+    prisma.productOffer.findMany({
+      where,
+      orderBy: SORTS[sort] || SORTS.newest,
+      take: 48,
+      include: {
+        supermarket: { select: { nameAr: true, slug: true, logo: true } },
+        category: { select: { nameAr: true, icon: true } },
+        flyer: { select: { startDate: true, endDate: true } },
+      },
+    }),
+    prisma.productOffer.count({ where }),
+  ])
+
+  return { category, products, total }
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
+  const category = await prisma.category.findUnique({
+    where: { slug },
+    select: { nameAr: true, _count: { select: { products: { where: { isHidden: false } } } } },
+  })
+  if (!category) return { title: 'تصنيف غير موجود' }
+
+  const count = category._count.products
+  return {
+    // Root layout appends `| SmartCopons`.
+    title: `عروض ${category.nameAr} اليوم ${new Date().getFullYear()} | أفضل الأسعار`,
+    description:
+      `تصفّح ${count} عرضاً على ${category.nameAr} من بنده والدانوب وكارفور والعثيم وغيرها. ` +
+      `قارن الأسعار ووفّر أكثر على ${category.nameAr} في السعودية.`,
+    keywords: `عروض ${category.nameAr}, اسعار ${category.nameAr}, خصومات ${category.nameAr}, ${category.nameAr} السعودية`,
+    alternates: { canonical: `https://sa.smartcopons.com/offers/category/${slug}` },
+    // Empty category = thin content.
+    robots: count === 0 ? { index: false, follow: true } : undefined,
+    openGraph: {
+      title: `عروض ${category.nameAr} — أفضل الأسعار في السعودية`,
+      description: `${count} عرضاً على ${category.nameAr}`,
+      locale: 'ar_SA',
+      type: 'website',
+      url: `https://sa.smartcopons.com/offers/category/${slug}`,
+    },
   }
 }
 
-export default function CategoryPage() {
-  const params = useParams()
-  const slug = params?.slug as string
+export default async function CategoryPage({ params, searchParams }: Props) {
+  const { slug } = await params
+  const { sort = 'newest' } = await searchParams
 
-  const [products, setProducts] = useState<Product[]>([])
-  const [categoryName, setCategoryName] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [sort, setSort] = useState('newest')
+  const data = await getCategoryData(slug, sort)
+  if (!data) notFound()
 
-  useEffect(() => {
-    if (slug) {
-      fetchData()
-    }
-  }, [slug, sort])
+  const { category, products, total } = data
 
-  const fetchData = async () => {
-    setLoading(true)
-
-    // Fetch categories to get category ID
-    const categoriesRes = await fetch('/api/categories')
-    const categoriesData = await categoriesRes.json()
-    
-    // Find category
-    let category = null
-    for (const cat of categoriesData.categories || []) {
-      if (cat.slug === slug) {
-        category = cat
-        break
-      }
-      // Check children
-      if (cat.children) {
-        const child = cat.children.find((c: any) => c.slug === slug)
-        if (child) {
-          category = child
-          break
-        }
-      }
-    }
-
-    if (category) {
-      setCategoryName(category.nameAr)
-
-      // Fetch products
-      const params = new URLSearchParams()
-      params.set('category', category.id)
-      if (sort) params.set('sort', sort)
-
-      const productsRes = await fetch(`/api/offers?${params.toString()}`)
-      const productsData = await productsRes.json()
-
-      setProducts(productsData.products || [])
-    }
-
-    setLoading(false)
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-red-50">
-        <Header />
-        <div className="container mx-auto px-4 py-20 text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-pink-200 border-t-pink-600"></div>
-        </div>
-      </div>
-    )
-  }
+  const jsonLd = products.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: `عروض ${category.nameAr}`,
+    numberOfItems: total,
+    itemListElement: products.slice(0, 10).map((p, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      item: {
+        '@type': 'Product',
+        name: p.nameAr || p.nameEn,
+        ...(p.imageUrl && { image: p.imageUrl }),
+        ...(p.brand && { brand: { '@type': 'Brand', name: p.brand } }),
+        category: category.nameAr,
+        offers: {
+          '@type': 'Offer',
+          price: p.price,
+          priceCurrency: 'SAR',
+          availability: 'https://schema.org/InStock',
+          itemCondition: 'https://schema.org/NewCondition',
+          ...(p.flyer?.endDate && {
+            priceValidUntil: new Date(p.flyer.endDate).toISOString().split('T')[0],
+          }),
+          seller: { '@type': 'Organization', name: p.supermarket.nameAr },
+        },
+      },
+    })),
+  } : null
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-red-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-red-50" dir="rtl">
       <Header />
+      {jsonLd && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      )}
 
       <main className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
@@ -102,43 +127,24 @@ export default function CategoryPage() {
           <span className="mx-2">/</span>
           <Link href="/offers" className="hover:text-pink-600">العروض</Link>
           <span className="mx-2">/</span>
-          <span className="text-gray-800 font-semibold">{categoryName}</span>
+          <span className="text-gray-800 font-semibold">{category.nameAr}</span>
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar */}
           <div className="lg:col-span-1">
             <CategorySidebar />
           </div>
 
-          {/* Main Content */}
           <div className="lg:col-span-3">
-            {/* Category Header */}
             <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
               <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-red-600 bg-clip-text text-transparent mb-2">
-                {categoryName}
+                {category.icon ? `${category.icon} ` : ''}عروض {category.nameAr}
               </h1>
-              <p className="text-gray-600">{products.length} منتج</p>
+              <p className="text-gray-600">{total} منتج</p>
             </div>
 
-            {/* Sort */}
-            <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700 font-semibold">ترتيب حسب:</span>
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value)}
-                  className="px-4 py-2 rounded-lg border-2 border-pink-200 focus:outline-none focus:ring-4 focus:ring-pink-300 focus:border-pink-500"
-                >
-                  <option value="newest">الأحدث</option>
-                  <option value="price-low">السعر: الأقل أولاً</option>
-                  <option value="price-high">السعر: الأعلى أولاً</option>
-                  <option value="discount">الخصم الأكبر</option>
-                </select>
-              </div>
-            </div>
+            <CategorySort current={sort} />
 
-            {/* Products Grid */}
             {products.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-2xl shadow-lg">
                 <div className="text-6xl mb-4">📦</div>
@@ -157,7 +163,7 @@ export default function CategoryPage() {
 
       <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white mt-20 py-8">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-lg">© 2024 SmartCopons. جميع الحقوق محفوظة 💝</p>
+          <p className="text-lg">© {new Date().getFullYear()} SmartCopons. جميع الحقوق محفوظة 💝</p>
         </div>
       </footer>
     </div>

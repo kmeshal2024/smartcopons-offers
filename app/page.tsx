@@ -7,7 +7,9 @@ import CityFilterBar from '@/components/CityFilterBar'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'SmartCopons | عروض وكوبونات السوبرماركت في السعودية',
+  // `absolute` bypasses the layout's `%s | SmartCopons` template so the brand
+  // isn't repeated twice on the homepage.
+  title: { absolute: 'SmartCopons | عروض وكوبونات السوبرماركت في السعودية' },
   description: 'اكتشف أحدث عروض السوبرماركت وكوبونات الخصم في السعودية. عروض بنده، كارفور، لولو، الدانوب وأكثر. وفر أكثر مع SmartCopons.',
   keywords: 'عروض السوبرماركت, كوبونات خصم, عروض بنده, عروض كارفور, عروض لولو, عروض الدانوب, خصومات السعودية',
   openGraph: {

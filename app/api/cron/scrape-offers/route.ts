@@ -57,13 +57,16 @@ export async function GET(request: Request) {
 
     let ingestResult = null
 
-    if (offersToIngest.length > 0) {
-      // Ingest into DB
+    // Run ingest when there are offers OR a flyer brochure to attach — some
+    // retailers (e.g. Al Othaim) publish a PDF flyer with few parsable products,
+    // and the flyer still needs to reach the DB for the viewer to work.
+    if (offersToIngest.length > 0 || result.flyerAsset?.pdfUrl) {
       const ingestService = new OfferIngestService()
       ingestResult = await ingestService.ingest(
         supermarketSlug,
         offersToIngest,
-        result.logs
+        result.logs,
+        result.flyerAsset
       )
     }
 
@@ -91,6 +94,7 @@ export async function GET(request: Request) {
       offersCreated: ingestResult?.newOffers || 0,
       duplicatesSkipped: ingestResult?.duplicatesSkipped || 0,
       flyerId: ingestResult?.flyerId || null,
+      flyerPdfUrl: result.flyerAsset?.pdfUrl || null,
       scraperErrors: result.errors,
       durationMs: Date.now() - startTime,
       timestamp: new Date().toISOString(),

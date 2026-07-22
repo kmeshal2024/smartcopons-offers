@@ -1,12 +1,12 @@
 import { prisma } from '@/lib/db'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import CouponCard from '@/components/CouponCard'
+import CouponsClient from './CouponsClient'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'كوبونات الخصم والعروض | SmartCopons',
+  title: 'كوبونات الخصم والعروض',
   description: 'أحدث كوبونات الخصم وأكواد الخصم في السعودية. وفر أكثر مع كوبونات نون، نمشي، أمازون وغيرها.',
   keywords: 'كوبونات خصم, أكواد خصم, كوبون نون, كوبون نمشي, كوبون أمازون, خصومات السعودية',
 }
@@ -23,7 +23,10 @@ async function getCouponsData() {
       orderBy: { createdAt: 'desc' },
     }),
     prisma.store.findMany({
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
         _count: { select: { coupons: { where: { isActive: true } } } },
       },
       orderBy: { name: 'asc' },
@@ -61,45 +64,8 @@ export default async function CouponsPage() {
           </div>
         </div>
 
-        {/* Store Filter Chips */}
-        {stores.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-6">
-            <span className="bg-pink-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold">
-              الكل ({coupons.length})
-            </span>
-            {stores.filter(s => s._count.coupons > 0).map(store => (
-              <span
-                key={store.id}
-                className="bg-white text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 hover:border-pink-300 hover:text-pink-600 transition cursor-pointer"
-              >
-                {store.name} ({store._count.coupons})
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Coupons Grid */}
-        {coupons.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {coupons.map(coupon => (
-              <CouponCard
-                key={coupon.id}
-                id={coupon.id}
-                title={coupon.title}
-                code={coupon.code}
-                discountText={coupon.discountText}
-                storeName={coupon.store.name}
-                storeSlug={coupon.store.slug}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-            <span className="text-5xl block mb-4">🎟️</span>
-            <p className="text-gray-500 text-lg">لا توجد كوبونات حالياً</p>
-            <p className="text-gray-400 text-sm mt-1">تابعنا للحصول على أحدث الكوبونات</p>
-          </div>
-        )}
+        {/* Client component handles filtering */}
+        <CouponsClient coupons={coupons as any} stores={stores as any} />
 
         {/* SEO Content */}
         <section className="mt-10">
