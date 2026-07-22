@@ -5,6 +5,7 @@ import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
 import OffersClient from './OffersClient'
 import Link from 'next/link'
+import { hasEnoughContent } from '@/lib/retailer-visibility'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -43,7 +44,7 @@ async function getBestDeals() {
 
 // Fetch supermarkets with offer counts for the store strip
 async function getActiveStores() {
-  return prisma.supermarket.findMany({
+  const stores = await prisma.supermarket.findMany({
     where: { isActive: true },
     select: {
       id: true,
@@ -56,11 +57,17 @@ async function getActiveStores() {
           productOffers: {
             where: { isHidden: false },
           },
+          flyers: {
+            where: { status: 'ACTIVE', endDate: { gte: new Date() } },
+          },
         },
       },
     },
     orderBy: { viewCount: 'desc' },
   })
+
+  // Don't strip-link to empty stores — see lib/retailer-visibility.ts.
+  return stores.filter(s => hasEnoughContent(s._count))
 }
 
 // SSR fallback: pre-render latest products for instant FCP + SEO
