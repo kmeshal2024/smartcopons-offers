@@ -4,7 +4,8 @@ import PriceComparison from '@/components/PriceComparison'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'مقارنة الأسعار بين المتاجر | SmartCopons',
+  // The root layout applies `%s | SmartCopons` — don't repeat the brand here.
+  title: 'مقارنة الأسعار بين المتاجر',
   description: 'قارن سعر أي منتج بين بنده، كارفور، لولو، الدانوب وغيرها واعثر على الأرخص.',
 }
 

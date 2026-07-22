@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { arabicContainsFilter } from '@/lib/arabic-search'
 
 export async function GET(request: Request) {
   try {
@@ -49,12 +50,8 @@ export async function GET(request: Request) {
     }
 
     if (search) {
-      where.OR = [
-        { nameAr: { contains: search, mode: 'insensitive' } },
-        { nameEn: { contains: search, mode: 'insensitive' } },
-        { brand: { contains: search, mode: 'insensitive' } },
-        { tags: { contains: search, mode: 'insensitive' } },
-      ]
+      // Arabic-variant aware so /offers?search=ارز finds "أرز".
+      where.OR = arabicContainsFilter(search, ['nameAr', 'nameEn', 'brand', 'tags'])
     }
 
     if (minPrice || maxPrice) {

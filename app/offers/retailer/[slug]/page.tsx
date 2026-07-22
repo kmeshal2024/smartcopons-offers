@@ -22,11 +22,20 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
   if (!supermarket) return { title: 'متجر غير موجود' }
 
+  // A retailer page with no offers is thin content — keep it out of the index
+  // until the scraper fills it, so it can't drag down site-wide quality.
+  const offerCount = await prisma.productOffer.count({
+    where: { supermarketId: supermarket.id, isHidden: false },
+  })
+  const isEmpty = offerCount === 0
+
   const search = sp.search || ''
   return {
+    // The root layout appends `| SmartCopons` — don't repeat the brand here.
     title: search
-      ? `بحث "${search}" في عروض ${supermarket.nameAr} | SmartCopons`
-      : `عروض ${supermarket.nameAr} اليوم ${new Date().getFullYear()} | خصومات ${supermarket.nameAr} الأسبوعية - SmartCopons`,
+      ? `بحث "${search}" في عروض ${supermarket.nameAr}`
+      : `عروض ${supermarket.nameAr} اليوم ${new Date().getFullYear()} | خصومات ${supermarket.nameAr} الأسبوعية`,
+    robots: isEmpty || search ? { index: false, follow: true } : undefined,
     description: `تصفح أحدث عروض وخصومات ${supermarket.nameAr} في السعودية. عروض يومية وأسبوعية على المنتجات الغذائية والمنزلية. قارن الأسعار ووفّر أكثر.`,
     keywords: `عروض ${supermarket.nameAr}, عروض ${supermarket.nameAr} اليوم, خصومات ${supermarket.nameAr}, عروض ${supermarket.nameAr} الاسبوعية, ${supermarket.name} offers, ${supermarket.name} deals KSA, عروض السوبرماركت`,
     alternates: {
@@ -97,6 +106,8 @@ async function getRetailerData(slug: string, sort: string, categorySlug: string,
       include: {
         supermarket: { select: { id: true, nameAr: true, slug: true, logo: true } },
         category: { select: { nameAr: true, slug: true, icon: true } },
+        // endDate powers `priceValidUntil` in the Offer structured data.
+        flyer: { select: { endDate: true } },
       },
     }),
     prisma.productOffer.count({ where }),
@@ -114,7 +125,7 @@ async function getRetailerData(slug: string, sort: string, categorySlug: string,
         status: 'ACTIVE',
         endDate: { gte: new Date() },
       },
-      select: { id: true, title: true, titleAr: true, endDate: true, pdfUrl: true, _count: { select: { productOffers: true } } },
+      select: { id: true, title: true, titleAr: true, startDate: true, endDate: true, pdfUrl: true, coverImage: true, _count: { select: { productOffers: true } } },
       orderBy: { startDate: 'desc' },
     }),
   ])
@@ -181,12 +192,23 @@ export default async function RetailerPage({ params, searchParams }: Props) {
       item: {
         '@type': 'Product',
         name: p.nameAr || p.nameEn,
+        ...(p.nameEn && p.nameAr && p.nameEn !== p.nameAr && { alternateName: p.nameEn }),
         ...(p.imageUrl && { image: p.imageUrl }),
+        ...(p.brand && { brand: { '@type': 'Brand', name: p.brand } }),
+        ...(p.category?.nameAr && { category: p.category.nameAr }),
+        ...(p.sizeText && { size: p.sizeText }),
         offers: {
           '@type': 'Offer',
           price: p.price,
           priceCurrency: 'SAR',
           availability: 'https://schema.org/InStock',
+          itemCondition: 'https://schema.org/NewCondition',
+          url: `https://sa.smartcopons.com/offers/${supermarket.slug}`,
+          // Google wants an expiry on promotional prices; the flyer's end date
+          // is exactly that.
+          ...(p.flyer?.endDate && {
+            priceValidUntil: new Date(p.flyer.endDate).toISOString().split('T')[0],
+          }),
           seller: {
             '@type': 'Organization',
             name: supermarket.nameAr,
@@ -259,19 +281,36 @@ export default async function RetailerPage({ params, searchParams }: Props) {
         </div>
 
         {/* Weekly Flyer PDF Viewer */}
-        {activeFlyers.filter((f: any) => f.pdfUrl).length > 0 && (
+        {activeFlyers.filter((f: any) => f.pdfUrl).length > 0 ? (
           <div className="mb-5 space-y-4">
             {activeFlyers
               .filter((f: any) => f.pdfUrl)
               .map((flyer: any) => (
-                <FlyerViewer
-                  key={flyer.id}
-                  pdfUrl={flyer.pdfUrl}
-                  title={flyer.titleAr || flyer.title}
-                  startDate={flyer.startDate}
-                  endDate={flyer.endDate}
-                />
+                <div key={flyer.id}>
+                  <FlyerViewer
+                    pdfUrl={flyer.pdfUrl}
+                    title={flyer.titleAr || flyer.title}
+                    startDate={flyer.startDate}
+                    endDate={flyer.endDate}
+                  />
+                  {/* Permalink to the dated weekly flyer page */}
+                  <Link
+                    href={`/flyers/${supermarket.slug}/${new Date(flyer.startDate).toISOString().split('T')[0]}`}
+                    className="mt-2 inline-block text-sm font-semibold text-pink-600 hover:text-pink-700"
+                  >
+                    صفحة هذه النشرة ←
+                  </Link>
+                </div>
               ))}
+          </div>
+        ) : (
+          <div className="mb-5 rounded-xl border border-gray-200 bg-white px-4 py-8 text-center">
+            <svg className="mx-auto mb-2 h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l4 4v10a2 2 0 01-2 2z" />
+            </svg>
+            <p className="text-sm text-gray-500">لا توجد نشرة متاحة حالياً</p>
+            <p className="mt-1 text-xs text-gray-400">تصفّح العروض أدناه، وسنضيف النشرة فور صدورها</p>
           </div>
         )}
 

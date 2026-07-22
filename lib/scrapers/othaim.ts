@@ -43,12 +43,21 @@ export class OthaimScraper extends BaseScraper {
 
       const $ = cheerio.load(html)
 
-      // Extract offer categories from the page
+      // The weekly brochure PDF is linked from this page as a Contentful asset.
+      // Prefer the direct CDN URL: it returns `Access-Control-Allow-Origin: *`,
+      // whereas the site's own /api/pdfOffers proxy sends no CORS header and so
+      // cannot be loaded by pdf.js in the browser.
+      this.captureFlyerAsset(html)
+
+      // Extract offer categories from the page. Detail pages only render under
+      // the /ar/ locale prefix — without it they return an empty 28-byte body.
       const offerPageUrls: string[] = []
       $('a[href*="/offers/"]').each((_, el) => {
         const href = $(el).attr('href')
         if (href && !href.endsWith('.pdf') && href !== '/offers' && href !== '/ar/offers') {
-          const fullUrl = href.startsWith('http') ? href : `${this.config.baseUrl}${href}`
+          const path = href.startsWith('http') ? new URL(href).pathname : href
+          const localized = path.startsWith('/ar/') ? path : `/ar${path}`
+          const fullUrl = `${this.config.baseUrl}${localized}`
           if (!offerPageUrls.includes(fullUrl)) offerPageUrls.push(fullUrl)
         }
       })
@@ -82,6 +91,47 @@ export class OthaimScraper extends BaseScraper {
 
     this.log(`Total: ${allOffers.length} offers from Othaim`)
     return allOffers
+  }
+
+  /**
+   * Pull the weekly brochure PDF + cover image out of the offers page so the
+   * Flyer record gets a renderable asset. Contentful serves the PDF with
+   * `Access-Control-Allow-Origin: *`, which pdf.js requires.
+   */
+  private captureFlyerAsset(html: string): void {
+    // Contentful asset URLs appear escaped inside the Next.js RSC payload.
+    const cdnPdfs = Array.from(
+      new Set(
+        (html.match(/https:\/\/assets\.ctfassets\.net\/[^\s"'\\)]+\.pdf/g) || [])
+          .map(u => u.replace(/\\+$/, ''))
+      )
+    )
+
+    if (cdnPdfs.length === 0) {
+      this.log('No Contentful PDF found on offers page')
+      return
+    }
+
+    // Prefer a "week"-named brochure; otherwise take the first.
+    const weekly = cdnPdfs.find(u => /week/i.test(u)) || cdnPdfs[0]
+
+    // Cover images live on images.ctfassets.net and only appear inside the RSC
+    // payload — they are not `<img src>` attributes, so scan the raw HTML.
+    const images = Array.from(
+      new Set(
+        (html.match(/https:\/\/images\.ctfassets\.net\/[^\s"'\\)]+\.(?:jpg|jpeg|png|webp)/gi) || [])
+          .map(u => u.replace(/\\+$/, ''))
+      )
+    ).filter(u => !/icon|logo|appstore|google|footer|slogan/i.test(u))
+
+    const cover = images.find(u => /cover/i.test(u)) || images[0]
+
+    this.flyerAsset = {
+      pdfUrl: weekly,
+      coverImage: cover,
+      titleAr: 'عروض العثيم الأسبوعية',
+    }
+    this.log(`Flyer asset: ${weekly}${cover ? ' (+cover)' : ''} — ${cdnPdfs.length} PDF(s) found`)
   }
 
   private async scrapeDetailPage(url: string): Promise<ScrapedOffer[]> {

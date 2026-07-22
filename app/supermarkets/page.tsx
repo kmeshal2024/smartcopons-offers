@@ -5,7 +5,7 @@ import Footer from '@/components/Footer'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'عروض السوبرماركت في السعودية | SmartCopons',
+  title: 'عروض السوبرماركت في السعودية',
   description: 'تصفح عروض وخصومات جميع السوبرماركت في السعودية - بنده، كارفور، لولو، الدانوب وغيرها. عروض يومية وأسبوعية محدثة.',
   keywords: 'عروض بنده, عروض كارفور, عروض لولو, عروض الدانوب, عروض السوبرماركت السعودية, خصومات',
 }

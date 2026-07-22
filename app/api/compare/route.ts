@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { arabicContainsFilter } from '@/lib/arabic-search'
 
 // GET /api/compare?q=productName
 // Returns the same product across stores side-by-side, with each store's
@@ -19,12 +20,7 @@ export async function GET(request: Request) {
 
     const match = {
       isHidden: false,
-      OR: [
-        { nameAr: { contains: q } },
-        { nameEn: { contains: q } },
-        { brand: { contains: q } },
-        { tags: { contains: q } },
-      ],
+      OR: arabicContainsFilter(q, ['nameAr', 'nameEn', 'brand', 'tags']),
     }
 
     // Current offers (within an active validity window) for the comparison rows.

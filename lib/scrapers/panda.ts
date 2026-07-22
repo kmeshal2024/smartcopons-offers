@@ -12,8 +12,11 @@ import type { ScrapedOffer } from './types'
  */
 export class PandaScraper extends BaseScraper {
   private static readonly API_URL = 'https://panda.sa/api/products'
-  private static readonly PER_PAGE = 60
-  private static readonly MAX_PAGES = 15 // safety cap: 15 * 60 = 900 max offers
+  // The API caps each response at 30 items regardless of the per_page we ask for.
+  private static readonly PER_PAGE = 30
+  private static readonly MAX_PAGES = 40 // 40 * 30 = 1200 max offers
+  // Stop before the route's maxDuration (120s) so ingest still has time to run.
+  private static readonly TIME_BUDGET_MS = 80_000
 
   constructor() {
     super({
@@ -23,16 +26,23 @@ export class PandaScraper extends BaseScraper {
       baseUrl: 'https://panda.sa',
       offersUrl: 'https://panda.sa/api/products?deals=1',
       maxPages: PandaScraper.MAX_PAGES,
-      requestDelayMs: 1500,
+      requestDelayMs: 400,
     })
   }
 
   protected async extractOffers(): Promise<ScrapedOffer[]> {
     const allOffers: ScrapedOffer[] = []
+    const startedAt = Date.now()
     let page = 1
     let hasNext = true
+    let totalRecords = 0
+    let seenRaw = 0
 
     while (hasNext && page <= PandaScraper.MAX_PAGES) {
+      if (Date.now() - startedAt > PandaScraper.TIME_BUDGET_MS) {
+        this.log(`Time budget reached after ${page - 1} pages — stopping early`)
+        break
+      }
       const url = `${PandaScraper.API_URL}?deals=1&per_page=${PandaScraper.PER_PAGE}&page=${page}`
       this.log(`Fetching page ${page}: ${url}`)
 
@@ -53,7 +63,8 @@ export class PandaScraper extends BaseScraper {
         }
 
         this.pagesScraped++
-        const totalRecords = data.total_records || 0
+        totalRecords = data.total_records || totalRecords
+        seenRaw += data.products.length
 
         if (page === 1) {
           this.log(`Total deals available: ${totalRecords}`)
@@ -63,7 +74,12 @@ export class PandaScraper extends BaseScraper {
         allOffers.push(...pageOffers)
         this.log(`Page ${page}: ${pageOffers.length} deals mapped (running total: ${allOffers.length})`)
 
-        hasNext = !!data.next_page
+        // Don't trust `next_page` alone — it has come back falsy mid-catalogue
+        // and silently truncated the scrape to a single page. Keep going while
+        // the API still returns a full batch and we haven't consumed the total.
+        const gotFullBatch = data.products.length >= PandaScraper.PER_PAGE
+        const moreRemaining = totalRecords > 0 && seenRaw < totalRecords
+        hasNext = data.products.length > 0 && (!!data.next_page || (gotFullBatch && moreRemaining))
         page++
 
         // Rate limit: polite delay between pages
@@ -76,7 +92,10 @@ export class PandaScraper extends BaseScraper {
       }
     }
 
-    this.log(`Scrape complete: ${allOffers.length} total deals from ${this.pagesScraped} pages`)
+    this.log(
+      `Scrape complete: ${allOffers.length} total deals from ${this.pagesScraped} pages ` +
+      `(saw ${seenRaw}/${totalRecords} raw records)`
+    )
     return allOffers
   }
 
