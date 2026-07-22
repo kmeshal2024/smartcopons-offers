@@ -8,7 +8,16 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/admin/', '/api/admin/', '/api/cron/'],
+        disallow: [
+          '/admin/',
+          '/api/admin/',
+          '/api/cron/',
+          // On-site search results are near-infinite and duplicate the listings.
+          // Handled here rather than via a noindex tag: reading searchParams in
+          // generateMetadata forces dynamic streaming, and the response then
+          // commits a 200 before notFound() can set a 404 for unknown slugs.
+          '/*?*search=',
+        ],
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,

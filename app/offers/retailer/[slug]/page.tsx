@@ -14,16 +14,17 @@ interface Props {
   searchParams: Promise<{ sort?: string; category?: string; page?: string; search?: string }>
 }
 
-export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+// Deliberately does not read searchParams: doing so forces dynamic streaming,
+// and the response then commits a 200 before notFound() can set the status —
+// which is why unknown slugs here kept serving a soft 404 while the category,
+// product and flyer pages returned a proper one. Search pages are kept out of
+// the index via robots.txt instead.
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const sp = await searchParams
   const supermarket = await prisma.supermarket.findUnique({
     where: { slug },
   })
 
-  // Signal the 404 from metadata too. Returning a plain title here let the
-  // render complete with a 200, so a bad slug served a "not found" page that
-  // search engines read as a real page (a soft 404).
   if (!supermarket) notFound()
 
   // A near-empty retailer page is thin content — keep it out of the index until
@@ -39,13 +40,10 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   ])
   const isEmpty = !hasEnoughContent({ productOffers: offerCount, flyers: flyerCount })
 
-  const search = sp.search || ''
   return {
     // The root layout appends `| SmartCopons` — don't repeat the brand here.
-    title: search
-      ? `بحث "${search}" في عروض ${supermarket.nameAr}`
-      : `عروض ${supermarket.nameAr} اليوم ${new Date().getFullYear()} | خصومات ${supermarket.nameAr} الأسبوعية`,
-    robots: isEmpty || search ? { index: false, follow: true } : undefined,
+    title: `عروض ${supermarket.nameAr} اليوم ${new Date().getFullYear()} | خصومات ${supermarket.nameAr} الأسبوعية`,
+    robots: isEmpty ? { index: false, follow: true } : undefined,
     description: `تصفح أحدث عروض وخصومات ${supermarket.nameAr} في السعودية. عروض يومية وأسبوعية على المنتجات الغذائية والمنزلية. قارن الأسعار ووفّر أكثر.`,
     keywords: `عروض ${supermarket.nameAr}, عروض ${supermarket.nameAr} اليوم, خصومات ${supermarket.nameAr}, عروض ${supermarket.nameAr} الاسبوعية, ${supermarket.name} offers, ${supermarket.name} deals KSA, عروض السوبرماركت`,
     alternates: {
