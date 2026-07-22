@@ -47,7 +47,7 @@ async function getHomeData() {
       take: 24,
     }),
     prisma.productOffer.findMany({
-      where: { isHidden: false, flyer: { endDate: { gte: new Date() } } },
+      where: { isHidden: false, price: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
       include: {
         supermarket: { select: { nameAr: true, slug: true, logo: true } },
         category: { select: { nameAr: true, icon: true } },
@@ -88,7 +88,7 @@ async function getHomeData() {
     // The banner stat must count only live offers — otherwise it advertises
     // thousands of expired prices.
     prisma.productOffer.count({
-      where: { isHidden: false, flyer: { endDate: { gte: new Date() } } },
+      where: { isHidden: false, price: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
     }),
     prisma.supermarket.count({ where: { isActive: true } }),
   ])
