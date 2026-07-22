@@ -1,15 +1,29 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { prisma } from '@/lib/db'
+import { hasEnoughContent } from '@/lib/retailer-visibility'
 
 async function getFooterData() {
   const supermarkets = await prisma.supermarket.findMany({
     where: { isActive: true },
-    select: { nameAr: true, slug: true },
+    select: {
+      nameAr: true,
+      slug: true,
+      _count: {
+        select: {
+          productOffers: { where: { isHidden: false } },
+          flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
+        },
+      },
+    },
     orderBy: { viewCount: 'desc' },
-    take: 6,
+    // Over-fetch: empty retailers are filtered out, and the footer shows 6.
+    take: 20,
   })
-  return supermarkets
+
+  // The footer renders on every page, so an unfiltered list here would link to
+  // empty stores site-wide — see lib/retailer-visibility.ts.
+  return supermarkets.filter(sm => hasEnoughContent(sm._count)).slice(0, 6)
 }
 
 export default async function Footer() {

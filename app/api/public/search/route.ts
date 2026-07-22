@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { arabicContainsFilter } from '@/lib/arabic-search'
+import { hasEnoughContent } from '@/lib/retailer-visibility'
 
 export async function GET(request: Request) {
   try {
@@ -77,9 +78,20 @@ export async function GET(request: Request) {
             isActive: true,
             OR: arabicContainsFilter(query, ['nameAr', 'name']),
           },
-          take: 5,
+          take: 12,
           orderBy: { viewCount: 'desc' },
-          select: { id: true, nameAr: true, slug: true, logo: true },
+          select: {
+            id: true,
+            nameAr: true,
+            slug: true,
+            logo: true,
+            _count: {
+              select: {
+                productOffers: { where: { isHidden: false } },
+                flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
+              },
+            },
+          },
         }),
         prisma.category.findMany({
           where: {
@@ -91,7 +103,12 @@ export async function GET(request: Request) {
           select: { id: true, nameAr: true, slug: true, icon: true },
         }),
       ])
+      // Don't suggest retailers whose page has nothing on it — tapping the
+      // suggestion would land the shopper on an empty store.
       results.stores = stores
+        .filter(s => hasEnoughContent(s._count))
+        .slice(0, 5)
+        .map(({ _count, ...store }) => store)
       results.categories = categories
     }
 
