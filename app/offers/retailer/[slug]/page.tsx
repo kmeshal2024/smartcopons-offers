@@ -14,18 +14,27 @@ interface Props {
   searchParams: Promise<{ sort?: string; category?: string; page?: string; search?: string }>
 }
 
-// Deliberately does not read searchParams: doing so forces dynamic streaming,
-// and the response then commits a 200 before notFound() can set the status —
-// which is why unknown slugs here kept serving a soft 404 while the category,
-// product and flyer pages returned a proper one. Search pages are kept out of
-// the index via robots.txt instead.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const supermarket = await prisma.supermarket.findUnique({
     where: { slug },
   })
 
-  if (!supermarket) notFound()
+  // The page component calls notFound() and the correct "not found" body is
+  // rendered, but this route commits a 200 before the status can be set — the
+  // category, product and flyer routes return a proper 404 from the identical
+  // pattern, and two attempts at the difference (searchParams in metadata, then
+  // route config) did not move it.
+  //
+  // The status is cosmetic next to the actual risk, which is a bad slug being
+  // indexed as a real page, so mark it noindex explicitly. Revisit the status
+  // itself on a Next upgrade.
+  if (!supermarket) {
+    return {
+      title: 'متجر غير موجود',
+      robots: { index: false, follow: false },
+    }
+  }
 
   // A near-empty retailer page is thin content — keep it out of the index until
   // the scraper fills it (or a flyer is uploaded), so it can't drag down
