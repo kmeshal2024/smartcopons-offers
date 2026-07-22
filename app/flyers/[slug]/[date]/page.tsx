@@ -47,7 +47,10 @@ async function getFlyer(slug: string, date: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, date } = await params
   const flyer = await getFlyer(slug, date)
-  if (!flyer) return { title: 'النشرة غير متاحة' }
+  // Signal the 404 from metadata too. Returning a plain title here let the
+  // render complete with a 200, so a bad slug served a "not found" page that
+  // search engines read as a real page (a soft 404).
+  if (!flyer) notFound()
 
   const store = flyer.supermarket.nameAr
   const dateAr = formatDateAr(flyer.startDate)

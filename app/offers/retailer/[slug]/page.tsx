@@ -21,7 +21,10 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     where: { slug },
   })
 
-  if (!supermarket) return { title: 'متجر غير موجود' }
+  // Signal the 404 from metadata too. Returning a plain title here let the
+  // render complete with a 200, so a bad slug served a "not found" page that
+  // search engines read as a real page (a soft 404).
+  if (!supermarket) notFound()
 
   // A near-empty retailer page is thin content — keep it out of the index until
   // the scraper fills it (or a flyer is uploaded), so it can't drag down

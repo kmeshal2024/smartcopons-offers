@@ -86,7 +86,10 @@ async function getRelated(categoryId: string | null, excludeId: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const p = await getProduct(id)
-  if (!p) return { title: 'المنتج غير متاح' }
+  // Signal the 404 from metadata too. Returning a plain title here let the
+  // render complete with a 200, so a bad slug served a "not found" page that
+  // search engines read as a real page (a soft 404).
+  if (!p) notFound()
 
   const name = p.nameAr || p.nameEn || 'منتج'
   const store = p.supermarket.nameAr

@@ -67,7 +67,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     },
   })
-  if (!category) return { title: 'تصنيف غير موجود' }
+  // Signal the 404 from metadata too. Returning a plain title here let the
+  // render complete with a 200, so a bad slug served a "not found" page that
+  // search engines read as a real page (a soft 404).
+  if (!category) notFound()
 
   const count = category._count.products
   return {
