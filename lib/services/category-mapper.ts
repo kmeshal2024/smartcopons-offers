@@ -2,6 +2,8 @@ import { prisma } from '@/lib/db'
 
 export class CategoryMapper {
   private categoryKeywords: Map<string, string[]> = new Map()
+  /** Resolved once in initialize() — see the note in mapToCategory(). */
+  private uncategorizedId: string | null = null
 
   async initialize() {
     // Load categories from database
@@ -14,6 +16,11 @@ export class CategoryMapper {
       const keywords = this.getCategoryKeywords(category.slug)
       this.categoryKeywords.set(category.id, keywords)
     }
+
+    this.uncategorizedId =
+      categories.find(c => c.slug === 'uncategorized')?.id ??
+      (await prisma.category.findFirst({ where: { slug: 'uncategorized' } }))?.id ??
+      null
   }
 
   /**
@@ -33,12 +40,10 @@ export class CategoryMapper {
       }
     }
 
-    // Return "Uncategorized" or null
-    const uncategorized = await prisma.category.findFirst({
-      where: { slug: 'uncategorized' },
-    })
-
-    return uncategorized?.id || null
+    // Fall back to "Uncategorized". This used to query the database on every
+    // unmatched product — hundreds of extra round trips per scrape, which is
+    // part of why a full catalogue run pushed the cron past its time limit.
+    return this.uncategorizedId
   }
 
   /**
