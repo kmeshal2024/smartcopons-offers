@@ -19,6 +19,8 @@ export async function GET(request: Request) {
       const products = await prisma.productOffer.findMany({
         where: {
           isHidden: false,
+          // Don't suggest products whose offer has already ended.
+          flyer: { endDate: { gte: new Date() } },
           // Arabic-variant aware: "ارز" also matches "أرز", "بندة" matches "بنده".
           OR: arabicContainsFilter(query, ['nameAr', 'nameEn', 'brand', 'tags']),
         },

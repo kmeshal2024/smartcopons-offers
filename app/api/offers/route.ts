@@ -22,14 +22,17 @@ export async function GET(request: Request) {
       isHidden: false,
     }
 
-    // Only filter by active flyers for the default (unfiltered) listing.
-    // When user applies any filter (search, category, supermarket), show all matching
-    // products regardless of flyer status so they're not hidden by stale flyer records.
-    if (!search && !supermarketId && !categoryId) {
-      where.flyer = {
-        status: 'ACTIVE',
-        endDate: { gte: new Date() },
-      }
+    // Never surface offers whose flyer has already ended — stale prices on a
+    // price-comparison site actively mislead shoppers.
+    //
+    // This filter used to be skipped whenever any filter was applied, to avoid
+    // hiding products behind "stale flyer records". That was a workaround for
+    // the expire-flyers cron silently 401-ing, and it meant filtered views
+    // (by store, category or search) served mostly expired prices. The filter
+    // keys off endDate rather than the status flag, so it stays correct even
+    // if a flyer's status is out of date.
+    where.flyer = {
+      endDate: { gte: new Date() },
     }
 
     if (supermarketId) {

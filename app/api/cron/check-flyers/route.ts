@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { checkAllSources } from '@/lib/services/flyer-fetcher'
+import { isAuthorizedCron } from '@/lib/cron-auth'
 
 /**
  * Cron endpoint: Check Saudi supermarkets for new flyers.
@@ -11,12 +12,8 @@ import { checkAllSources } from '@/lib/services/flyer-fetcher'
  * Security: Protected by a simple shared secret in query params.
  */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const key = searchParams.get('key')
 
-  // Simple cron authentication
-  const cronSecret = process.env.APP_SECRET
-  if (!cronSecret || key !== cronSecret) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

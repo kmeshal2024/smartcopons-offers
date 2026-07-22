@@ -55,7 +55,7 @@ async function getActiveStores() {
       _count: {
         select: {
           productOffers: {
-            where: { isHidden: false },
+            where: { isHidden: false, flyer: { endDate: { gte: new Date() } } },
           },
           flyers: {
             where: { status: 'ACTIVE', endDate: { gte: new Date() } },
@@ -74,7 +74,7 @@ async function getActiveStores() {
 async function getInitialProducts() {
   const [products, total] = await Promise.all([
     prisma.productOffer.findMany({
-      where: { isHidden: false },
+      where: { isHidden: false, flyer: { endDate: { gte: new Date() } } },
       include: {
         supermarket: { select: { nameAr: true, slug: true, logo: true } },
         category: { select: { nameAr: true, icon: true } },
@@ -82,7 +82,7 @@ async function getInitialProducts() {
       orderBy: { createdAt: 'desc' },
       take: 24,
     }),
-    prisma.productOffer.count({ where: { isHidden: false } }),
+    prisma.productOffer.count({ where: { isHidden: false, flyer: { endDate: { gte: new Date() } } } }),
   ])
   return { products, total }
 }
