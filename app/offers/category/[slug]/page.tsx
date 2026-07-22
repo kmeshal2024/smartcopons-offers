@@ -32,6 +32,7 @@ async function getCategoryData(slug: string, sort: string) {
   const where = {
     categoryId: category.id,
     isHidden: false,
+    price: { gt: 0 },
     flyer: { endDate: { gte: new Date() } },
   }
   const [products, total] = await Promise.all([

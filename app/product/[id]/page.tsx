@@ -17,7 +17,8 @@ export const revalidate = 300
 
 async function getProduct(id: string) {
   return prisma.productOffer.findFirst({
-    where: { id, isHidden: false },
+    // price 0 rows are flyer placeholders, not products — no page for them.
+    where: { id, isHidden: false, price: { gt: 0 } },
     include: {
       supermarket: { select: { id: true, nameAr: true, name: true, slug: true, logo: true } },
       category: { select: { nameAr: true, slug: true, icon: true } },

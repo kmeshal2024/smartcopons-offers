@@ -20,6 +20,8 @@ export async function GET(request: Request) {
     // Build filters
     const where: any = {
       isHidden: false,
+      // Placeholder rows emitted by flyer scrapers are not products.
+      price: { gt: 0 },
     }
 
     // Never surface offers whose flyer has already ended — stale prices on a
@@ -58,8 +60,11 @@ export async function GET(request: Request) {
     }
 
     if (minPrice || maxPrice) {
-      where.price = {}
-      if (minPrice) where.price.gte = parseFloat(minPrice)
+      // Merge, don't replace — the base filter carries `gt: 0`, and the client
+      // always sends minPrice=0, which would otherwise let placeholder rows
+      // priced at 0 back into the feed.
+      const min = minPrice ? parseFloat(minPrice) : undefined
+      if (min !== undefined && min > 0) where.price.gte = min
       if (maxPrice) where.price.lte = parseFloat(maxPrice)
     }
 

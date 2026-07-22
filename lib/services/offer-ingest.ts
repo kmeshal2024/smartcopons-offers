@@ -6,6 +6,8 @@ import { createHash } from 'crypto'
 interface IngestResult {
   supermarket: string
   totalScraped: number
+  /** Rows that passed the product sanity check (price > 0, real name). */
+  usableOffers: number
   newOffers: number
   duplicatesSkipped: number
   /** Existing products seen again and moved onto the current flyer. */
@@ -42,8 +44,20 @@ export class OfferIngestService {
     const categoryMapper = new CategoryMapper()
     await categoryMapper.initialize()
 
+    // Reject rows that are not really products. The flyer scrapers emit
+    // placeholder entries (price 0, generic names like "العروض") to represent a
+    // brochure; those now travel as a ScrapedFlyerAsset instead, so they must
+    // not reach the catalogue and show up as 0.00 ر.س product cards.
+    const usable = offers.filter(
+      o => o.price > 0 && (o.nameAr || o.nameEn || '').trim().length >= 8
+    )
+    const rejected = offers.length - usable.length
+    if (rejected > 0) {
+      logs.push(`[ingest] Rejected ${rejected} non-product rows (price 0 or generic name)`)
+    }
+
     // Compute hashes for dedup
-    const offerHashes = offers.map(o => ({
+    const offerHashes = usable.map(o => ({
       offer: o,
       hash: computeOfferHash(supermarket.id, o.nameAr, o.price, o.sourceUrl),
     }))
@@ -136,8 +150,9 @@ export class OfferIngestService {
     return {
       supermarket: supermarketSlug,
       totalScraped: offers.length,
+      usableOffers: usable.length,
       newOffers: created,
-      duplicatesSkipped: offers.length - created,
+      duplicatesSkipped: usable.length - created,
       refreshedOffers: refreshed,
       flyerId: flyer.id,
     }
