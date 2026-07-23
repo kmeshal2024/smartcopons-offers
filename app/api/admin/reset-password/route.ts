@@ -47,22 +47,25 @@ export async function POST(request: Request) {
       )
     }
 
-    const user = await prisma.user.findUnique({ where: { email } })
-    if (!user) {
-      // List which admin accounts do exist, so a typo is obvious.
-      const accounts = await prisma.user.findMany({ select: { email: true } })
-      return NextResponse.json(
-        { error: 'No user with that email', existingAccounts: accounts.map(a => a.email) },
-        { status: 404 }
-      )
-    }
+    const passwordHash = await bcrypt.hash(password, 10)
 
-    await prisma.user.update({
+    // Create the account if it does not exist. Production turned out to have an
+    // empty users table — the seed was never run there — so /admin was
+    // unreachable by anyone, not merely holding a forgotten password.
+    const existing = await prisma.user.findUnique({ where: { email } })
+
+    const user = await prisma.user.upsert({
       where: { email },
-      data: { passwordHash: await bcrypt.hash(password, 10) },
+      update: { passwordHash },
+      create: { email, passwordHash, role: 'ADMIN' },
     })
 
-    return NextResponse.json({ success: true, email, updatedAt: new Date().toISOString() })
+    return NextResponse.json({
+      success: true,
+      email: user.email,
+      action: existing ? 'password-updated' : 'account-created',
+      updatedAt: new Date().toISOString(),
+    })
   } catch (error) {
     console.error('Password reset failed:', error)
     return NextResponse.json({ error: 'Reset failed' }, { status: 500 })
