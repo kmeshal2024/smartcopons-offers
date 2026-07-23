@@ -66,7 +66,7 @@ interface Coupon {
   title: string
   code: string
   discountText: string
-  store: { name: string; slug: string }
+  store: { name: string; slug: string; logo?: string | null }
 }
 
 interface Pagination {
@@ -84,6 +84,7 @@ export default function OffersClient() {
   const [categories, setCategories] = useState<Category[]>([])
   const [supermarkets, setSupermarkets] = useState<Supermarket[]>([])
   const [coupons, setCoupons] = useState<Coupon[]>([])
+  const [searchCoupons, setSearchCoupons] = useState<Coupon[]>([])
   const [loading, setLoading] = useState(true)
   const [pagination, setPagination] = useState<Pagination | null>(null)
 
@@ -106,8 +107,18 @@ export default function OffersClient() {
       fetch('/api/categories').then(r => r.json()),
       fetch('/api/supermarkets').then(r => r.json()),
     ]).then(([catData, smData]) => {
-      setCategories(catData.categories || [])
+      const cats: Category[] = catData.categories || []
+      setCategories(cats)
       setSupermarkets(smData.supermarkets || [])
+
+      // Homepage tiles deep-link with ?category=<slug>, but the sidebar keys off
+      // the id. Swap a slug for its id so the active category highlights (the
+      // API accepts either, so results were already correct).
+      setSelectedCategory(prev => {
+        if (!prev) return prev
+        const bySlug = cats.find(c => c.slug === prev) || cats.flatMap(c => c.children).find(c => c.slug === prev)
+        return bySlug ? bySlug.id : prev
+      })
     }).catch(() => {})
   }, [])
 
@@ -150,6 +161,18 @@ export default function OffersClient() {
     setProducts(data.products || [])
     setPagination(data.pagination || null)
     if (resetPage) setPage(1)
+
+    // Also search coupons when there's a search query
+    if (search && search.length >= 2) {
+      try {
+        const searchRes = await fetch(`/api/public/search?q=${encodeURIComponent(search)}&type=coupons`)
+        const searchData = await searchRes.json()
+        setSearchCoupons(searchData.coupons || [])
+      } catch { setSearchCoupons([]) }
+    } else {
+      setSearchCoupons([])
+    }
+
     setLoading(false)
   }, [sort, search, selectedCategory, selectedSupermarket, maxPrice, page, city])
 
@@ -158,13 +181,19 @@ export default function OffersClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sort, selectedCategory, selectedSupermarket, page, city])
 
-  const handleSearchChange = (value: string) => {
-    setSearch(value)
+  // Debounced search: triggers fetch when search changes after 400ms of inactivity
+  useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       setPage(1)
       fetchProducts(true)
     }, 400)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search])
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
   }
 
   const handleSearchSubmit = () => {
@@ -192,9 +221,10 @@ export default function OffersClient() {
     })
   }
 
-  const handleCopyCode = (code: string, id: string) => {
+  const handleCopyCode = (code: string, elementId: string) => {
     navigator.clipboard.writeText(code).catch(() => {})
-    const btn = document.getElementById(`copy-${id}`)
+    const btnId = elementId.startsWith('copy-') || elementId.startsWith('search-copy-') ? elementId : `copy-${elementId}`
+    const btn = document.getElementById(btnId)
     if (btn) {
       btn.textContent = 'تم!'
       setTimeout(() => { if (btn) btn.textContent = 'نسخ' }, 2000)
@@ -451,7 +481,14 @@ export default function OffersClient() {
                   key={coupon.id}
                   className="flex-shrink-0 bg-pink-50 rounded-lg p-3 min-w-[200px] border border-pink-100"
                 >
-                  <div className="text-[10px] text-pink-600 font-medium mb-1">{coupon.store.name}</div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    {coupon.store.logo ? (
+                      <img src={coupon.store.logo} alt={coupon.store.name} className="w-4 h-4 object-contain rounded" />
+                    ) : (
+                      <span className="text-[10px]">🏷️</span>
+                    )}
+                    <span className="text-[10px] text-pink-600 font-medium">{coupon.store.name}</span>
+                  </div>
                   <div className="font-bold text-xs text-gray-800 mb-1.5 line-clamp-1">{coupon.title}</div>
                   <div className="text-pink-700 font-bold text-xs mb-2">{coupon.discountText}</div>
                   <div className="flex items-center gap-2">
@@ -508,6 +545,47 @@ export default function OffersClient() {
 
           {/* Products Grid */}
           <div className="flex-1 min-w-0">
+            {/* Search Coupon Results */}
+            {!loading && search && searchCoupons.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-1 h-5 bg-green-500 rounded-full" />
+                  <h2 className="font-bold text-gray-900 text-sm">كوبونات خصم مطابقة ({searchCoupons.length})</h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {searchCoupons.map(coupon => (
+                    <div
+                      key={coupon.id}
+                      className="bg-gradient-to-br from-pink-50 to-white rounded-lg p-4 border border-pink-100"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        {coupon.store.logo ? (
+                          <img src={coupon.store.logo} alt={coupon.store.name} className="w-6 h-6 object-contain rounded" />
+                        ) : (
+                          <span className="text-sm">🏷️</span>
+                        )}
+                        <span className="text-xs text-pink-600 font-semibold">{coupon.store.name}</span>
+                      </div>
+                      <div className="font-bold text-sm text-gray-800 mb-1 line-clamp-2">{coupon.title}</div>
+                      <div className="text-pink-700 font-bold text-xs mb-2">{coupon.discountText}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-white border border-dashed border-pink-300 rounded-md px-2 py-1.5 font-mono text-sm font-bold text-center text-pink-700">
+                          {coupon.code}
+                        </div>
+                        <button
+                          id={`search-copy-${coupon.id}`}
+                          onClick={() => handleCopyCode(coupon.code, `search-copy-${coupon.id}`)}
+                          className="bg-pink-600 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-pink-700 transition"
+                        >
+                          نسخ
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Results count */}
             {!loading && pagination && (
               <div className="mb-3 flex items-center justify-between">
