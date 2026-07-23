@@ -45,7 +45,11 @@ const SITE = process.env.SMARTCOPONS_SITE || 'https://sa.smartcopons.com'
 const REMOTE_TIMEOUT_MS = 170_000
 
 // A run that hangs must not sit there until tomorrow's run collides with it.
-const PER_SCRAPER_TIMEOUT_MS = 45 * 60_000
+// 45 minutes was too tight: Carrefour alone takes ~25-30 and was killed
+// mid-category on the first scheduled run. Its 400px/350ms scroll steps are
+// what make the product images load, so the time is the price of the images.
+// Even at the cap, tamimi + lulu + carrefour stays inside the task's 3h limit.
+const PER_SCRAPER_TIMEOUT_MS = 90 * 60_000
 
 const args = Object.fromEntries(
   process.argv.slice(2).map(a => {
@@ -80,8 +84,12 @@ const stamp = () => {
 }
 const dayFile = () => join(LOG_DIR, `scrape-${localDate()}.log`)
 
+// The scheduled task and a manual run share one day's log file, and their
+// lines interleave. Tag each with the pid so a run can be read as a unit.
+const RUN_ID = String(process.pid).padStart(5, '0')
+
 function log(line) {
-  const text = `[${stamp()}] ${line}`
+  const text = `[${stamp()} #${RUN_ID}] ${line}`
   console.log(text)
   try {
     appendFileSync(dayFile(), text + '\n')
