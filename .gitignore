@@ -43,3 +43,6 @@ smartcopons-deploy.zip
 /public/uploads/logos/*
 /public/uploads/covers/*
 !public/uploads/**/.gitkeep
+
+# scraper run logs
+logs/
