@@ -24,6 +24,7 @@
  */
 
 import { chromium } from 'playwright'
+import { writeFileSync } from 'node:fs'
 
 const BASE = 'https://www.carrefourksa.com'
 
@@ -41,6 +42,7 @@ const CATEGORIES = [
 
 const PAGES_PER_CATEGORY = 3
 const NAV_TIMEOUT = 45_000
+const BATCH = 4000 // /api/admin/import-offers rejects payloads over 5000
 
 const args = Object.fromEntries(
   process.argv.slice(2).map(a => {
@@ -277,22 +279,38 @@ async function main() {
     console.log(`  ${o.nameAr.slice(0, 45)} — ${o.price} SAR${o.discountPercent ? ` (-${o.discountPercent}%)` : ''}`)
   )
 
+  // A full scrape costs ~20 minutes, so keep a copy before the upload: a
+  // rejected payload should not mean scraping the whole catalogue again.
+  if (args.out) {
+    writeFileSync(args.out, JSON.stringify(offers))
+    console.log(`\nSaved ${offers.length} offers to ${args.out}`)
+  }
+
   if (DRY) {
     console.log('\n--dry: not uploading.')
     return
   }
 
+  // The import route rejects payloads over 5000, and a full scrape now clears
+  // that, so send in batches. Each batch goes through the same ingest path, so
+  // the later ones attach to the flyer the first one created.
   console.log(`\nUploading to ${SITE} ...`)
-  const res = await fetch(`${SITE}/api/admin/import-offers`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: KEY, supermarket: 'carrefour', offers, logs }),
-  })
-
-  const text = await res.text()
-  console.log(`HTTP ${res.status}`)
-  console.log(text.slice(0, 500))
-  if (!res.ok) process.exit(1)
+  for (let i = 0; i < offers.length; i += BATCH) {
+    const chunk = offers.slice(i, i + BATCH)
+    const res = await fetch(`${SITE}/api/admin/import-offers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        key: KEY,
+        supermarket: 'carrefour',
+        offers: chunk,
+        logs: i === 0 ? logs : [`batch ${i / BATCH + 1}`],
+      }),
+    })
+    const text = await res.text()
+    console.log(`  batch ${i / BATCH + 1} (${chunk.length}): HTTP ${res.status} — ${text.slice(0, 220)}`)
+    if (!res.ok) process.exit(1)
+  }
 }
 
 main().catch(err => {

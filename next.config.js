@@ -23,7 +23,10 @@ const nextConfig = {
   },
 
   images: {
-    domains: [
+    // `domains` caps out at 50 entries, and adding one more retailer CDN was
+    // enough to fail the build. `remotePatterns` has no such limit and is the
+    // supported option — the hostname list below is the same one, unchanged.
+    remotePatterns: [
       'localhost',
       'sa.smartcopons.com',
       // Supermarket CDN domains (for scraped product images)
@@ -74,7 +77,11 @@ const nextConfig = {
       'www.bindawood.sa',            // BinDawood
       'media.extra.com',             // Extra product images (Amplience CDN)
       'aym-bindawood-production.herokuapp.com', // BinDawood logo (Heroku)
-    ],
+      'storage.googleapis.com',      // Tamimi product images (Zopsmart bucket)
+    ].map(hostname => ({
+      protocol: hostname === 'localhost' ? 'http' : 'https',
+      hostname,
+    })),
     // Skip Vercel image optimization (402 on free plan)
     unoptimized: true,
   },
