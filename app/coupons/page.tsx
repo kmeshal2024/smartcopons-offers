@@ -4,6 +4,7 @@ import Footer from '@/components/Footer'
 import CouponCard from '@/components/CouponCard'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { COUPON_CATEGORIES } from '@/lib/coupon-categories'
 
 export const metadata: Metadata = {
   title: 'كوبونات الخصم والعروض',
@@ -91,6 +92,24 @@ export default async function CouponsPage() {
               <h1 className="text-2xl font-bold">كوبونات الخصم والعروض</h1>
               <p className="text-sm opacity-90 mt-1">وفر أكثر مع أحدث أكواد الخصم — {coupons.length} كوبون متوفر</p>
             </div>
+          </div>
+        </div>
+
+        {/* Category links — the SEO win: each targets a broad query like
+            "كوبونات أزياء" that a flat coupon list can't rank for. */}
+        <div className="mb-6">
+          <h2 className="text-sm font-bold text-gray-800 mb-3">تصفّح حسب الفئة</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {COUPON_CATEGORIES.map(cat => (
+              <Link
+                key={cat.slug}
+                href={`/coupons/category/${cat.slug}`}
+                className="flex items-center gap-2 bg-white rounded-lg border border-gray-100 hover:border-pink-200 hover:shadow-sm transition px-3 py-2.5"
+              >
+                <span className="text-lg">{cat.icon}</span>
+                <span className="text-xs font-semibold text-gray-700">{cat.label}</span>
+              </Link>
+            ))}
           </div>
         </div>
 
