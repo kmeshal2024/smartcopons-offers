@@ -7,7 +7,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
 
     const supermarketId = searchParams.get('supermarket')
-    const categoryId = searchParams.get('category')
+    const categoryParam = searchParams.get('category')
     const cityParam = searchParams.get('city')
     const search = searchParams.get('search')
     const minPrice = searchParams.get('minPrice')
@@ -41,8 +41,16 @@ export async function GET(request: Request) {
       where.supermarketId = supermarketId
     }
 
-    if (categoryId) {
-      where.categoryId = categoryId
+    // `category` may be a slug (the homepage category tiles deep-link with
+    // ?category=slug) or a raw DB id (the sidebar filter posts the id).
+    // Resolve slug→id, same as city below. Without this, every tile on the
+    // homepage led to an empty result page.
+    if (categoryParam) {
+      const category = await prisma.category.findUnique({
+        where: { slug: categoryParam },
+        select: { id: true },
+      })
+      where.categoryId = category?.id ?? categoryParam
     }
 
     // `city` may be a slug (from CityFilterBar) or a raw DB id. Resolve slug→id.

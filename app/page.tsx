@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export const revalidate = 60
 
 async function getHomeData() {
-  const [coupons, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores] = await Promise.all([
+  const [coupons, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores, couponCount] = await Promise.all([
     prisma.coupon.findMany({
       where: { isActive: true },
       include: { store: { select: { name: true, slug: true, logo: true } } },
@@ -91,6 +91,9 @@ async function getHomeData() {
       where: { isHidden: false, price: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
     }),
     prisma.supermarket.count({ where: { isActive: true } }),
+    // The coupon list above is capped at 8 for display; the label needs the
+    // real total, or the tile reads "8 كوبون" next to a page listing 106.
+    prisma.coupon.count({ where: { isActive: true } }),
   ])
 
   // Only surface retailers that actually have offers or a live flyer.
@@ -98,6 +101,7 @@ async function getHomeData() {
 
   return {
     coupons,
+    couponCount,
     supermarkets: visibleSupermarkets,
     latestProducts,
     topDiscounts,
@@ -109,7 +113,7 @@ async function getHomeData() {
 }
 
 export default async function HomePage() {
-  const { coupons, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores } = await getHomeData()
+  const { coupons, couponCount, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores } = await getHomeData()
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -151,7 +155,7 @@ export default async function HomePage() {
               </div>
               <div className="w-px bg-white/20" />
               <div className="text-center">
-                <div className="text-xl sm:text-2xl font-bold">{coupons.length}</div>
+                <div className="text-xl sm:text-2xl font-bold">{couponCount}</div>
                 <div className="text-[10px] sm:text-xs opacity-80">كوبون خصم</div>
               </div>
             </div>
@@ -281,7 +285,7 @@ export default async function HomePage() {
                   >
                     <div className="text-2xl mb-1.5">🎟️</div>
                     <span className="text-xs font-bold text-pink-700 block">كوبونات وخصومات</span>
-                    <span className="text-[10px] text-pink-500">{coupons.length} كوبون</span>
+                    <span className="text-[10px] text-pink-500">{couponCount} كوبون</span>
                   </Link>
 
                   {categories.map(cat => (

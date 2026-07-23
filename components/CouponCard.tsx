@@ -10,9 +10,10 @@ interface CouponCardProps {
   discountText: string
   storeName: string
   storeSlug: string
+  storeLogo?: string | null
 }
 
-export default function CouponCard({ id, title, code, discountText, storeName, storeSlug }: CouponCardProps) {
+export default function CouponCard({ id, title, code, discountText, storeName, storeSlug, storeLogo }: CouponCardProps) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
@@ -24,7 +25,12 @@ export default function CouponCard({ id, title, code, discountText, storeName, s
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 p-5 flex flex-col">
       <div className="mb-3">
-        <Link href={`/store/${storeSlug}`} className="inline-block bg-pink-50 text-pink-700 px-3 py-1 rounded-full text-xs font-semibold hover:bg-pink-100 transition">
+        <Link href={`/store/${storeSlug}`} className="inline-flex items-center gap-1.5 bg-pink-50 text-pink-700 px-3 py-1 rounded-full text-xs font-semibold hover:bg-pink-100 transition">
+          {storeLogo ? (
+            <img src={storeLogo} alt={storeName} className="w-4 h-4 object-contain rounded" />
+          ) : (
+            <span>🏷️</span>
+          )}
           {storeName}
         </Link>
         <h3 className="text-base font-bold mt-2 text-gray-800 line-clamp-2">{title}</h3>

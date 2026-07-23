@@ -36,9 +36,42 @@ async function getCouponsData() {
 export default async function CouponsPage() {
   const { coupons, stores } = await getCouponsData()
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'الرئيسية', item: 'https://sa.smartcopons.com' },
+          { '@type': 'ListItem', position: 2, name: 'كوبونات وخصومات', item: 'https://sa.smartcopons.com/coupons' },
+        ],
+      },
+      {
+        '@type': 'ItemList',
+        name: 'كوبونات الخصم والعروض في السعودية',
+        numberOfItems: coupons.length,
+        // Cap the list — a few dozen describes the page without shipping a
+        // 100-item blob into every response.
+        itemListElement: coupons.slice(0, 40).map((c, i) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          item: {
+            '@type': 'Offer',
+            name: c.title,
+            url: `https://sa.smartcopons.com/coupon/${c.id}`,
+            category: 'DiscountCoupon',
+            seller: { '@type': 'Organization', name: c.store.name },
+            availability: 'https://schema.org/InStock',
+          },
+        })),
+      },
+    ],
+  }
+
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
       <Header />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <main className="container mx-auto px-4 py-6">
         {/* Breadcrumb */}
@@ -61,19 +94,23 @@ export default async function CouponsPage() {
           </div>
         </div>
 
-        {/* Store Filter Chips */}
-        {stores.length > 0 && (
+        {/* Store Filter Chips — each links to that store's own coupon page.
+            They used to be inert <span>s: clicking a brand did nothing, which
+            read as "the filter is broken". Linking is also better for SEO than
+            client-side filtering — every store gets its own indexable URL. */}
+        {stores.filter(s => s._count.coupons > 0).length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6">
             <span className="bg-pink-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold">
               الكل ({coupons.length})
             </span>
             {stores.filter(s => s._count.coupons > 0).map(store => (
-              <span
+              <Link
                 key={store.id}
-                className="bg-white text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 hover:border-pink-300 hover:text-pink-600 transition cursor-pointer"
+                href={`/store/${store.slug}`}
+                className="bg-white text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 hover:border-pink-300 hover:text-pink-600 transition"
               >
                 {store.name} ({store._count.coupons})
-              </span>
+              </Link>
             ))}
           </div>
         )}
@@ -90,6 +127,7 @@ export default async function CouponsPage() {
                 discountText={coupon.discountText}
                 storeName={coupon.store.name}
                 storeSlug={coupon.store.slug}
+                storeLogo={coupon.store.logo}
               />
             ))}
           </div>
