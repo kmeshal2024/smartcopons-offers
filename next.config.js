@@ -23,65 +23,48 @@ const nextConfig = {
   },
 
   images: {
-    // `domains` caps out at 50 entries, and adding one more retailer CDN was
-    // enough to fail the build. `remotePatterns` has no such limit and is the
-    // supported option — the hostname list below is the same one, unchanged.
+    // Both `domains` and `remotePatterns` cap at 50 entries in this Next
+    // version, and the per-subdomain list hit that ceiling. Consolidated to
+    // wildcard hostnames — one `**.retailer.com` covers www/cdn/media/etc. and
+    // any new subdomain a retailer starts serving from. Apex-only hosts and a
+    // few shared CDNs are listed directly.
     remotePatterns: [
-      'localhost',
-      'sa.smartcopons.com',
-      // Supermarket CDN domains (for scraped product images)
-      'cdn.mafrservices.com',       // Carrefour KSA
-      'www.carrefourksa.com',
-      'images.deliveryhero.io',     // Panda / HungerStation
-      'www.pfrmt.com',
-      'www.panda.com.sa',
-      'panda.sa',                    // Panda new domain
-      'www.panda.sa',
-      'cdn.panda.sa',
-      'images.todoorstep.com',       // Panda product images
-      'cdn.danube.sa',              // Danube / BinDawood
-      'www.danube.sa',
-      'd1c124wpoew66.cloudfront.net', // Danube product images (CloudFront CDN)
-      'bindawood.com',
-      'www.bindawood.com',
-      'cdn.luluhypermarket.com',    // LuLu Hypermarket
-      'gcc.luluhypermarket.com',
-      'www.luluhypermarket.com',
-      'bf1af2.akinoncloudcdn.com',  // LuLu product images (Akinon)
-      'www.othaimmarkets.com',      // Othaim Markets
-      'cdn.othaimmarkets.com',
-      'www.tamimimarkets.com',      // Tamimi Markets
-      'cdn.tamimimarkets.com',
-      'www.farm.com.sa',            // Farm Superstores
-      'cdn.farm.com.sa',
-      'www.nesto.sa',               // Nesto Hypermarket
-      'cdn.nesto.sa',
-      'www.manuelmarket.com',       // Manuel Market
-      'media.extra.com',            // Extra
-      'www.extra.com',
-      'www.saco.sa',                // Saco
-      'cdn.saco.sa',
-      'shop.tamimimarkets.com',     // Tamimi online shop
-      'upload.wikimedia.org',       // Supermarket logos (Wikipedia)
-      'i.imgur.com',                // Fallback logos
-      'cdn.brandfetch.io',          // Supermarket logos (Brandfetch CDN)
-      'images.ctfassets.net',       // Contentful CDN (Othaim logo)
-      'farm.com.sa',                // Farm Superstores logo
-      'nestogroup.com',             // Nesto logo
-      'www.bindawoodholding.com',   // BinDawood logo
-      'tamimi-corp-images.s3.me-south-1.amazonaws.com', // Tamimi logo
-      'cdn.d4donline.com',          // Manuel Market logo
-      'danube.sa',                  // Danube logo
-      's3.eu-west-1.amazonaws.com',  // BinDawood product images (S3)
-      'aym-bindawood-production.s3.eu-west-1.amazonaws.com', // BinDawood S3 bucket
-      'www.bindawood.sa',            // BinDawood
-      'media.extra.com',             // Extra product images (Amplience CDN)
-      'aym-bindawood-production.herokuapp.com', // BinDawood logo (Heroku)
-      'storage.googleapis.com',      // Tamimi product images (Zopsmart bucket)
-    ].map(hostname => ({
-      protocol: hostname === 'localhost' ? 'http' : 'https',
-      hostname,
-    })),
+      { protocol: 'http', hostname: 'localhost' },
+      ...[
+        '**.smartcopons.com',
+        '**.mafrservices.com',       // Carrefour KSA
+        '**.carrefourksa.com',
+        '**.deliveryhero.io',        // Panda / HungerStation
+        '**.pfrmt.com',
+        '**.panda.com.sa',
+        '**.panda.sa',
+        '**.todoorstep.com',         // Panda product images
+        '**.danube.sa', 'danube.sa', // Danube (apex + subdomains)
+        '**.cloudfront.net',         // Danube product images (CloudFront)
+        '**.bindawood.com', 'bindawood.com',
+        '**.bindawood.sa',
+        '**.bindawoodholding.com',
+        '**.luluhypermarket.com',    // LuLu
+        '**.akinoncloudcdn.com',     // LuLu product images (Akinon)
+        '**.othaimmarkets.com',      // Othaim
+        '**.tamimimarkets.com',      // Tamimi
+        '**.farm.com.sa', 'farm.com.sa', // Farm Superstores
+        '**.nesto.sa',               // Nesto
+        'nestogroup.com',
+        '**.manuelmarket.com',       // Manuel
+        '**.d4donline.com',          // Manuel logo
+        '**.extra.com',              // Extra
+        '**.saco.sa',                // Saco
+        '**.al-dawaa.com',           // Al Dawaa pharmacy
+        '**.amazonaws.com',          // Tamimi logo + BinDawood S3
+        '**.herokuapp.com',          // BinDawood logo
+        'storage.googleapis.com',    // Tamimi product images (Zopsmart)
+        'upload.wikimedia.org',      // Logos (Wikipedia)
+        'i.imgur.com',               // Fallback logos
+        '**.brandfetch.io',          // Logos (Brandfetch)
+        '**.ctfassets.net',          // Contentful (Othaim logo)
+      ].map(hostname => ({ protocol: 'https', hostname })),
+    ],
     // Skip Vercel image optimization (402 on free plan)
     unoptimized: true,
   },

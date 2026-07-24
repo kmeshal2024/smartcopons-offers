@@ -32,11 +32,15 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json().catch(() => ({}))
-    const { key, supermarket, offers, logs } = body as {
+    const { key, supermarket, offers, logs, meta } = body as {
       key?: string
       supermarket?: string
       offers?: ScrapedOffer[]
       logs?: string[]
+      // Supplied only when onboarding a new retailer (e.g. a pharmacy that has
+      // no supermarket row yet). Present → create the row; absent → a missing
+      // slug stays a 404, so a typo never silently spawns a store.
+      meta?: { nameAr?: string; nameEn?: string; logo?: string; website?: string }
     }
 
     const appSecret = process.env.APP_SECRET
@@ -62,14 +66,27 @@ export async function POST(request: Request) {
       )
     }
 
-    const store = await prisma.supermarket.findUnique({
+    let store = await prisma.supermarket.findUnique({
       where: { slug: supermarket },
       select: { id: true, nameAr: true },
     })
+    if (!store && meta?.nameAr) {
+      // Onboard a new retailer on first import.
+      store = await prisma.supermarket.create({
+        data: {
+          slug: supermarket,
+          nameAr: meta.nameAr,
+          name: meta.nameEn || meta.nameAr,
+          logo: meta.logo,
+          website: meta.website,
+        },
+        select: { id: true, nameAr: true },
+      })
+    }
     if (!store) {
       const known = await prisma.supermarket.findMany({ select: { slug: true } })
       return NextResponse.json(
-        { error: `Unknown supermarket: ${supermarket}`, known: known.map(s => s.slug) },
+        { error: `Unknown supermarket: ${supermarket} (pass meta.nameAr to create it)`, known: known.map(s => s.slug) },
         { status: 404 }
       )
     }
