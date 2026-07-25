@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { arabicContainsFilter, arabicVariants } from '@/lib/arabic-search'
+import { arabicContainsFilter, arabicVariants, normalizeArabic } from '@/lib/arabic-search'
 
 export async function GET(request: Request) {
   try {
@@ -63,14 +63,39 @@ export async function GET(request: Request) {
     }
 
     if (search) {
-      // Arabic-variant aware so /offers?search=ارز finds "أرز". Also match the
-      // category name, so searching "لحوم" or "ألبان" returns that section's
-      // products even when the term isn't in the product name itself.
-      const productConds = arabicContainsFilter(search, ['nameAr', 'nameEn', 'brand', 'tags'])
+      const fields = ['nameAr', 'nameEn', 'brand', 'tags']
+
+      // Everyday synonyms that plain letter-variants can't bridge — the word the
+      // shopper types isn't always the word on the label (ماء vs مياه). Keyed by
+      // normalized form. Extend as gaps show up.
+      const SYNONYMS: Record<string, string[]> = {
+        ماء: ['ماء', 'مياه'],
+        مياه: ['مياه', 'ماء'],
+        رز: ['رز', 'ارز', 'أرز'],
+        ارز: ['ارز', 'رز'],
+        شيبس: ['شيبس', 'رقائق', 'شبس'],
+        عصير: ['عصير', 'عصائر'],
+      }
+
+      // Split into words and require the product to contain them ALL — "ماء 200
+      // مل" must have water AND 200 AND مل, not the literal phrase (which no name
+      // holds). Each word still matches its Arabic letter-variants and synonyms.
+      const tokens = search
+        .trim()
+        .split(/\s+/)
+        .filter(t => t.replace(/[^\w؀-ۿ]/g, '').length >= 2)
+      const perToken = (tokens.length ? tokens : [search.trim()]).map(tok => {
+        const forms = SYNONYMS[normalizeArabic(tok)] || [tok]
+        return { OR: forms.flatMap(f => arabicContainsFilter(f, fields)) }
+      })
+      const productMatch = perToken.length > 1 ? { AND: perToken } : perToken[0]
+
+      // Also match the category name, so "لحوم"/"ألبان" return that whole section.
       const categoryConds = arabicVariants(search).map(v => ({
         category: { nameAr: { contains: v, mode: 'insensitive' as const } },
       }))
-      where.OR = [...productConds, ...categoryConds]
+
+      where.OR = [productMatch, ...categoryConds]
     }
 
     if (minPrice || maxPrice) {
