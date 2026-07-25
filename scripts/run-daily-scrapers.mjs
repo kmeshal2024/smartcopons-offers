@@ -30,6 +30,9 @@ const LOG_DIR = join(ROOT, 'logs')
 const SCRAPERS = [
   { name: 'tamimi', script: 'scrape-tamimi-playwright.mjs', args: [] },
   { name: 'lulu', script: 'scrape-lulu-playwright.mjs', args: ['--pages=10'] },
+  { name: 'aldawaa', script: 'scrape-aldawaa-playwright.mjs', args: [] },
+  { name: 'nahdi', script: 'scrape-nahdi-playwright.mjs', args: [] },
+  // Carrefour last: it's the slowest (~25-30 min), so the others land first.
   { name: 'carrefour', script: 'scrape-carrefour-playwright.mjs', args: [] },
 ]
 
