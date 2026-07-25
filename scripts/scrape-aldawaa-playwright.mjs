@@ -100,7 +100,9 @@ function extractCards() {
       price,
       oldPrice,
       discountPercent: oldPrice ? Math.round(((oldPrice - price) / oldPrice) * 100) : null,
-      imageUrl: card.querySelector('img')?.src?.split('?')[0] || null,
+      // Keep the full URL: Al Dawaa's media host returns 400 without the
+      // `?context=` token, so stripping the query broke every image.
+      imageUrl: card.querySelector('img')?.src || null,
       url: href.split('?')[0],
     })
   })
@@ -266,7 +268,10 @@ async function main() {
       body: JSON.stringify({
         key: KEY,
         supermarket: 'aldawaa',
-        meta: META, // creates the retailer row on first import
+        meta: META, // creates the retailer row on first import (updates logo if it exists)
+        // On the first batch, --replace clears the old rows so corrected image
+        // URLs actually take effect (the dedup hash ignores imageUrl).
+        replace: !!args.replace && i === 0,
         offers: chunk,
         logs: i === 0 ? logs : [`دفعة ${i / BATCH + 1}`],
       }),
