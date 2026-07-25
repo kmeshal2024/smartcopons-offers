@@ -406,6 +406,7 @@ export default function OffersClient() {
               className="px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-400 text-sm transition min-w-[120px]"
             >
               <option value="newest">الأحدث</option>
+              <option value="ending">ينتهي قريباً</option>
               <option value="price-low">السعر: الأقل</option>
               <option value="price-high">السعر: الأعلى</option>
               <option value="discount">الخصم الأكبر</option>

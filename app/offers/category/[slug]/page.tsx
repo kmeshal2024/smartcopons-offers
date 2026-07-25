@@ -19,6 +19,7 @@ const SORTS: Record<string, any> = {
   'price-high': { price: 'desc' },
   discount: { discountPercent: 'desc' },
   newest: { createdAt: 'desc' },
+  ending: { flyer: { endDate: 'asc' } }, // soonest-to-expire first
 }
 
 async function getCategoryData(slug: string, sort: string) {
