@@ -1,33 +1,35 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "//regions": "Functions default to iad1 (Washington) while the Supabase DB is in ap-northeast-1 (Tokyo) — every query paid a ~10,000km round trip, and the DB-heavy pages issue several. Pin functions to Tokyo (hnd1) so they sit next to the database; it's also closer to Saudi users than Washington.",
+  "regions": ["hnd1"],
   "crons": [
     {
-      "path": "/api/cron/scrape-offers?supermarket=carrefour",
+      "path": "/api/cron/scrape-offers?supermarket=panda",
       "schedule": "0 4 * * *"
     },
     {
-      "path": "/api/cron/scrape-offers?supermarket=panda",
+      "path": "/api/cron/scrape-offers?supermarket=danube",
       "schedule": "0 5 * * *"
     },
     {
-      "path": "/api/cron/scrape-offers?supermarket=danube",
+      "path": "/api/cron/scrape-offers?supermarket=bindawood",
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/cron/scrape-offers?supermarket=alothaim",
+      "path": "/api/cron/scrape-offers?supermarket=extra",
       "schedule": "0 7 * * *"
     },
     {
-      "path": "/api/cron/scrape-offers?supermarket=lulu",
+      "path": "/api/cron/scrape-offers?supermarket=alothaim",
       "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/scrape-offers?supermarket=tamimi",
-      "schedule": "0 9 * * *"
     },
     {
       "path": "/api/cron/expire-flyers",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-expired",
+      "schedule": "0 1 * * 0"
     }
   ]
 }
