@@ -53,5 +53,31 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ success: results.every(r => r.ok), results })
+  // Refresh planner stats so it actually considers the new indexes.
+  for (const t of ['product_offers', 'coupons']) {
+    try {
+      await prisma.$executeRawUnsafe(`ANALYZE ${t}`)
+    } catch {}
+  }
+
+  // Diagnostic: show the plan for a representative search so we can see whether
+  // the trigram index is used. `explain` in the body opts in.
+  let plan: unknown = null
+  if ((body as any).explain) {
+    try {
+      const term = String((body as any).term || 'شامبو')
+      plan = await prisma.$queryRawUnsafe(
+        `EXPLAIN ANALYZE
+         SELECT id FROM product_offers
+         WHERE "isHidden" = false AND price > 0
+           AND ("nameAr" ILIKE $1 OR "nameEn" ILIKE $1 OR "brand" ILIKE $1)
+         ORDER BY "viewCount" DESC LIMIT 10`,
+        `%${term}%`
+      )
+    } catch (e) {
+      plan = e instanceof Error ? e.message.slice(0, 300) : String(e)
+    }
+  }
+
+  return NextResponse.json({ success: results.every(r => r.ok), results, plan })
 }
