@@ -32,15 +32,20 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json().catch(() => ({}))
-    const { key, supermarket, offers, logs, meta } = body as {
+    const { key, supermarket, offers, logs, meta, replace } = body as {
       key?: string
       supermarket?: string
       offers?: ScrapedOffer[]
       logs?: string[]
       // Supplied only when onboarding a new retailer (e.g. a pharmacy that has
       // no supermarket row yet). Present → create the row; absent → a missing
-      // slug stays a 404, so a typo never silently spawns a store.
+      // slug stays a 404, so a typo never silently spawns a store. On an
+      // existing store it refreshes the logo/website.
       meta?: { nameAr?: string; nameEn?: string; logo?: string; website?: string }
+      // Delete this retailer's existing offers before importing. The dedup hash
+      // ignores imageUrl/discount, so a plain re-import can't fix a bad image
+      // URL — replace forces a clean rebuild.
+      replace?: boolean
     }
 
     const appSecret = process.env.APP_SECRET
@@ -82,6 +87,15 @@ export async function POST(request: Request) {
         },
         select: { id: true, nameAr: true },
       })
+    } else if (store && meta && (meta.logo || meta.website)) {
+      // Existing store: let meta refresh the logo/website (e.g. a fixed logo).
+      await prisma.supermarket.update({
+        where: { id: store.id },
+        data: {
+          ...(meta.logo && { logo: meta.logo }),
+          ...(meta.website && { website: meta.website }),
+        },
+      })
     }
     if (!store) {
       const known = await prisma.supermarket.findMany({ select: { slug: true } })
@@ -115,6 +129,14 @@ export async function POST(request: Request) {
       )
     }
 
+    // Clean rebuild: drop this retailer's rows so corrected fields (e.g. image
+    // URLs) aren't masked by the imageUrl-blind dedup hash.
+    let deleted = 0
+    if (replace) {
+      const res = await prisma.productOffer.deleteMany({ where: { supermarketId: store.id } })
+      deleted = res.count
+    }
+
     const ingestService = new OfferIngestService()
     const result = await ingestService.ingest(supermarket, clean, [
       `[import] Received ${offers.length} offers from an external scraper`,
@@ -139,6 +161,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       supermarket,
+      deleted,
       received: offers.length,
       usable: clean.length,
       newOffers: result.newOffers,
