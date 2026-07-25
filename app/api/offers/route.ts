@@ -92,6 +92,11 @@ export async function GET(request: Request) {
       case 'popular':
         orderBy = { viewCount: 'desc' }
         break
+      case 'ending':
+        // Soonest-to-expire first. The where clause already excludes offers
+        // whose flyer has ended, so every row here has a future endDate.
+        orderBy = { flyer: { endDate: 'asc' } }
+        break
     }
 
     // Fetch products with pagination

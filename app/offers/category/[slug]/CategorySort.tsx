@@ -29,6 +29,7 @@ export default function CategorySort({ current }: { current: string }) {
           className="px-4 py-2 rounded-lg border-2 border-pink-200 focus:outline-none focus:ring-4 focus:ring-pink-300 focus:border-pink-500"
         >
           <option value="newest">الأحدث</option>
+          <option value="ending">ينتهي قريباً</option>
           <option value="price-low">السعر: الأقل أولاً</option>
           <option value="price-high">السعر: الأعلى أولاً</option>
           <option value="discount">الخصم الأكبر</option>

@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 async function getHomeData() {
-  const [coupons, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores, couponCount] = await Promise.all([
+  const [coupons, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores, couponCount, endingSoon] = await Promise.all([
     prisma.coupon.findMany({
       where: { isActive: true },
       include: { store: { select: { name: true, slug: true, logo: true } } },
@@ -99,6 +99,25 @@ async function getHomeData() {
     // The coupon list above is capped at 8 for display; the label needs the
     // real total, or the tile reads "8 كوبون" next to a page listing 106.
     prisma.coupon.count({ where: { isActive: true } }),
+    // Offers whose flyer ends within three days — a "grab it before it's gone"
+    // strip. Soonest-to-expire first.
+    prisma.productOffer.findMany({
+      where: {
+        isHidden: false,
+        price: { gt: 0 },
+        discountPercent: { gt: 0 },
+        flyer: {
+          endDate: { gte: new Date(), lte: new Date(Date.now() + 3 * 86_400_000) },
+        },
+      },
+      include: {
+        supermarket: { select: { nameAr: true, slug: true, logo: true } },
+        category: { select: { nameAr: true, icon: true } },
+        flyer: { select: { startDate: true, endDate: true } },
+      },
+      orderBy: { flyer: { endDate: 'asc' } },
+      take: 8,
+    }),
   ])
 
   // Only surface retailers that actually have offers or a live flyer.
@@ -114,11 +133,12 @@ async function getHomeData() {
     categories,
     totalProducts,
     totalStores,
+    endingSoon,
   }
 }
 
 export default async function HomePage() {
-  const { coupons, couponCount, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores } = await getHomeData()
+  const { coupons, couponCount, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores, endingSoon } = await getHomeData()
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -310,6 +330,30 @@ export default async function HomePage() {
                   ))}
                 </div>
               </div>
+            </div>
+          </section>
+        )}
+
+        {/* Ending soon — creates urgency, and puts the freshest expiry data up top */}
+        {endingSoon.length > 0 && (
+          <section className="container mx-auto px-4 mt-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 bg-orange-500 rounded-full" />
+                <span className="text-xl">⏰</span>
+                <h2 className="text-lg font-bold text-gray-900">ينتهي قريباً</h2>
+                <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">
+                  خلال 3 أيام
+                </span>
+              </div>
+              <Link href="/offers?sort=ending" className="text-pink-600 hover:text-pink-700 text-sm font-semibold">
+                عرض المزيد
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {endingSoon.map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
             </div>
           </section>
         )}
