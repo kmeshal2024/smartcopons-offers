@@ -4,13 +4,15 @@ import './globals.css'
 import MobileBottomNav from '@/components/MobileBottomNav'
 import BackToTop from '@/components/BackToTop'
 import ShoppingListWidget from '@/components/ShoppingListWidget'
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#db2777',
+  // Match the manifest theme_color so the browser/app chrome is consistent.
+  themeColor: '#E91E8C',
 }
 
 export const metadata: Metadata = {
@@ -29,6 +31,13 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  // iOS install support (Android/Huawei read the manifest, which Next links
+  // automatically from app/manifest.ts).
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'سمارت كوبونز',
+  },
 }
 
 export default function RootLayout({
@@ -43,6 +52,7 @@ export default function RootLayout({
         <ShoppingListWidget />
         <MobileBottomNav />
         <BackToTop />
+        <ServiceWorkerRegister />
       </body>
     </html>
   )
