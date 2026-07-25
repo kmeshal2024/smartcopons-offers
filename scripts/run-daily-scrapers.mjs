@@ -34,6 +34,9 @@ const SCRAPERS = [
   { name: 'nahdi', script: 'scrape-nahdi-playwright.mjs', args: [] },
   // Carrefour last: it's the slowest (~25-30 min), so the others land first.
   { name: 'carrefour', script: 'scrape-carrefour-playwright.mjs', args: [] },
+  // Then top up the Carrefour images its listing scrape couldn't capture. A
+  // batch per night rather than one multi-hour pass; coverage climbs over days.
+  { name: 'carrefour-images', script: 'backfill-carrefour-images.mjs', args: ['--limit=400'] },
 ]
 
 /**
@@ -130,9 +133,12 @@ function runOne(s, key) {
       // whole log, so one day's entry stays readable.
       const total = tail.match(/المجموع:\s*(\d+)[^\n]*/)?.[0]
       const uploads = [...tail.matchAll(/(?:دفعة|batch)\s*\d+\s*\((\d+)\):\s*HTTP\s*(\d+)/g)]
-      const uploaded = uploads
-        .filter(u => u[2] === '200')
-        .reduce((a, u) => a + Number(u[1]), 0)
+      // The image backfill doesn't upload offers in batches — it reports how
+      // many image URLs it saved. Count that as work done too, or a good run
+      // would be logged as a failure.
+      const savedImages = Number(tail.match(/حُفظت\s+(\d+)/)?.[1] || 0)
+      const uploaded =
+        uploads.filter(u => u[2] === '200').reduce((a, u) => a + Number(u[1]), 0) + savedImages
       const failed = uploads.filter(u => u[2] !== '200')
 
       if (code === 0 && uploaded > 0) {

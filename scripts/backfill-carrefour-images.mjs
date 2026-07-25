@@ -111,16 +111,20 @@ async function main() {
     try {
       await page.goto(p.sourceUrl, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT })
       const img = await page.evaluate(() => {
+        // Carrefour serves product images from two different paths on the same
+        // CDN — /pim-content/SAU/media/product/... on listings and
+        // /sys-master-root/... on product pages. Accept either; an earlier
+        // version only matched pim-content and threw away 80% of valid hits.
+        const ok = u => /cdn\.mafrservices\.com/.test(u) && /\.(jpg|jpeg|png|webp)/i.test(u)
         const og = document.querySelector('meta[property="og:image"]')?.getAttribute('content')
-        if (og && /pim-content/.test(og)) return og.split('?')[0]
-        // Fallback: JSON-LD, then any rendered pim image.
+        if (og && ok(og)) return og.split('?')[0]
         for (const s of Array.from(document.querySelectorAll('script[type="application/ld+json"]'))) {
-          const m = (s.textContent || '').match(/https:[^"']*pim-content[^"']*_main\.jpg/)
+          const m = (s.textContent || '').match(
+            /https:[^"'\s]*cdn\.mafrservices\.com[^"'\s]*\.(?:jpg|jpeg|png|webp)/i
+          )
           if (m) return m[0].replace(/\\\//g, '/').split('?')[0]
         }
-        const el = Array.from(document.querySelectorAll('img')).find(x =>
-          /pim-content/.test(x.getAttribute('src') || '')
-        )
+        const el = Array.from(document.querySelectorAll('img')).find(x => ok(x.getAttribute('src') || ''))
         return el ? (el.getAttribute('src') || '').split('?')[0] : null
       })
       if (img) {
