@@ -6,6 +6,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
 import ExpiryBadge from '@/components/ExpiryBadge'
+import WatchButton from '@/components/WatchButton'
 import { getValidity, formatRangeAr } from '@/lib/flyer-utils'
 import { arabicContainsFilter } from '@/lib/arabic-search'
 
@@ -263,12 +264,15 @@ export default async function ProductPage({ params }: Props) {
               </div>
             </div>
 
-            <Link
-              href={`/offers/${p.supermarket.slug}`}
-              className="inline-block rounded-full bg-pink-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-pink-700"
-            >
-              كل عروض {p.supermarket.nameAr}
-            </Link>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href={`/offers/${p.supermarket.slug}`}
+                className="inline-block rounded-full bg-pink-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-pink-700"
+              >
+                كل عروض {p.supermarket.nameAr}
+              </Link>
+              <WatchButton productId={p.id} />
+            </div>
           </div>
         </div>
 

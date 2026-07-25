@@ -12,6 +12,7 @@ import { getDeviceId, useFavorites } from '@/hooks/useFavorites'
 export default function FavoritesClient() {
   const { count } = useFavorites()
   const [products, setProducts] = useState<any[] | null>(null)
+  const [watches, setWatches] = useState<any[]>([])
 
   useEffect(() => {
     const id = getDeviceId()
@@ -23,6 +24,10 @@ export default function FavoritesClient() {
       .then(r => r.json())
       .then(d => setProducts(d.products || []))
       .catch(() => setProducts([]))
+    fetch(`/api/watches?deviceId=${id}`)
+      .then(r => r.json())
+      .then(d => setWatches(d.watches || []))
+      .catch(() => setWatches([]))
     // reload when the count changes (added/removed elsewhere)
   }, [count])
 
@@ -43,6 +48,50 @@ export default function FavoritesClient() {
             <span className="text-sm text-gray-400">({products.length})</span>
           )}
         </div>
+
+        {/* Price watches — items the shopper is following, with a drop badge */}
+        {watches.length > 0 && (
+          <section className="mb-8">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-lg">🔔</span>
+              <h2 className="font-bold text-gray-900 text-sm">متابعة الأسعار</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {watches.map(w => (
+                <Link
+                  key={w.productId}
+                  href={`/product/${w.productId}`}
+                  className={`flex items-center gap-3 rounded-xl border bg-white p-3 transition hover:shadow-sm ${
+                    w.dropped ? 'border-green-300' : 'border-gray-100'
+                  }`}
+                >
+                  {w.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={w.imageUrl} alt={w.name} className="h-12 w-12 rounded-lg object-contain bg-gray-50" />
+                  ) : (
+                    <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-50 text-xl">🛒</span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-gray-800">{w.name}</p>
+                    <div className="mt-0.5 flex items-center gap-2 text-xs">
+                      {w.currentPrice != null ? (
+                        <span className="font-bold text-pink-700">{w.currentPrice.toFixed(2)} ر.س</span>
+                      ) : (
+                        <span className="text-gray-400">غير متوفر حالياً</span>
+                      )}
+                      <span className="text-gray-400 line-through">{w.basePrice.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  {w.dropped && (
+                    <span className="shrink-0 rounded-full bg-green-100 px-2 py-1 text-[11px] font-bold text-green-700">
+                      نزل السعر ↓
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {products === null ? (
           <div className="py-16 text-center text-gray-400 animate-pulse">جارٍ التحميل…</div>
