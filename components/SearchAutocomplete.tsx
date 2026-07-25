@@ -7,7 +7,12 @@ interface ProductHit {
   id: string
   nameAr: string | null
   nameEn: string | null
+  price?: number | null
+  oldPrice?: number | null
+  discountPercent?: number | null
+  imageUrl?: string | null
   category?: { nameAr: string; icon?: string | null } | null
+  supermarket?: { nameAr: string; slug: string; logo?: string | null } | null
 }
 interface StoreHit { id: string; nameAr: string; slug: string; logo?: string | null }
 interface CategoryHit { id: string; nameAr: string; slug: string; icon?: string | null }
@@ -155,8 +160,14 @@ export default function SearchAutocomplete({
   const selectOption = (opt: FlatOption) => {
     switch (opt.kind) {
       case 'recent':
-      case 'product':
         navigateToSearch(opt.label)
+        break
+      case 'product':
+        // Go straight to the product, not a re-search — that's what the shopper
+        // asked for by picking it.
+        saveRecent(opt.label)
+        router.push(`/product/${opt.hit.id}`)
+        reset()
         break
       case 'store':
         router.push(`/offers?supermarket=${opt.hit.id}`)
@@ -302,7 +313,8 @@ export default function SearchAutocomplete({
             </div>
           )}
 
-          {/* Products */}
+          {/* Products — thumbnail + price + store, so a suggestion reads like a
+              real product, not just text. */}
           {!showRecent && results.products.length > 0 && (
             <div>
               <div className="px-4 py-1.5 text-xs font-bold text-gray-400 bg-gray-50/50">منتجات</div>
@@ -312,13 +324,30 @@ export default function SearchAutocomplete({
                 const name = hit.nameAr || hit.nameEn || ''
                 return (
                   <button key={hit.id} type="button" {...optionProps(i)} onClick={() => selectOption({ kind: 'product', label: name, hit })} className={rowCls(i)}>
-                    <span className="text-base flex-shrink-0 w-6 text-center">{hit.category?.icon || '🏷️'}</span>
-                    <div className="flex-1 min-w-0">
-                      <span className="font-medium text-gray-900 truncate block">{name}</span>
-                      {hit.category?.nameAr && (
-                        <span className="text-xs text-gray-400">في <span className="text-pink-600">{hit.category.nameAr}</span></span>
+                    <span className="flex-shrink-0 w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden">
+                      {hit.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={hit.imageUrl} alt="" className="w-full h-full object-contain p-0.5" loading="lazy" />
+                      ) : (
+                        <span className="text-base">{hit.category?.icon || '🏷️'}</span>
                       )}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-gray-900 truncate block leading-tight">{name}</span>
+                      <span className="text-xs text-gray-400 truncate block">
+                        {hit.supermarket?.nameAr}
+                        {hit.category?.nameAr ? ` · ${hit.category.nameAr}` : ''}
+                      </span>
                     </div>
+                    {typeof hit.price === 'number' && hit.price > 0 && (
+                      <div className="flex-shrink-0 text-left">
+                        <span className="font-extrabold text-pink-700 text-sm">{hit.price.toFixed(2)}</span>
+                        <span className="text-[10px] text-gray-400 mr-0.5">ر.س</span>
+                        {hit.discountPercent ? (
+                          <span className="block text-[10px] font-bold text-red-600">-{hit.discountPercent}%</span>
+                        ) : null}
+                      </div>
+                    )}
                   </button>
                 )
               })}

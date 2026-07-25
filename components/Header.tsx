@@ -8,7 +8,6 @@ import SearchAutocomplete from './SearchAutocomplete'
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
   const pathname = usePathname()
 
   const isActive = (href: string) => {
@@ -64,19 +63,10 @@ export default function Header() {
             ))}
           </nav>
 
-          {/* Mobile: Search + Menu */}
-          <div className="flex md:hidden items-center gap-0.5 mr-auto">
+          {/* Mobile: Menu only — the search bar is a persistent row below */}
+          <div className="flex md:hidden items-center mr-auto">
             <button
-              onClick={() => { setSearchOpen(!searchOpen); setMenuOpen(false) }}
-              className={`p-2 rounded-lg transition ${searchOpen ? 'text-pink-600 bg-pink-50' : 'text-gray-600 hover:bg-gray-100'}`}
-              aria-label="بحث"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
-            <button
-              onClick={() => { setMenuOpen(!menuOpen); setSearchOpen(false) }}
+              onClick={() => setMenuOpen(!menuOpen)}
               className={`p-2 rounded-lg transition ${menuOpen ? 'text-pink-600 bg-pink-50' : 'text-gray-600 hover:bg-gray-100'}`}
               aria-label="القائمة"
             >
@@ -91,16 +81,13 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Mobile Search Bar */}
-        {searchOpen && (
-          <div className="md:hidden pb-3">
-            <SearchAutocomplete
-              variant="header"
-              placeholder="ابحث عن منتج أو متجر..."
-              onClose={() => setSearchOpen(false)}
-            />
-          </div>
-        )}
+        {/* Mobile Search Bar — always visible, so it never feels missing */}
+        <div className="md:hidden pb-2.5 -mt-0.5">
+          <SearchAutocomplete
+            variant="header"
+            placeholder="ابحث عن منتج، متجر أو تصنيف..."
+          />
+        </div>
 
         {/* Mobile Menu */}
         {menuOpen && (

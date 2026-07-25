@@ -3,7 +3,6 @@ import Link from 'next/link'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
 import Footer from '@/components/Footer'
-import CityFilterBar from '@/components/CityFilterBar'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 import type { Metadata } from 'next'
 
@@ -152,7 +151,6 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
       <Header />
-      <CityFilterBar topClass="top-0" />
 
       <script
         type="application/ld+json"
