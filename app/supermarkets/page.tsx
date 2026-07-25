@@ -11,7 +11,9 @@ export const metadata: Metadata = {
   keywords: 'عروض بنده, عروض كارفور, عروض لولو, عروض الدانوب, عروض السوبرماركت السعودية, خصومات',
 }
 
-export const revalidate = 60
+// Dynamic, not build-prerendered: the Neon DB auto-suspends and a build during
+// a suspend can't reach it. Functions sit next to the DB in Frankfurt.
+export const dynamic = 'force-dynamic'
 
 async function getSupermarkets() {
   const all = await prisma.supermarket.findMany({
