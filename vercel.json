@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "//regions": "A `regions` override (fra1, next to the Neon DB in Frankfurt) would cut query latency, but this Vercel plan rejects custom function regions — every deploy that set it errored at config validation before building. Left out until the plan supports it. Search speed instead comes from the pg_trgm indexes, parallelised queries and edge caching.",
   "crons": [
     {
       "path": "/api/cron/scrape-offers?supermarket=panda",
