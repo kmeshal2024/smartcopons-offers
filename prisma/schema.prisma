@@ -37,8 +37,8 @@ model Store {
   logo      String?
   website   String?
   createdAt DateTime @default(now())
-  
-  coupons   Coupon[]
+
+  coupons Coupon[]
 
   @@map("stores")
 }
@@ -55,7 +55,7 @@ model Coupon {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
   @@index([isActive])
@@ -72,7 +72,7 @@ model City {
   nameAr    String
   nameEn    String
   slug      String   @unique
-  region    String?  // e.g., "Riyadh Region", "Makkah Region"
+  region    String? // e.g., "Riyadh Region", "Makkah Region"
   createdAt DateTime @default(now())
 
   supermarkets Supermarket[]
@@ -94,8 +94,8 @@ model Supermarket {
   viewCount Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  city          City?           @relation(fields: [cityId], references: [id], onDelete: SetNull)
+
+  city          City?          @relation(fields: [cityId], references: [id], onDelete: SetNull)
   flyers        Flyer[]
   productOffers ProductOffer[]
 
@@ -107,29 +107,29 @@ model Supermarket {
 
 // Flyer (PDF brochure)
 model Flyer {
-  id           String      @id @default(cuid())
+  id            String      @id @default(cuid())
   supermarketId String
-  title        String
-  titleAr      String?
-  startDate    DateTime
-  endDate      DateTime
-  pdfUrl       String?     // Cloud storage URL
-  pdfPath      String?     // Local file path
-  coverImage   String?     // First page thumbnail
-  totalPages   Int         @default(0)
-  status       FlyerStatus @default(DRAFT)
-  viewCount    Int         @default(0)
-  cityId       String?
-  
-  // Extraction metadata
-  extractedAt  DateTime?
-  extractionLog String?    @db.Text
-  
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  title         String
+  titleAr       String?
+  startDate     DateTime
+  endDate       DateTime
+  pdfUrl        String? // Cloud storage URL
+  pdfPath       String? // Local file path
+  coverImage    String? // First page thumbnail
+  totalPages    Int         @default(0)
+  status        FlyerStatus @default(DRAFT)
+  viewCount     Int         @default(0)
+  cityId        String?
 
-  supermarket   Supermarket   @relation(fields: [supermarketId], references: [id], onDelete: Cascade)
-  city          City?         @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  // Extraction metadata
+  extractedAt   DateTime?
+  extractionLog String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supermarket   Supermarket    @relation(fields: [supermarketId], references: [id], onDelete: Cascade)
+  city          City?          @relation(fields: [cityId], references: [id], onDelete: SetNull)
   productOffers ProductOffer[]
 
   @@index([supermarketId])
@@ -170,48 +170,47 @@ model Category {
 
 // Product extracted from flyer
 model ProductOffer {
-  id            String   @id @default(cuid())
+  id            String  @id @default(cuid())
   flyerId       String
   supermarketId String
   categoryId    String?
-  
+
   // Product info (extracted)
-  nameAr        String?
-  nameEn        String?
-  brand         String?
-  price         Float
-  oldPrice      Float?
+  nameAr          String?
+  nameEn          String?
+  brand           String?
+  price           Float
+  oldPrice        Float?
   discountPercent Int?
-  sizeText      String?  // "1kg", "500ml", "pack of 6"
-  
+  sizeText        String? // "1kg", "500ml", "pack of 6"
+
   // Image and location in PDF
-  imageUrl      String?  // Cropped product image
-  pageNumber    Int
-  bbox          String?  // JSON: {x, y, width, height}
-  
+  imageUrl   String? // Cropped product image
+  pageNumber Int
+  bbox       String? // JSON: {x, y, width, height}
+
   // Scraping metadata
-  sourceUrl     String?  // URL where this offer was scraped from
-  sourceHash    String?  // Deduplication hash
+  sourceUrl  String? // URL where this offer was scraped from
+  sourceHash String? // Deduplication hash
 
   // Metadata
-  tags          String?  // Comma-separated keywords
-  confidence    Float?   @default(0.5) // OCR confidence score
-  isHidden      Boolean  @default(false)
-  viewCount     Int      @default(0)
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  tags       String? // Comma-separated keywords
+  confidence Float?  @default(0.5) // OCR confidence score
+  isHidden   Boolean @default(false)
+  viewCount  Int     @default(0)
 
-  flyer         Flyer        @relation(fields: [flyerId], references: [id], onDelete: Cascade)
-  supermarket   Supermarket  @relation(fields: [supermarketId], references: [id], onDelete: Cascade)
-  category      Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  flyer       Flyer       @relation(fields: [flyerId], references: [id], onDelete: Cascade)
+  supermarket Supermarket @relation(fields: [supermarketId], references: [id], onDelete: Cascade)
+  category    Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   // Single-column indexes
   @@index([flyerId])
   @@index([supermarketId])
   @@index([categoryId])
   @@index([price])
-
   // Composite indexes for common query patterns
   // Main listing query: non-hidden products sorted by date
   @@index([isHidden, createdAt])
@@ -227,7 +226,6 @@ model ProductOffer {
   @@index([isHidden, viewCount])
   // Deduplication
   @@index([sourceHash])
-
   @@map("product_offers")
 }
 
@@ -249,4 +247,56 @@ model ScrapeLog {
 
   @@index([supermarketSlug, scrapedAt])
   @@map("scrape_logs")
+}
+
+// --- Shopper features (favorites + price watch) ---------------------------
+// Shoppers start anonymous, identified by a random device token stored in the
+// browser. `email` stays null until they log in (a later phase), so the model
+// upgrades to real cross-device accounts without a rebuild.
+model Shopper {
+  id        String       @id @default(cuid())
+  deviceId  String       @unique
+  email     String?      @unique
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  favorites Favorite[]
+  watches   PriceWatch[]
+
+  @@map("shoppers")
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  shopperId String
+  // ProductOffer id. Intentionally NOT a foreign key: offers rotate with
+  // flyers, and a favourite should survive a row being replaced — the read
+  // path resolves it and shows an "expired" state when the offer is gone.
+  productId String
+  createdAt DateTime @default(now())
+
+  shopper Shopper @relation(fields: [shopperId], references: [id], onDelete: Cascade)
+
+  @@unique([shopperId, productId])
+  @@index([shopperId])
+  @@map("favorites")
+}
+
+model PriceWatch {
+  id                String   @id @default(cuid())
+  shopperId         String
+  productId         String // the offer the watch was created from (for display)
+  // Normalized product name, used to match the same item across future flyers
+  // even when the offer row (and its price) is replaced.
+  nameKey           String
+  basePrice         Float // price when the watch started
+  targetPrice       Float? // optional: only alert at or below this
+  lastNotifiedPrice Float? // guards against re-alerting the same drop
+  createdAt         DateTime @default(now())
+
+  shopper Shopper @relation(fields: [shopperId], references: [id], onDelete: Cascade)
+
+  @@unique([shopperId, productId])
+  @@index([shopperId])
+  @@index([nameKey])
+  @@map("price_watches")
 }
