@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.smartcopons.app",
+      "sha256_cert_fingerprints": [
+        "E5:00:BE:34:F4:07:CB:73:4A:A3:2A:46:44:CD:77:8A:2C:50:FB:1D:E5:44:B8:B5:CD:D9:91:EB:6D:C3:D1:0F"
+      ]
+    }
+  }
+]
