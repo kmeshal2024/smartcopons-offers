@@ -142,6 +142,11 @@ async function main() {
     if ((i + 1) % 25 === 0) {
       console.log(`   ${i + 1}/${products.length} — وُجدت ${found} صورة`)
     }
+
+    // Pace the requests. Hammering product pages back-to-back gets throttled:
+    // an unpaced 500-page run scored 98% for the first 300 and then collapsed
+    // to ~5%, ending at 61% overall. A short gap keeps the hit rate high.
+    await new Promise(r => setTimeout(r, 400 + Math.floor(Math.random() * 400)))
   }
 
   uploaded += await upload(pending)
