@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "//regions": "Functions default to iad1 (Washington) while the Neon DB is in eu-central-1 (Frankfurt) — every query paid a transatlantic round trip, and the DB-heavy pages issue several. Pin functions to Frankfurt (fra1) so they sit next to the database; it's also far closer to Saudi users than Washington.",
-  "regions": ["fra1"],
+  "//regions": "A `regions` override (fra1, next to the Neon DB in Frankfurt) would cut query latency, but this Vercel plan rejects custom function regions — every deploy that set it errored at config validation before building. Left out until the plan supports it. Search speed instead comes from the pg_trgm indexes, parallelised queries and edge caching.",
   "crons": [
     {
       "path": "/api/cron/scrape-offers?supermarket=panda",
