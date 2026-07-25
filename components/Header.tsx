@@ -15,6 +15,10 @@ export default function Header() {
     return pathname?.startsWith(href) || false
   }
 
+  // /offers has its own richer search + sort + filter bar, so don't double up
+  // the header search there.
+  const showSearch = pathname !== '/offers'
+
   const navLinks = [
     { href: '/', label: 'الرئيسية' },
     { href: '/offers', label: 'العروض' },
@@ -39,12 +43,16 @@ export default function Header() {
           </Link>
 
           {/* Desktop Search Bar */}
-          <div className="hidden md:block flex-1 max-w-xl mx-4">
-            <SearchAutocomplete
-              variant="header"
-              placeholder="ابحث عن منتج، متجر أو تصنيف..."
-            />
-          </div>
+          {showSearch ? (
+            <div className="hidden md:block flex-1 max-w-xl mx-4">
+              <SearchAutocomplete
+                variant="header"
+                placeholder="ابحث عن منتج، متجر أو تصنيف..."
+              />
+            </div>
+          ) : (
+            <div className="hidden md:block flex-1" />
+          )}
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex gap-1 items-center flex-shrink-0">
@@ -81,13 +89,16 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Mobile Search Bar — always visible, so it never feels missing */}
-        <div className="md:hidden pb-2.5 -mt-0.5">
-          <SearchAutocomplete
-            variant="header"
-            placeholder="ابحث عن منتج، متجر أو تصنيف..."
-          />
-        </div>
+        {/* Mobile Search Bar — always visible, so it never feels missing.
+            Hidden on /offers, which has its own search + filter bar. */}
+        {showSearch && (
+          <div className="md:hidden pb-2.5 -mt-0.5">
+            <SearchAutocomplete
+              variant="header"
+              placeholder="ابحث عن منتج، متجر أو تصنيف..."
+            />
+          </div>
+        )}
 
         {/* Mobile Menu */}
         {menuOpen && (

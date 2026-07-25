@@ -87,7 +87,9 @@ export default function OffersClient() {
   const [pagination, setPagination] = useState<Pagination | null>(null)
 
   const [search, setSearch] = useState(searchParams?.get('search') || '')
-  const [sort, setSort] = useState(searchParams?.get('sort') || 'newest')
+  // Default: biggest discounts first — the shopper wants the desirable deals up
+  // top, not an arbitrary "newest" order.
+  const [sort, setSort] = useState(searchParams?.get('sort') || 'discount')
   const [selectedCategory, setSelectedCategory] = useState(searchParams?.get('category') || '')
   const [selectedSupermarket, setSelectedSupermarket] = useState(searchParams?.get('supermarket') || '')
   const [maxPrice, setMaxPrice] = useState(500)
@@ -153,6 +155,15 @@ export default function OffersClient() {
 
     const res = await fetch(`/api/offers?${params.toString()}`)
     const data = await res.json()
+
+    // If a filter shrank the result set below the current page, the server
+    // returns an empty page — snap back to the last real page instead of
+    // showing "no products".
+    const totalPages = data.pagination?.totalPages ?? 1
+    if (!resetPage && currentPage > totalPages && totalPages >= 1) {
+      setPage(totalPages)
+      return
+    }
 
     setProducts(data.products || [])
     setPagination(data.pagination || null)
@@ -400,11 +411,11 @@ export default function OffersClient() {
               onChange={(e) => { setSort(e.target.value); setPage(1) }}
               className="px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-400 text-sm transition min-w-[120px]"
             >
-              <option value="newest">الأحدث</option>
+              <option value="discount">الأكثر خصماً</option>
               <option value="ending">ينتهي قريباً</option>
               <option value="price-low">السعر: الأقل</option>
               <option value="price-high">السعر: الأعلى</option>
-              <option value="discount">الخصم الأكبر</option>
+              <option value="newest">الأحدث</option>
               <option value="popular">الأكثر مشاهدة</option>
             </select>
             <button

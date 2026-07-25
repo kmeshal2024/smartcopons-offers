@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { arabicContainsFilter } from '@/lib/arabic-search'
+import { arabicContainsFilter, arabicVariants } from '@/lib/arabic-search'
 
 export async function GET(request: Request) {
   try {
@@ -63,8 +63,14 @@ export async function GET(request: Request) {
     }
 
     if (search) {
-      // Arabic-variant aware so /offers?search=ارز finds "أرز".
-      where.OR = arabicContainsFilter(search, ['nameAr', 'nameEn', 'brand', 'tags'])
+      // Arabic-variant aware so /offers?search=ارز finds "أرز". Also match the
+      // category name, so searching "لحوم" or "ألبان" returns that section's
+      // products even when the term isn't in the product name itself.
+      const productConds = arabicContainsFilter(search, ['nameAr', 'nameEn', 'brand', 'tags'])
+      const categoryConds = arabicVariants(search).map(v => ({
+        category: { nameAr: { contains: v, mode: 'insensitive' as const } },
+      }))
+      where.OR = [...productConds, ...categoryConds]
     }
 
     if (minPrice || maxPrice) {
@@ -76,10 +82,18 @@ export async function GET(request: Request) {
       if (maxPrice) where.price.lte = parseFloat(maxPrice)
     }
 
-    // Build orderBy
-    let orderBy: any = { createdAt: 'desc' }
+    // Build orderBy. Default puts the biggest discounts first (nulls last) then
+    // the newest — the shopper asked for discounted, desirable items up top.
+    const DISCOUNT_FIRST: any = [
+      { discountPercent: { sort: 'desc', nulls: 'last' } },
+      { createdAt: 'desc' },
+    ]
+    let orderBy: any = DISCOUNT_FIRST
 
     switch (sort) {
+      case 'newest':
+        orderBy = { createdAt: 'desc' }
+        break
       case 'price-low':
         orderBy = { price: 'asc' }
         break
@@ -87,7 +101,7 @@ export async function GET(request: Request) {
         orderBy = { price: 'desc' }
         break
       case 'discount':
-        orderBy = { discountPercent: 'desc' }
+        orderBy = DISCOUNT_FIRST
         break
       case 'popular':
         orderBy = { viewCount: 'desc' }
