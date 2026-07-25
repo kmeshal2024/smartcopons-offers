@@ -84,8 +84,18 @@ async function relevanceSearch(opts: {
     return `$${idParams.length}`
   }
   const whereI = buildWhere(addI)
-  const startExpr = firstVars.map(v => `po."nameAr" ILIKE ${addI(v + '%')}`).join(' OR ')
-  const wordExpr = firstVars.map(v => `po."nameAr" ILIKE ${addI('% ' + v + '%')}`).join(' OR ')
+  // Rank on BOTH names. English used to skip this and fall through to
+  // discount-only ordering, which is why "coffee" led with coffee-flavoured
+  // biscuits while Arabic "قهوة" returned actual coffee.
+  const startExpr = firstVars
+    .flatMap(v => [`po."nameAr" ILIKE ${addI(v + '%')}`, `po."nameEn" ILIKE ${addI(v + '%')}`])
+    .join(' OR ')
+  const wordExpr = firstVars
+    .flatMap(v => [
+      `po."nameAr" ILIKE ${addI('% ' + v + '%')}`,
+      `po."nameEn" ILIKE ${addI('% ' + v + '%')}`,
+    ])
+    .join(' OR ')
   const rel = `CASE WHEN ${startExpr} THEN 0 WHEN ${wordExpr} THEN 1 ELSE 2 END`
   const limitP = addI(opts.limit)
   const offsetP = addI(opts.skip)
@@ -263,8 +273,11 @@ export async function GET(request: Request) {
       },
     })
 
-    // Cache for 60 seconds on CDN/browser — reduces DB hits on shared hosting
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
+    // Offers only change when the daily scrape lands, so cache generously: five
+    // minutes fresh, then serve stale for an hour while revalidating behind the
+    // scenes. Repeat searches come back from the edge instead of waking Neon,
+    // which is what made a cold query take ~3s.
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600')
 
     return response
   } catch (error) {
