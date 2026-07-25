@@ -5,6 +5,7 @@ import MobileBottomNav from '@/components/MobileBottomNav'
 import BackToTop from '@/components/BackToTop'
 import ShoppingListWidget from '@/components/ShoppingListWidget'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
+import InstallPrompt from '@/components/InstallPrompt'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -53,6 +54,7 @@ export default function RootLayout({
         <MobileBottomNav />
         <BackToTop />
         <ServiceWorkerRegister />
+        <InstallPrompt />
       </body>
     </html>
   )
