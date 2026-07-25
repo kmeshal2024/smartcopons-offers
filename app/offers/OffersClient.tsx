@@ -4,8 +4,6 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
-import CityFilterBar from '@/components/CityFilterBar'
-import { useCity } from '@/hooks/useCity'
 import Link from 'next/link'
 
 interface Product {
@@ -96,7 +94,6 @@ export default function OffersClient() {
   const [page, setPage] = useState(1)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [showMobileFilters, setShowMobileFilters] = useState(false)
-  const [city] = useCity()
 
   const searchInputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
@@ -149,7 +146,6 @@ export default function OffersClient() {
     if (search) params.set('search', search)
     if (selectedCategory) params.set('category', selectedCategory)
     if (selectedSupermarket) params.set('supermarket', selectedSupermarket)
-    if (city && city !== 'all') params.set('city', city)
     params.set('minPrice', '0')
     params.set('maxPrice', maxPrice.toString())
     params.set('page', currentPage.toString())
@@ -174,12 +170,12 @@ export default function OffersClient() {
     }
 
     setLoading(false)
-  }, [sort, search, selectedCategory, selectedSupermarket, maxPrice, page, city])
+  }, [sort, search, selectedCategory, selectedSupermarket, maxPrice, page])
 
   useEffect(() => {
     fetchProducts()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sort, selectedCategory, selectedSupermarket, page, city])
+  }, [sort, selectedCategory, selectedSupermarket, page])
 
   // Debounced search: triggers fetch when search changes after 400ms of inactivity
   useEffect(() => {
@@ -364,7 +360,6 @@ export default function OffersClient() {
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
       <Header />
-      <CityFilterBar topClass="top-0" />
 
       <main className="container mx-auto px-4 py-5">
         {/* Page Header */}

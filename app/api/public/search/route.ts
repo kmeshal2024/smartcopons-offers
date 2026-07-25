@@ -37,8 +37,17 @@ export async function GET(request: Request) {
             },
             take: 10,
             orderBy: { viewCount: 'desc' },
-            include: {
-              supermarket: { select: { id: true, nameAr: true, slug: true, logo: true } },
+            // Lean select: exactly what the autocomplete row shows (thumbnail,
+            // price, store), nothing more — smaller payload, faster response.
+            select: {
+              id: true,
+              nameAr: true,
+              nameEn: true,
+              price: true,
+              oldPrice: true,
+              discountPercent: true,
+              imageUrl: true,
+              supermarket: { select: { nameAr: true, slug: true, logo: true } },
               category: { select: { nameAr: true, icon: true } },
             },
           })
