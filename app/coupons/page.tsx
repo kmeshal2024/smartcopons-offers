@@ -12,7 +12,9 @@ export const metadata: Metadata = {
   keywords: 'كوبونات خصم, أكواد خصم, كوبون نون, كوبون نمشي, كوبون أمازون, خصومات السعودية',
 }
 
-export const revalidate = 60
+// Dynamic, not build-prerendered: the Neon DB auto-suspends and a build during
+// a suspend can't reach it. Functions sit next to the DB in Frankfurt.
+export const dynamic = 'force-dynamic'
 
 async function getCouponsData() {
   const [coupons, stores] = await Promise.all([

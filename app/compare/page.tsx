@@ -9,6 +9,10 @@ export const metadata: Metadata = {
   description: 'قارن سعر أي منتج بين بنده، كارفور، لولو، الدانوب وغيرها واعثر على الأرخص.',
 }
 
+// Dynamic, not build-prerendered: the Neon DB auto-suspends and a build during
+// a suspend can't reach it. Functions sit next to the DB in Frankfurt.
+export const dynamic = 'force-dynamic'
+
 export default function ComparePage() {
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">

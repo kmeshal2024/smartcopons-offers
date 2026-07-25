@@ -21,7 +21,12 @@ export const metadata: Metadata = {
   },
 }
 
-export const revalidate = 60
+// Rendered per request, not prerendered at build. The Neon DB auto-suspends
+// when idle, and a build that lands during a suspend can't reach it — which
+// repeatedly failed deploys on this and the other DB-backed pages. Functions
+// are pinned to Frankfurt next to the DB (see vercel.json), so the per-request
+// query cost is small.
+export const dynamic = 'force-dynamic'
 
 async function getHomeData() {
   const [coupons, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores, couponCount] = await Promise.all([

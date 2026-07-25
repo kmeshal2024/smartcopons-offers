@@ -20,7 +20,9 @@ export const metadata: Metadata = {
   },
 }
 
-export const revalidate = 60
+// Dynamic, not build-prerendered: the Neon DB auto-suspends and a build during
+// a suspend can't reach it. Functions sit next to the DB in Frankfurt.
+export const dynamic = 'force-dynamic'
 
 // Fetch best deals (highest discounts) for SSR hero section
 async function getBestDeals() {

@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "//regions": "Functions default to iad1 (Washington) while the Supabase DB is in ap-northeast-1 (Tokyo) — every query paid a ~10,000km round trip, and the DB-heavy pages issue several. Pin functions to Tokyo (hnd1) so they sit next to the database; it's also closer to Saudi users than Washington.",
-  "regions": ["hnd1"],
+  "//regions": "Functions default to iad1 (Washington) while the Neon DB is in eu-central-1 (Frankfurt) — every query paid a transatlantic round trip, and the DB-heavy pages issue several. Pin functions to Frankfurt (fra1) so they sit next to the database; it's also far closer to Saudi users than Washington.",
+  "regions": ["fra1"],
   "crons": [
     {
       "path": "/api/cron/scrape-offers?supermarket=panda",
