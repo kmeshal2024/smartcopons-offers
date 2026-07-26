@@ -65,6 +65,10 @@ export default async function Footer() {
               <Link href="/coupons" className="block text-gray-400 hover:text-white transition">
                 كوبونات الخصم
               </Link>
+              {/* App stores require a reachable privacy policy link. */}
+              <Link href="/privacy" className="block text-gray-400 hover:text-white transition">
+                سياسة الخصوصية
+              </Link>
             </div>
           </div>
 
