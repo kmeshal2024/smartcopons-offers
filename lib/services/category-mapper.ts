@@ -78,12 +78,26 @@ export class CategoryMapper {
         'tuna', 'تونة', 'fillet', 'فيليه', 'steak', 'ستيك', 'sausage', 'نقانق',
         'burger', 'برغر', 'minced', 'مفروم', 'fresh', 'طازج',
       ],
-      'fruits-vegetables': [
-        'apple', 'تفاح', 'banana', 'موز', 'tomato', 'طماطم', 'potato', 'بطاطس',
-        'onion', 'بصل', 'fruit', 'فواكه', 'vegetable', 'خضار', 'orange', 'برتقال',
+      // NOTE: these keys must match the category SLUGS in the database exactly.
+      // They didn't — the map had 'fruits-vegetables', 'bread-bakery',
+      // 'home-kitchen' and 'canned-goods' while the DB has 'fruits',
+      // 'vegetables', 'bakery', 'household' and 'canned-dry'. Every lookup for
+      // those returned an empty keyword list, so nothing could ever match and
+      // five categories sat permanently at zero products.
+      fruits: [
+        'apple', 'تفاح', 'banana', 'موز', 'fruit', 'فواكه', 'فاكهة', 'orange', 'برتقال',
         'grape', 'عنب', 'mango', 'مانجو', 'strawberry', 'فراولة', 'lemon', 'ليمون',
-        'cucumber', 'خيار', 'carrot', 'جزر', 'lettuce', 'خس', 'pepper', 'فلفل',
-        'garlic', 'ثوم', 'ginger', 'زنجبيل', 'avocado', 'أفوكادو',
+        'avocado', 'أفوكادو', 'watermelon', 'بطيخ', 'melon', 'شمام', 'peach', 'خوخ',
+        'pear', 'كمثرى', 'إجاص', 'pineapple', 'أناناس', 'kiwi', 'كيوي', 'تمر', 'dates',
+        'رمان', 'pomegranate', 'تين', 'مشمش', 'برقوق', 'جوافة', 'papaya',
+      ],
+      vegetables: [
+        'tomato', 'طماطم', 'potato', 'بطاطس', 'بطاطا', 'onion', 'بصل',
+        'vegetable', 'خضار', 'خضروات', 'cucumber', 'خيار', 'carrot', 'جزر',
+        'lettuce', 'خس', 'pepper', 'فلفل', 'garlic', 'ثوم', 'ginger', 'زنجبيل',
+        'zucchini', 'كوسة', 'eggplant', 'باذنجان', 'cabbage', 'ملفوف', 'كرنب',
+        'cauliflower', 'قرنبيط', 'broccoli', 'بروكلي', 'spinach', 'سبانخ',
+        'okra', 'بامية', 'بقدونس', 'كزبرة', 'نعناع', 'فجل', 'شمندر', 'كرفس',
       ],
       frozen: [
         'frozen', 'مجمد', 'ice cream', 'آيس كريم', 'pizza', 'بيتزا', 'nuggets', 'ناجتس',
@@ -104,20 +118,31 @@ export class CategoryMapper {
         'corn', 'ذرة', 'ghee', 'سمن', 'canola', 'vegetable oil', 'coconut oil',
         'noor', 'afia', 'عافية', 'mazola',
       ],
-      'home-kitchen': [
-        'plate', 'صحن', 'pot', 'قدر', 'pan', 'مقلاة', 'detergent', 'منظف',
+      household: [
+        'plate', 'صحن', 'pot', 'قدر', 'pan', 'مقلاة', 'detergent', 'منظف', 'منظفات',
         'tissue', 'مناديل', 'cleaner', 'مطهر', 'bleach', 'مبيض', 'trash bag', 'أكياس',
-        'fairy', 'dettol', 'clorox', 'persil', 'ariel', 'tide', 'downy',
-        'aluminium foil', 'cling film', 'garbage', 'sponge',
+        'fairy', 'dettol', 'clorox', 'persil', 'برسيل', 'ariel', 'اريال', 'tide', 'تايد',
+        'downy', 'داوني', 'omo', 'أومو', 'اومو', 'مسحوق غسيل', 'غسيل', 'washing',
+        'laundry', 'كلوركس', 'ديتول', 'معطر', 'freshener', 'aluminium foil', 'قصدير',
+        'cling film', 'garbage', 'sponge', 'إسفنج', 'مكنسة', 'broom', 'ممسحة',
+        'dishwash', 'صحون', 'fabric softener', 'منعم',
       ],
-      'bread-bakery': [
+      bakery: [
         'bread', 'خبز', 'toast', 'توست', 'cake', 'كيك', 'croissant', 'كرواسان',
-        'muffin', 'bun', 'samoli', 'صامولي', 'pita', 'بيتا',
+        'muffin', 'bun', 'samoli', 'صامولي', 'pita', 'بيتا', 'معجنات', 'pastry',
+        'دونات', 'donut', 'بقسماط', 'rusk', 'فطائر', 'باغيت', 'baguette',
+        'خبز عربي', 'صمون', 'بان كيك', 'pancake', 'waffle', 'وافل',
       ],
-      'canned-goods': [
-        'canned', 'معلب', 'beans', 'فول', 'tomato paste', 'معجون طماطم', 'sardine', 'سردين',
-        'corn', 'ذرة', 'mushroom', 'فطر', 'jam', 'مربى', 'honey', 'عسل',
-        'nutella', 'peanut butter', 'زبدة فول سوداني', 'ketchup', 'كاتشب', 'mayonnaise', 'مايونيز',
+      'canned-dry': [
+        'canned', 'معلب', 'معلبات', 'beans', 'فول', 'tomato paste', 'معجون طماطم',
+        'sardine', 'سردين', 'mushroom', 'فطر', 'jam', 'مربى', 'honey', 'عسل',
+        'nutella', 'نوتيلا', 'peanut butter', 'زبدة فول سوداني', 'ketchup', 'كاتشب',
+        'mayonnaise', 'مايونيز', 'tuna', 'تونة', 'خل', 'vinegar', 'صلصة', 'sauce',
+        'rice', 'أرز', 'ارز', 'رز', 'basmati', 'بسمتي', 'flour', 'طحين', 'دقيق',
+        'pasta', 'معكرونة', 'مكرونة', 'spaghetti', 'شعيرية', 'noodle', 'oats', 'شوفان',
+        'cereal', 'كورن فليكس', 'عدس', 'lentil', 'حمص', 'chickpea', 'سكر', 'sugar',
+        'ملح', 'salt', 'توابل', 'spice', 'بهارات', 'زيت', 'oil', 'زيتون', 'olive',
+        'سمن', 'ghee', 'عافية', 'afia',
       ],
       electronics: [
         'phone', 'هاتف', 'tv', 'تلفاز', 'laptop', 'كمبيوتر', 'tablet', 'تابلت',
