@@ -7,13 +7,15 @@ import { Suspense, useEffect } from 'react'
 /**
  * Google Analytics 4.
  *
- * Activated by NEXT_PUBLIC_GA_ID (a G-XXXXXXXXXX measurement id). With no id set
- * nothing is injected at all, so local and preview builds stay clean.
+ * The measurement id is committed rather than kept in an env var: a GA4 id is
+ * public by design — it ships inside the page HTML of every site that loads
+ * gtag — so it is not a secret. NEXT_PUBLIC_GA_ID still overrides it, which is
+ * how you'd point a staging deploy at a separate property.
  *
  * The app is a client-side SPA once loaded, so route changes don't fire a fresh
  * page_view on their own — the inner component sends one on every path change.
  */
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID || 'G-9EHVGS1TJM'
 
 function PageViews() {
   const pathname = usePathname()
