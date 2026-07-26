@@ -254,13 +254,14 @@ model ScrapeLog {
 // browser. `email` stays null until they log in (a later phase), so the model
 // upgrades to real cross-device accounts without a rebuild.
 model Shopper {
-  id        String       @id @default(cuid())
-  deviceId  String       @unique
-  email     String?      @unique
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id        String             @id @default(cuid())
+  deviceId  String             @unique
+  email     String?            @unique
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
   favorites Favorite[]
   watches   PriceWatch[]
+  pushSubs  PushSubscription[]
 
   @@map("shoppers")
 }
@@ -299,4 +300,33 @@ model PriceWatch {
   @@index([shopperId])
   @@index([nameKey])
   @@map("price_watches")
+}
+
+// --- Web push --------------------------------------------------------------
+/// One browser/device push endpoint. Linked to a Shopper so a price-drop alert
+/// reaches the device that created the watch.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  shopperId String?
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  failures  Int      @default(0) // consecutive send failures; prune when high
+  createdAt DateTime @default(now())
+
+  shopper Shopper? @relation(fields: [shopperId], references: [id], onDelete: Cascade)
+
+  @@index([shopperId])
+  @@map("push_subscriptions")
+}
+
+/// Small key/value store for server-side settings that must not live in the
+/// repo — currently the VAPID private key, which authorises sending push to
+/// our subscribers and is therefore a genuine secret.
+model AppSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
 }

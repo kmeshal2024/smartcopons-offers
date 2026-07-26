@@ -10,7 +10,7 @@
  *   - static assets (/_next/static, /icons, /logos): cache-first.
  *   - everything else (API, images): straight to the network.
  */
-const VERSION = 'v1'
+const VERSION = 'v2'
 const STATIC_CACHE = `sc-static-${VERSION}`
 const PAGE_CACHE = `sc-pages-${VERSION}`
 const OFFLINE_URL = '/offline'
@@ -35,6 +35,47 @@ self.addEventListener('activate', event => {
     )
   )
   self.clients.claim()
+})
+
+/* --- Push notifications ------------------------------------------------- */
+
+self.addEventListener('push', event => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    data = { title: 'سمارت كوبونز', body: event.data ? event.data.text() : '' }
+  }
+  const title = data.title || 'سمارت كوبونز'
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || '',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      dir: 'rtl',
+      lang: 'ar',
+      // tag collapses repeats of the same alert instead of stacking them
+      tag: data.tag || 'sc-notification',
+      data: { url: data.url || '/' },
+    })
+  )
+})
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close()
+  const target = (event.notification.data && event.notification.data.url) || '/'
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      // Reuse an open tab when there is one rather than piling up windows.
+      for (const c of list) {
+        if ('focus' in c) {
+          c.navigate(target)
+          return c.focus()
+        }
+      }
+      return self.clients.openWindow(target)
+    })
+  )
 })
 
 function isStatic(url) {

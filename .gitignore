@@ -46,3 +46,6 @@ smartcopons-deploy.zip
 
 # scraper run logs
 logs/
+
+# VAPID private key — must never be committed
+vapid.json
