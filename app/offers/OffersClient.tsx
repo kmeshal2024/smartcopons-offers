@@ -563,26 +563,29 @@ export default function OffersClient() {
                   {searchCoupons.map(coupon => (
                     <div
                       key={coupon.id}
-                      className="bg-gradient-to-br from-pink-50 to-white rounded-lg p-4 border border-pink-100"
+                      // min-w-0 so a long unbroken coupon title can't push the
+                      // card wider than its grid cell — without it the card
+                      // overflowed and clipped its own text on phones.
+                      className="min-w-0 bg-gradient-to-br from-pink-50 to-white rounded-lg p-4 border border-pink-100"
                     >
                       <div className="flex items-center gap-2 mb-2">
                         {coupon.store.logo ? (
-                          <img src={coupon.store.logo} alt={coupon.store.name} className="w-6 h-6 object-contain rounded" />
+                          <img src={coupon.store.logo} alt={coupon.store.name} className="w-6 h-6 object-contain rounded flex-shrink-0" />
                         ) : (
                           <span className="text-sm">🏷️</span>
                         )}
-                        <span className="text-xs text-pink-600 font-semibold">{coupon.store.name}</span>
+                        <span className="text-xs text-pink-600 font-semibold truncate">{coupon.store.name}</span>
                       </div>
-                      <div className="font-bold text-sm text-gray-800 mb-1 line-clamp-2">{coupon.title}</div>
-                      <div className="text-pink-700 font-bold text-xs mb-2">{coupon.discountText}</div>
+                      <div className="font-bold text-sm text-gray-800 mb-1 line-clamp-2 break-words">{coupon.title}</div>
+                      <div className="text-pink-700 font-bold text-xs mb-2 break-words">{coupon.discountText}</div>
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-white border border-dashed border-pink-300 rounded-md px-2 py-1.5 font-mono text-sm font-bold text-center text-pink-700">
+                        <div className="min-w-0 flex-1 truncate bg-white border border-dashed border-pink-300 rounded-md px-2 py-1.5 font-mono text-sm font-bold text-center text-pink-700">
                           {coupon.code}
                         </div>
                         <button
                           id={`search-copy-${coupon.id}`}
                           onClick={() => handleCopyCode(coupon.code, `search-copy-${coupon.id}`)}
-                          className="bg-pink-600 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-pink-700 transition"
+                          className="flex-shrink-0 bg-pink-600 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-pink-700 transition"
                         >
                           نسخ
                         </button>
