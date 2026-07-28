@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
 import { getDeviceId, useFavorites } from '@/hooks/useFavorites'
 
 // Favourites live under a device token in localStorage, so this is entirely
-// client-rendered; the server wrapper marks it dynamic + noindex.
+// client-rendered; the server wrapper marks it dynamic + noindex and supplies
+// the page chrome (Header/Footer) — Footer must stay server-side, see page.tsx.
 export default function FavoritesClient() {
   const { count } = useFavorites()
   const [products, setProducts] = useState<any[] | null>(null)
@@ -32,9 +31,7 @@ export default function FavoritesClient() {
   }, [count])
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <Header />
-      <main className="container mx-auto px-4 py-6">
+    <main className="container mx-auto px-4 py-6">
         <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500">
           <Link href="/" className="hover:text-pink-600 transition">الرئيسية</Link>
           <span className="text-gray-300">/</span>
@@ -79,7 +76,9 @@ export default function FavoritesClient() {
                       ) : (
                         <span className="text-gray-400">غير متوفر حالياً</span>
                       )}
-                      <span className="text-gray-400 line-through">{w.basePrice.toFixed(2)}</span>
+                      {w.basePrice != null && (
+                        <span className="text-gray-400 line-through">{w.basePrice.toFixed(2)}</span>
+                      )}
                     </div>
                   </div>
                   {w.dropped && (
@@ -111,8 +110,6 @@ export default function FavoritesClient() {
             ))}
           </div>
         )}
-      </main>
-      <Footer />
-    </div>
+    </main>
   )
 }
