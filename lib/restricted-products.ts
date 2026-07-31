@@ -50,6 +50,16 @@ const MEDICINE = [
 
 export const RESTRICTED_TERMS = [...TOBACCO, ...MEDICINE]
 
+/**
+ * Products that mention a restricted term but are themselves innocent.
+ * Whitening toothpaste is advertised as removing tobacco stains — "معجون أسنان
+ * المضاد للتبغ" and "مبيض لمستخدمي القهوة والشاي والتبغ" are Crest and Colgate,
+ * not tobacco. Checked before the restricted terms.
+ */
+const ALLOW = [
+  'معجون اسنان', 'toothpaste', 'غسول فم', 'mouthwash', 'مبيض اسنان',
+]
+
 /** Arabic letter variants, so "أسبرين" and "اسبرين" collapse to one term. */
 function normalize(s: string): string {
   return s
@@ -85,10 +95,13 @@ export function isRestrictedProduct(...fields: Array<string | null | undefined>)
   return restrictedReason(...fields) !== null
 }
 
+const NORM_ALLOW = ALLOW.map(normalize)
+
 /** The matching term, for logging and dry-run reports. */
 export function restrictedReason(...fields: Array<string | null | undefined>): string | null {
   const hay = normalize(fields.filter(Boolean).join(' '))
   if (!hay) return null
+  if (NORM_ALLOW.some(a => hay.includes(a))) return null
   const hit = PATTERNS.find(p => p.re.test(hay))
   return hit ? hit.term : null
 }
