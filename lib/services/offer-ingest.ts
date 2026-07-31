@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { CategoryMapper } from './category-mapper'
+import { isRestrictedProduct } from '@/lib/restricted-products'
 import type { ScrapedOffer, ScrapedFlyerAsset } from '@/lib/scrapers/types'
 import { createHash } from 'crypto'
 
@@ -118,7 +119,10 @@ export class OfferIngestService {
         pageNumber: offer.pageNumber || 1,
         tags: offer.tags || null,
         confidence: 0.7,
-        isHidden: false,
+        // Age-restricted items (tobacco, OTC medicine) arrive hidden so the
+        // nightly scrape cannot undo the 3+ content rating. See
+        // lib/restricted-products.ts.
+        isHidden: isRestrictedProduct(offer.nameAr, offer.nameEn, offer.brand),
       })
     }
 

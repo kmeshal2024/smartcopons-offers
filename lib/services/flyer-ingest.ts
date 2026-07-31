@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { PDFExtractor } from './pdf-extractor'
 import { CategoryMapper } from './category-mapper'
+import { isRestrictedProduct } from '@/lib/restricted-products'
 import path from 'path'
 import fs from 'fs/promises'
 
@@ -78,6 +79,9 @@ export class FlyerIngestService {
               pageNumber: product.pageNumber,
               bbox: product.bbox,
               confidence: product.confidence,
+              // Keep age-restricted items out of the app — see
+              // lib/restricted-products.ts.
+              isHidden: isRestrictedProduct(product.nameAr, product.nameEn),
             },
           })
 
