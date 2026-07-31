@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { isRestrictedProduct, restrictedReason } from '@/lib/restricted-products'
+import { restrictedReason } from '@/lib/restricted-products'
 
 /**
  * Hide age-restricted offers (tobacco, OTC medicine, alcohol) so the app can
@@ -31,10 +31,16 @@ async function run(dry: boolean) {
 
   const shouldHide: Row[] = []
   const reasons: Record<string, number> = {}
+  // Samples are grouped BY TERM: a flat "first 25" list hides false positives
+  // in whichever term happens to sort last, which is how the Febreze/Al Kabeer
+  // mismatches nearly shipped.
+  const byTermSamples: Record<string, string[]> = {}
   for (const o of offers) {
-    if (!isRestrictedProduct(o.nameAr, o.nameEn, o.brand)) continue
-    const why = restrictedReason(o.nameAr, o.nameEn, o.brand) || '?'
+    const why = restrictedReason(o.nameAr, o.nameEn, o.brand)
+    if (!why) continue
     reasons[why] = (reasons[why] || 0) + 1
+    const bucket = byTermSamples[why] || (byTermSamples[why] = [])
+    if (bucket.length < 6) bucket.push(o.nameAr.slice(0, 65))
     if (!o.isHidden) shouldHide.push(o)
   }
 
@@ -43,7 +49,7 @@ async function run(dry: boolean) {
     matched: Object.values(reasons).reduce((a, b) => a + b, 0),
     newlyHidden: shouldHide.length,
     byTerm: Object.fromEntries(Object.entries(reasons).sort((a, b) => b[1] - a[1])),
-    samples: shouldHide.slice(0, 25).map(o => o.nameAr.slice(0, 70)),
+    samplesByTerm: byTermSamples,
     dry,
   }
 
