@@ -30,25 +30,34 @@
  * تبغ anyway, so the generic terms catch them.
  */
 
-/** Tobacco, shisha and vaping. */
-const TOBACCO = [
-  'سجائر', 'سجاير', 'سيجارة', 'سيجار', 'تبغ', 'دخان', 'معسل', 'شيشة',
-  'نرجيلة', 'ارجيلة', 'نيكوتين', 'فيب', 'سحبة',
-  'cigarette', 'cigarettes', 'cigar', 'tobacco', 'shisha', 'hookah',
-  'nicotine', 'vape', 'e-cigarette',
+/**
+ * Distinctive words that cannot plausibly sit inside an unrelated word, so
+ * only the START needs to be a word boundary. Retailer data is not clean —
+ * a real listing reads "بال مال سجائرأبيض-علبة" with no space after سجائر,
+ * and requiring a boundary on both sides let it through.
+ */
+const SAFE = [
+  'سجائر', 'سجاير', 'سيجارة', 'سيجار', 'نيكوتين', 'معسل', 'شيشة',
+  'نرجيلة', 'ارجيلة',
+  'cigarette', 'cigar', 'tobacco', 'shisha', 'hookah', 'nicotine',
   'marlboro', 'winston', 'pall mall', 'dunhill', 'rothmans', 'davidoff',
   'chesterfield', 'parliament',
+  // Over-the-counter medicine. Vitamins and supplements are NOT restricted.
+  'بنادول', 'بانادول', 'بروفين', 'اسبرين', 'باراسيتامول', 'ايبوبروفين',
+  'فيفادول', 'كونجستال',
+  'panadol', 'brufen', 'ibuprofen', 'paracetamol', 'acetaminophen', 'aspirin',
 ]
 
-/** Over-the-counter medicine. Vitamins and supplements are NOT restricted. */
-const MEDICINE = [
-  'بنادول', 'بانادول', 'ادول', 'بروفين', 'اسبرين', 'باراسيتامول',
-  'ايبوبروفين', 'فيفادول', 'كونجستال',
-  'panadol', 'adol', 'brufen', 'ibuprofen', 'paracetamol', 'acetaminophen',
-  'aspirin',
-]
+/**
+ * Short or ambiguous terms that must be bounded on BOTH sides, because they
+ * really do occur inside innocent words:
+ *   فيب  -> فيبريز (Febreze), مايكروفيبر (microfibre), فيبي (Feebee pizza)
+ *   تبغ  -> تبغي ("you want", colloquial)
+ *   ادول -> too short to be safe as a prefix
+ */
+const STRICT = ['فيب', 'تبغ', 'دخان', 'سحبة', 'ادول', 'vape', 'e-cigarette', 'adol']
 
-export const RESTRICTED_TERMS = [...TOBACCO, ...MEDICINE]
+export const RESTRICTED_TERMS = [...SAFE, ...STRICT]
 
 /**
  * Products that mention a restricted term but are themselves innocent.
@@ -77,18 +86,17 @@ function normalize(s: string): string {
  * conjunctions onto the front of a word, so those are allowed as a prefix —
  * "السجائر" is still tobacco, while "مايكروفيبر" is not a vape.
  */
-function buildPattern(term: string): RegExp {
+function buildPattern(term: string, strict: boolean): RegExp {
   const esc = normalize(term).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return new RegExp(
-    `(?<![\\p{L}\\p{N}])(?:ال|وال|بال|فال|لل|و|ب|ل)?${esc}(?![\\p{L}\\p{N}])`,
-    'u'
-  )
+  const start = `(?<![\\p{L}\\p{N}])(?:ال|وال|بال|فال|لل|و|ب|ل)?`
+  const end = strict ? `(?![\\p{L}\\p{N}])` : ``
+  return new RegExp(`${start}${esc}${end}`, 'u')
 }
 
-const PATTERNS: Array<{ term: string; re: RegExp }> = RESTRICTED_TERMS.map(t => ({
-  term: t,
-  re: buildPattern(t),
-}))
+const PATTERNS: Array<{ term: string; re: RegExp }> = [
+  ...SAFE.map(t => ({ term: t, re: buildPattern(t, false) })),
+  ...STRICT.map(t => ({ term: t, re: buildPattern(t, true) })),
+]
 
 /** True when the offer is age-restricted and must be hidden from the app. */
 export function isRestrictedProduct(...fields: Array<string | null | undefined>): boolean {
