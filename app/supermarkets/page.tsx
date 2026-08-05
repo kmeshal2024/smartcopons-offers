@@ -4,6 +4,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 import type { Metadata } from 'next'
+import { DEFAULT_COUNTRY } from '@/lib/countries'
 
 export const metadata: Metadata = {
   title: 'عروض السوبرماركت في السعودية',
@@ -17,7 +18,7 @@ export const dynamic = 'force-dynamic'
 
 async function getSupermarkets() {
   const all = await prisma.supermarket.findMany({
-    where: { isActive: true },
+    where: { isActive: true, country: DEFAULT_COUNTRY },
     include: {
       _count: {
         select: {
@@ -25,7 +26,7 @@ async function getSupermarkets() {
             where: { status: 'ACTIVE', endDate: { gte: new Date() } },
           },
           productOffers: {
-            where: { isHidden: false },
+            where: { isHidden: false, country: DEFAULT_COUNTRY },
           },
         },
       },

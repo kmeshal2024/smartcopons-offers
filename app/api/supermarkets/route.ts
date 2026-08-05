@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { countryFromRequest } from '@/lib/countries'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const country = countryFromRequest(request)
     const all = await prisma.supermarket.findMany({
-      where: { isActive: true },
+      where: { isActive: true, country },
       select: {
         id: true,
         name: true,
@@ -17,7 +19,7 @@ export async function GET() {
         viewCount: true,
         _count: {
           select: {
-            productOffers: { where: { isHidden: false } },
+            productOffers: { where: { isHidden: false, country } },
             flyers: {
               where: {
                 status: 'ACTIVE',

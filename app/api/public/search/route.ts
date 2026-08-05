@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { countryFromRequest } from '@/lib/countries'
 import { arabicContainsFilter } from '@/lib/arabic-search'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 
@@ -25,11 +26,15 @@ export async function GET(request: Request) {
     const wantCoupons = type === 'all' || type === 'coupons'
     const wantGroups = type === 'all'
 
+    // Scope every product-bearing result to one market.
+    const country = countryFromRequest(request)
+
     const [products, coupons, stores, categories] = await Promise.all([
       wantProducts
         ? prisma.productOffer.findMany({
             where: {
               isHidden: false,
+              country,
               price: { gt: 0 },
               flyer: { endDate: { gte: new Date() } },
               // Arabic-variant aware over the indexed columns only.
@@ -82,7 +87,7 @@ export async function GET(request: Request) {
               logo: true,
               _count: {
                 select: {
-                  productOffers: { where: { isHidden: false } },
+                  productOffers: { where: { isHidden: false, country } },
                   flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
                 },
               },

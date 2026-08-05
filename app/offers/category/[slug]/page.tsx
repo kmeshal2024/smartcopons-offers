@@ -6,6 +6,7 @@ import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
 import CategorySidebar from '@/components/CategorySidebar'
 import CategorySort from './CategorySort'
+import { DEFAULT_COUNTRY } from '@/lib/countries'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -32,7 +33,7 @@ async function getCategoryData(slug: string, sort: string) {
   // Only current offers — expired prices mislead shoppers.
   const where = {
     categoryId: category.id,
-    isHidden: false,
+    isHidden: false, country: DEFAULT_COUNTRY,
     price: { gt: 0 },
     flyer: { endDate: { gte: new Date() } },
   }
@@ -63,7 +64,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       // noindex decision, so a stale count would keep empty pages indexed.
       _count: {
         select: {
-          products: { where: { isHidden: false, flyer: { endDate: { gte: new Date() } } } },
+          products: { where: { isHidden: false, country: DEFAULT_COUNTRY, flyer: { endDate: { gte: new Date() } } } },
         },
       },
     },

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { countryFromRequest } from '@/lib/countries'
 import { arabicContainsFilter } from '@/lib/arabic-search'
 
 // GET /api/compare?q=productName
@@ -20,6 +21,8 @@ export async function GET(request: Request) {
 
     const match = {
       isHidden: false,
+      // A price comparison only makes sense within one market.
+      country: countryFromRequest(request),
       OR: arabicContainsFilter(q, ['nameAr', 'nameEn', 'brand', 'tags']),
     }
 

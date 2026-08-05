@@ -9,7 +9,7 @@ import ExpiryBadge from '@/components/ExpiryBadge'
 import WatchButton from '@/components/WatchButton'
 import { getValidity, formatRangeAr } from '@/lib/flyer-utils'
 import { arabicContainsFilter } from '@/lib/arabic-search'
-import { currencyOf } from '@/lib/countries'
+import { currencyOf, resolveCountry, DEFAULT_COUNTRY } from '@/lib/countries'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -20,7 +20,7 @@ export const revalidate = 300
 async function getProduct(id: string) {
   return prisma.productOffer.findFirst({
     // price 0 rows are flyer placeholders, not products — no page for them.
-    where: { id, isHidden: false, price: { gt: 0 } },
+    where: { id, isHidden: false, country: DEFAULT_COUNTRY, price: { gt: 0 } },
     include: {
       supermarket: { select: { id: true, nameAr: true, name: true, slug: true, logo: true } },
       category: { select: { nameAr: true, slug: true, icon: true } },
@@ -40,7 +40,7 @@ async function getPriceComparison(name: string, excludeId: string) {
 
   const rows = await prisma.productOffer.findMany({
     where: {
-      isHidden: false,
+      isHidden: false, country: DEFAULT_COUNTRY,
       id: { not: excludeId },
       flyer: { endDate: { gte: new Date() } },
       OR: arabicContainsFilter(term, ['nameAr', 'nameEn']),
@@ -71,7 +71,7 @@ async function getRelated(categoryId: string | null, excludeId: string) {
   return prisma.productOffer.findMany({
     where: {
       categoryId,
-      isHidden: false,
+      isHidden: false, country: DEFAULT_COUNTRY,
       id: { not: excludeId },
       flyer: { endDate: { gte: new Date() } },
     },
@@ -130,6 +130,7 @@ export default async function ProductPage({ params }: Props) {
 
   const name = p.nameAr || p.nameEn || 'منتج'
   const cur = currencyOf((p as any).country)
+  const curIso = resolveCountry((p as any).country).currencyEn
   const validity = getValidity(p.flyer?.startDate, p.flyer?.endDate)
   const [comparison, related] = await Promise.all([
     getPriceComparison(name, p.id),
@@ -153,7 +154,7 @@ export default async function ProductPage({ params }: Props) {
       comparison.length > 0
         ? {
             '@type': 'AggregateOffer',
-            priceCurrency: 'SAR',
+            priceCurrency: curIso,
             lowPrice: cheapest,
             highPrice: Math.max(...allPrices),
             offerCount: allPrices.length,
@@ -167,7 +168,7 @@ export default async function ProductPage({ params }: Props) {
             ].map(o => ({
               '@type': 'Offer',
               price: o.price,
-              priceCurrency: 'SAR',
+              priceCurrency: curIso,
               availability: 'https://schema.org/InStock',
               itemCondition: 'https://schema.org/NewCondition',
               seller: { '@type': 'Organization', name: o.seller },
@@ -179,7 +180,7 @@ export default async function ProductPage({ params }: Props) {
         : {
             '@type': 'Offer',
             price: p.price,
-            priceCurrency: 'SAR',
+            priceCurrency: curIso,
             availability: 'https://schema.org/InStock',
             itemCondition: 'https://schema.org/NewCondition',
             seller: { '@type': 'Organization', name: p.supermarket.nameAr },

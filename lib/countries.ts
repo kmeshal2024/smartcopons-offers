@@ -68,6 +68,24 @@ export function currencyOf(value?: string | null): string {
 }
 
 /**
+ * Which market a request is asking about.
+ *
+ * Reads `?country=` (accepting either the code or the url slug) and falls back
+ * to Saudi. Every listing query must scope by this, otherwise UAE offers with
+ * Dirham prices surface on the Saudi site next to Riyal ones.
+ *
+ * Once smartcopons.com/uae exists this is also where the path segment gets
+ * read — keeping the resolution in one place is the point.
+ */
+export function countryFromRequest(request: Request): CountryCode {
+  try {
+    return resolveCountry(new URL(request.url).searchParams.get('country')).code
+  } catch {
+    return DEFAULT_COUNTRY
+  }
+}
+
+/**
  * Price as shoppers see it: "24.00 ر.س".
  * Pass `withCurrency: false` where the label is rendered as a separate element
  * (ProductCard styles the currency smaller than the number).

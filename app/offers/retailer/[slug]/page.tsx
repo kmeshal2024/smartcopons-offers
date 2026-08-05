@@ -8,6 +8,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import RetailerFilters from './RetailerFilters'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
+import { DEFAULT_COUNTRY } from '@/lib/countries'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -41,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // site-wide quality. Same rule as the public listings.
   const [offerCount, flyerCount] = await Promise.all([
     prisma.productOffer.count({
-      where: { supermarketId: supermarket.id, isHidden: false },
+      where: { supermarketId: supermarket.id, isHidden: false, country: DEFAULT_COUNTRY },
     }),
     prisma.flyer.count({
       where: { supermarketId: supermarket.id, status: 'ACTIVE', endDate: { gte: new Date() } },
@@ -88,7 +89,7 @@ async function getRetailerData(slug: string, sort: string, categorySlug: string,
 
   const where: any = {
     supermarketId: supermarket.id,
-    isHidden: false,
+    isHidden: false, country: DEFAULT_COUNTRY,
     price: { gt: 0 },
     // Only current offers — an expired price is worse than no price.
     // Date-based so it holds even if a flyer's status flag is stale.
@@ -135,7 +136,7 @@ async function getRetailerData(slug: string, sort: string, categorySlug: string,
     prisma.category.findMany({
       where: {
         isActive: true,
-        products: { some: { supermarketId: supermarket.id, isHidden: false } },
+        products: { some: { supermarketId: supermarket.id, isHidden: false, country: DEFAULT_COUNTRY } },
       },
       select: { nameAr: true, slug: true, icon: true },
       orderBy: { order: 'asc' },

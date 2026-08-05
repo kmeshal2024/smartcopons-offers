@@ -5,6 +5,7 @@ import ProductCard from '@/components/ProductCard'
 import Footer from '@/components/Footer'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 import type { Metadata } from 'next'
+import { DEFAULT_COUNTRY } from '@/lib/countries'
 
 export const metadata: Metadata = {
   // `absolute` bypasses the layout's `%s | SmartCopons` template so the brand
@@ -36,11 +37,11 @@ async function getHomeData() {
       take: 8,
     }),
     prisma.supermarket.findMany({
-      where: { isActive: true },
+      where: { isActive: true, country: DEFAULT_COUNTRY },
       include: {
         _count: {
           select: {
-            productOffers: { where: { isHidden: false } },
+            productOffers: { where: { isHidden: false, country: DEFAULT_COUNTRY } },
             flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
           },
         },
@@ -51,7 +52,7 @@ async function getHomeData() {
       take: 24,
     }),
     prisma.productOffer.findMany({
-      where: { isHidden: false, price: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
+      where: { isHidden: false, country: DEFAULT_COUNTRY, price: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
       include: {
         supermarket: { select: { nameAr: true, slug: true, logo: true } },
         category: { select: { nameAr: true, icon: true } },
@@ -60,7 +61,7 @@ async function getHomeData() {
       take: 10,
     }),
     prisma.productOffer.findMany({
-      where: { isHidden: false, discountPercent: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
+      where: { isHidden: false, country: DEFAULT_COUNTRY, discountPercent: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
       include: {
         supermarket: { select: { nameAr: true, slug: true, logo: true } },
         category: { select: { nameAr: true, icon: true } },
@@ -69,7 +70,7 @@ async function getHomeData() {
       take: 4,
     }),
     prisma.productOffer.findMany({
-      where: { isHidden: false, viewCount: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
+      where: { isHidden: false, country: DEFAULT_COUNTRY, viewCount: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
       include: {
         supermarket: { select: { nameAr: true, slug: true, logo: true } },
         category: { select: { nameAr: true, icon: true } },
@@ -82,7 +83,7 @@ async function getHomeData() {
       include: {
         _count: {
           select: {
-            products: { where: { isHidden: false, flyer: { endDate: { gte: new Date() } } } },
+            products: { where: { isHidden: false, country: DEFAULT_COUNTRY, flyer: { endDate: { gte: new Date() } } } },
           },
         },
       },
@@ -92,7 +93,7 @@ async function getHomeData() {
     // The banner stat must count only live offers — otherwise it advertises
     // thousands of expired prices.
     prisma.productOffer.count({
-      where: { isHidden: false, price: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
+      where: { isHidden: false, country: DEFAULT_COUNTRY, price: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
     }),
     prisma.supermarket.count({ where: { isActive: true } }),
     // The coupon list above is capped at 8 for display; the label needs the
@@ -102,7 +103,7 @@ async function getHomeData() {
     // strip. Soonest-to-expire first.
     prisma.productOffer.findMany({
       where: {
-        isHidden: false,
+        isHidden: false, country: DEFAULT_COUNTRY,
         price: { gt: 0 },
         discountPercent: { gt: 0 },
         flyer: {

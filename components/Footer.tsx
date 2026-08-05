@@ -2,16 +2,17 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { prisma } from '@/lib/db'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
+import { DEFAULT_COUNTRY } from '@/lib/countries'
 
 async function getFooterData() {
   const supermarkets = await prisma.supermarket.findMany({
-    where: { isActive: true },
+    where: { isActive: true, country: DEFAULT_COUNTRY },
     select: {
       nameAr: true,
       slug: true,
       _count: {
         select: {
-          productOffers: { where: { isHidden: false } },
+          productOffers: { where: { isHidden: false, country: DEFAULT_COUNTRY } },
           flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
         },
       },

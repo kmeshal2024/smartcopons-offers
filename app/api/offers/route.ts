@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { countryFromRequest } from '@/lib/countries'
 import { arabicVariants, normalizeArabic } from '@/lib/arabic-search'
 
 // Everyday synonyms plain letter-variants can't bridge — the word typed isn't
@@ -33,6 +34,7 @@ function tokenize(q: string): string[] {
  */
 async function relevanceSearch(opts: {
   search: string
+  country: string
   supermarketId?: string | null
   categoryId?: string | null
   minPrice?: number | null
@@ -63,6 +65,9 @@ async function relevanceSearch(opts: {
       'po."isHidden" = false',
       'po.price > 0',
       'f."endDate" >= now()',
+      // Same market scoping as the Prisma path — the raw search must not leak
+      // another country's offers past the filter.
+      `po.country = ${add(opts.country)}`,
       `((${tokenClauses.join(' AND ')}) OR (${catOrs.join(' OR ')}))`,
     ]
     if (opts.supermarketId) clauses.push(`po."supermarketId" = ${add(opts.supermarketId)}`)
@@ -135,6 +140,10 @@ export async function GET(request: Request) {
       isHidden: false,
       // Placeholder rows emitted by flyer scrapers are not products.
       price: { gt: 0 },
+      // Scope to one market. Without this, UAE offers priced in Dirhams would
+      // list next to Saudi ones priced in Riyals. Defaults to Saudi, so
+      // existing callers are unaffected.
+      country: countryFromRequest(request),
     }
 
     // Never surface offers whose flyer has already ended — stale prices on a
@@ -234,6 +243,7 @@ export async function GET(request: Request) {
       // preserve that order (a plain `in` query would lose the ranking).
       const { ids, total: t } = await relevanceSearch({
         search,
+        country: where.country,
         supermarketId,
         categoryId: resolvedCategoryId,
         minPrice: minPrice ? parseFloat(minPrice) : null,

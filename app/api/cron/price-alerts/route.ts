@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db'
 import { arabicContainsFilter } from '@/lib/arabic-search'
 import { isAuthorizedCron } from '@/lib/cron-auth'
 import { sendToShopper } from '@/lib/push'
-import { currencyOf } from '@/lib/countries'
+import { currencyOf, DEFAULT_COUNTRY } from '@/lib/countries'
 
 /**
  * Turn price watches into actual notifications.
@@ -46,12 +46,16 @@ export async function GET(request: Request) {
     const best = await prisma.productOffer.findFirst({
       where: {
         isHidden: false,
+        // PriceWatch has no country column yet, so a watch is assumed to be in
+        // the default market. Add one to the model before /uae ships, or a
+        // Saudi shopper could be alerted about a Dirham price.
+        country: DEFAULT_COUNTRY,
         price: { gt: 0 },
         flyer: { endDate: { gte: new Date() } },
         OR: arabicContainsFilter(term, ['nameAr', 'nameEn']),
       },
       orderBy: { price: 'asc' },
-      select: { id: true, price: true, nameAr: true, supermarket: { select: { nameAr: true } } },
+      select: { id: true, price: true, nameAr: true, country: true, supermarket: { select: { nameAr: true } } },
     })
     if (!best) continue
 

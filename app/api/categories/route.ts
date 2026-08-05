@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { countryFromRequest } from '@/lib/countries'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const country = countryFromRequest(request)
     const categories = await prisma.category.findMany({
       where: { isActive: true },
       orderBy: { order: 'asc' },
@@ -14,7 +16,7 @@ export async function GET() {
             _count: {
               select: {
                 products: {
-                  where: { isHidden: false },
+                  where: { isHidden: false, country },
                 },
               },
             },
@@ -23,7 +25,7 @@ export async function GET() {
         _count: {
           select: {
             products: {
-              where: { isHidden: false },
+              where: { isHidden: false, country },
             },
           },
         },

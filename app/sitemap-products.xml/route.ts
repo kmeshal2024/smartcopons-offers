@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { buildUrlSet, XML_HEADERS, SITE_URL, type SitemapEntry } from '@/lib/sitemap-xml'
+import { DEFAULT_COUNTRY } from '@/lib/countries'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,8 @@ export async function GET() {
     const products = await prisma.productOffer.findMany({
       where: {
         isHidden: false,
+        // sa.smartcopons.com only indexes the Saudi catalogue.
+        country: DEFAULT_COUNTRY,
         price: { gt: 0 },
         flyer: { endDate: { gte: new Date() } },
       },

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { arabicContainsFilter } from '@/lib/arabic-search'
 import { getOrCreateShopper, findShopper, isValidDeviceId } from '@/lib/shopper'
+import { DEFAULT_COUNTRY } from '@/lib/countries'
 
 /**
  * Price watches. A shopper watches a product; we remember the price then, and
@@ -22,6 +23,8 @@ async function currentBestPrice(nameKey: string): Promise<number | null> {
   const row = await prisma.productOffer.findFirst({
     where: {
       isHidden: false,
+      // Matches price-alerts: PriceWatch has no country column yet.
+      country: DEFAULT_COUNTRY,
       price: { gt: 0 },
       flyer: { endDate: { gte: new Date() } },
       OR: arabicContainsFilter(term, ['nameAr', 'nameEn']),

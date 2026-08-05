@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { buildUrlSet, XML_HEADERS, SITE_URL, type SitemapEntry } from '@/lib/sitemap-xml'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
+import { DEFAULT_COUNTRY } from '@/lib/countries'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,7 +27,7 @@ export async function GET() {
           updatedAt: true,
           _count: {
             select: {
-              productOffers: { where: { isHidden: false } },
+              productOffers: { where: { isHidden: false, country: DEFAULT_COUNTRY } },
               flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
             },
           },
