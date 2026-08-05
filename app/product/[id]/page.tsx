@@ -9,6 +9,7 @@ import ExpiryBadge from '@/components/ExpiryBadge'
 import WatchButton from '@/components/WatchButton'
 import { getValidity, formatRangeAr } from '@/lib/flyer-utils'
 import { arabicContainsFilter } from '@/lib/arabic-search'
+import { currencyOf } from '@/lib/countries'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -95,7 +96,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const name = p.nameAr || p.nameEn || 'منتج'
   const store = p.supermarket.nameAr
   const validity = getValidity(p.flyer?.startDate, p.flyer?.endDate)
-  const priceStr = `${p.price.toFixed(2)} ر.س`
+  const cur = currencyOf((p as any).country)
+  const priceStr = `${p.price.toFixed(2)} ${cur}`
 
   const title = `${name} — سعر ${priceStr} في ${store}`
   const desc = p.discountPercent
@@ -127,6 +129,7 @@ export default async function ProductPage({ params }: Props) {
   if (!p) notFound()
 
   const name = p.nameAr || p.nameEn || 'منتج'
+  const cur = currencyOf((p as any).country)
   const validity = getValidity(p.flyer?.startDate, p.flyer?.endDate)
   const [comparison, related] = await Promise.all([
     getPriceComparison(name, p.id),
@@ -238,7 +241,7 @@ export default async function ProductPage({ params }: Props) {
 
             <div className="mb-4 flex items-baseline gap-3">
               <span className="text-3xl font-extrabold text-pink-700">{p.price.toFixed(2)}</span>
-              <span className="text-sm text-gray-400">ر.س</span>
+              <span className="text-sm text-gray-400">{cur}</span>
               {p.oldPrice && p.oldPrice > p.price && (
                 <span className="text-lg text-gray-400 line-through">{p.oldPrice.toFixed(2)}</span>
               )}
@@ -303,7 +306,7 @@ export default async function ProductPage({ params }: Props) {
                             <span className="font-medium text-gray-800">{row.supermarket.nameAr}</span>
                             {row.here && <span className="mr-2 text-[10px] text-gray-400">(هذه الصفحة)</span>}
                           </td>
-                          <td className="px-4 py-2.5 font-bold text-gray-900">{row.price.toFixed(2)} ر.س</td>
+                          <td className="px-4 py-2.5 font-bold text-gray-900">{row.price.toFixed(2)} {cur}</td>
                           <td className="px-4 py-2.5">
                             {diff === 0 ? (
                               <span className="font-semibold text-emerald-600">الأرخص</span>

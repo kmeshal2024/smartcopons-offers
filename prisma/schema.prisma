@@ -36,6 +36,10 @@ model Store {
   slug      String   @unique
   logo      String?
   website   String?
+  /// Coupon stores are often GCC-wide, so this is a comma-separated list of
+  /// country codes rather than a single value — "SA,AE". Empty means global
+  /// (AliExpress, iHerb), which is valid everywhere.
+  countries String   @default("SA")
   createdAt DateTime @default(now())
 
   coupons Coupon[]
@@ -90,6 +94,8 @@ model Supermarket {
   logo      String?
   website   String?
   cityId    String?
+  /// ISO country code — see lib/countries.ts. Everything predating the UAE launch is SA.
+  country   String   @default("SA")
   isActive  Boolean  @default(true)
   viewCount Int      @default(0)
   createdAt DateTime @default(now())
@@ -102,6 +108,7 @@ model Supermarket {
   @@index([slug])
   @@index([isActive])
   @@index([cityId])
+  @@index([country, isActive])
   @@map("supermarkets")
 }
 
@@ -199,6 +206,11 @@ model ProductOffer {
   isHidden   Boolean @default(false)
   viewCount  Int     @default(0)
 
+  /// Denormalised from the supermarket. Every listing query filters by country,
+  /// so keeping it on the row lets it join the existing composite indexes
+  /// instead of forcing a join on 34k rows. See lib/countries.ts.
+  country String @default("SA")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -226,6 +238,10 @@ model ProductOffer {
   @@index([isHidden, viewCount])
   // Deduplication
   @@index([sourceHash])
+  // Country-scoped listing: the two sorts the offers page actually uses
+  // (newest, and the discount-first default).
+  @@index([country, isHidden, createdAt])
+  @@index([country, isHidden, discountPercent])
   @@map("product_offers")
 }
 

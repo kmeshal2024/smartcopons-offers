@@ -7,6 +7,7 @@ import ExpiryBadge, { dealCardClasses } from '@/components/ExpiryBadge'
 import { getValidity } from '@/lib/flyer-utils'
 import { useShoppingList } from '@/hooks/useShoppingList'
 import { useFavorites } from '@/hooks/useFavorites'
+import { currencyOf } from '@/lib/countries'
 
 interface ProductCardProps {
   product: {
@@ -19,6 +20,8 @@ interface ProductCardProps {
     discountPercent?: number | null
     sizeText?: string | null
     imageUrl?: string | null
+    /** ISO country code; falls back to Saudi when absent. See lib/countries.ts. */
+    country?: string | null
     supermarket: {
       nameAr: string
       slug: string
@@ -111,7 +114,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <button
           onClick={(e) => {
             e.stopPropagation()
-            const text = `${displayName} - ${product.price.toFixed(2)} ر.س${product.oldPrice ? ` (كان ${product.oldPrice.toFixed(2)})` : ''} - ${product.supermarket.nameAr}\nhttps://sa.smartcopons.com/offers/retailer/${product.supermarket.slug}`
+            const text = `${displayName} - ${product.price.toFixed(2)} ${currencyOf(product.country)}${product.oldPrice ? ` (كان ${product.oldPrice.toFixed(2)})` : ''} - ${product.supermarket.nameAr}\nhttps://sa.smartcopons.com/offers/retailer/${product.supermarket.slug}`
             window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
           }}
           className="absolute top-2 left-11 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-green-50"
@@ -154,7 +157,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           <span className="text-base sm:text-lg font-bold text-pink-700">
             {product.price.toFixed(2)}
           </span>
-          <span className="text-[10px] sm:text-xs text-gray-400">ر.س</span>
+          <span className="text-[10px] sm:text-xs text-gray-400">{currencyOf(product.country)}</span>
           {product.oldPrice && product.oldPrice > product.price && (
             <span className="text-[10px] sm:text-xs text-gray-400 line-through mr-auto">
               {product.oldPrice.toFixed(2)}

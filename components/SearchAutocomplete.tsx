@@ -1,7 +1,13 @@
 'use client'
+import { currencyOf } from '@/lib/countries'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+
+// A price list is always within one country, so the currency is resolved once
+// here rather than per row. See lib/countries.ts.
+const CUR = currencyOf()
+
 
 interface ProductHit {
   id: string
@@ -342,7 +348,7 @@ export default function SearchAutocomplete({
                     {typeof hit.price === 'number' && hit.price > 0 && (
                       <div className="flex-shrink-0 text-left">
                         <span className="font-extrabold text-pink-700 text-sm">{hit.price.toFixed(2)}</span>
-                        <span className="text-[10px] text-gray-400 mr-0.5">ر.س</span>
+                        <span className="text-[10px] text-gray-400 mr-0.5">{CUR}</span>
                         {hit.discountPercent ? (
                           <span className="block text-[10px] font-bold text-red-600">-{hit.discountPercent}%</span>
                         ) : null}

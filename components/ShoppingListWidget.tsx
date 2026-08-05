@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { useShoppingList } from '@/hooks/useShoppingList'
+import { currencyOf } from '@/lib/countries'
+
+// A price list is always within one country, so the currency is resolved once
+// here rather than per row. See lib/countries.ts.
+const CUR = currencyOf()
+
 
 export default function ShoppingListWidget() {
   const { items, totals, remove, toggleBought, setQty, clearPurchased, clearAll } = useShoppingList()
@@ -20,11 +26,11 @@ export default function ShoppingListWidget() {
     items.forEach((i) => {
       const mark = i.bought ? '✅' : '▫️'
       const store = i.storeName ? ` (${i.storeName})` : ''
-      lines.push(`${mark} ${i.name}${store} × ${i.qty} — ${(i.price * i.qty).toFixed(2)} ر.س`)
+      lines.push(`${mark} ${i.name}${store} × ${i.qty} — ${(i.price * i.qty).toFixed(2)} ${CUR}`)
     })
     lines.push('')
-    lines.push(`💰 الإجمالي: ${totals.total.toFixed(2)} ر.س`)
-    if (totals.savings > 0) lines.push(`🎉 وفّرت: ${totals.savings.toFixed(2)} ر.س`)
+    lines.push(`💰 الإجمالي: ${totals.total.toFixed(2)} ${CUR}`)
+    if (totals.savings > 0) lines.push(`🎉 وفّرت: ${totals.savings.toFixed(2)} ${CUR}`)
     lines.push('')
     lines.push('عبر sa.smartcopons.com')
     const url = `https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`
@@ -112,7 +118,7 @@ export default function ShoppingListWidget() {
                         </p>
                         {i.storeName && <p className="truncate text-xs text-gray-400">{i.storeName}</p>}
                         <div className="mt-0.5 flex items-center gap-2">
-                          <span className="text-sm font-bold text-[#E91E8C]">{(i.price * i.qty).toFixed(2)} ر.س</span>
+                          <span className="text-sm font-bold text-[#E91E8C]">{(i.price * i.qty).toFixed(2)} {CUR}</span>
                           {i.oldPrice && i.oldPrice > i.price && (
                             <span className="text-xs text-gray-400 line-through">{(i.oldPrice * i.qty).toFixed(2)}</span>
                           )}
@@ -157,12 +163,12 @@ export default function ShoppingListWidget() {
                 <div className="mb-3 space-y-1">
                   <div className="flex items-center justify-between text-sm text-gray-600">
                     <span>الإجمالي</span>
-                    <span className="text-lg font-extrabold text-gray-900">{totals.total.toFixed(2)} ر.س</span>
+                    <span className="text-lg font-extrabold text-gray-900">{totals.total.toFixed(2)} {CUR}</span>
                   </div>
                   {totals.savings > 0 && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-emerald-600">إجمالي التوفير 🎉</span>
-                      <span className="font-bold text-emerald-600">{totals.savings.toFixed(2)} ر.س</span>
+                      <span className="font-bold text-emerald-600">{totals.savings.toFixed(2)} {CUR}</span>
                     </div>
                   )}
                 </div>

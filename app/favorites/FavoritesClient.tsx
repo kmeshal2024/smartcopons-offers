@@ -4,6 +4,12 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import ProductCard from '@/components/ProductCard'
 import { getDeviceId, useFavorites } from '@/hooks/useFavorites'
+import { currencyOf } from '@/lib/countries'
+
+// A price list is always within one country, so the currency is resolved once
+// here rather than per row. See lib/countries.ts.
+const CUR = currencyOf()
+
 
 // Favourites live under a device token in localStorage, so this is entirely
 // client-rendered; the server wrapper marks it dynamic + noindex and supplies
@@ -72,7 +78,7 @@ export default function FavoritesClient() {
                     <p className="truncate text-sm font-semibold text-gray-800">{w.name}</p>
                     <div className="mt-0.5 flex items-center gap-2 text-xs">
                       {w.currentPrice != null ? (
-                        <span className="font-bold text-pink-700">{w.currentPrice.toFixed(2)} ر.س</span>
+                        <span className="font-bold text-pink-700">{w.currentPrice.toFixed(2)} {CUR}</span>
                       ) : (
                         <span className="text-gray-400">غير متوفر حالياً</span>
                       )}

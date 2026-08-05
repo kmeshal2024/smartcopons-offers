@@ -3,6 +3,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import Sparkline from '@/components/Sparkline'
 import { formatDateAr, getValidity } from '@/lib/flyer-utils'
+import { currencyOf } from '@/lib/countries'
+
+// A price list is always within one country, so the currency is resolved once
+// here rather than per row. See lib/countries.ts.
+const CUR = currencyOf()
+
 
 interface CompareRow {
   productName: string
@@ -179,7 +185,7 @@ export default function PriceComparison({ query = '', showSearch = true }: Props
                       </td>
                       <td className="px-4 py-3">
                         <span className={`font-bold ${r.isCheapest ? 'text-emerald-600' : 'text-gray-900'}`}>
-                          {r.price.toFixed(2)} ر.س
+                          {r.price.toFixed(2)} {CUR}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-400">
@@ -242,7 +248,7 @@ export default function PriceComparison({ query = '', showSearch = true }: Props
                 <div className="flex items-end justify-between">
                   <div>
                     <div className={`text-xl font-extrabold ${r.isCheapest ? 'text-emerald-600' : 'text-gray-900'}`}>
-                      {r.price.toFixed(2)} <span className="text-sm font-normal">ر.س</span>
+                      {r.price.toFixed(2)} <span className="text-sm font-normal">{CUR}</span>
                     </div>
                     <div className="mt-0.5 flex items-center gap-2 text-xs">
                       {r.oldPrice && <span className="text-gray-400 line-through">{r.oldPrice.toFixed(2)}</span>}

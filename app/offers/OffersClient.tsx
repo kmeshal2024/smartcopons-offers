@@ -5,6 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
 import Link from 'next/link'
+import { currencyOf } from '@/lib/countries'
+
+// A price list is always within one country, so the currency is resolved once
+// here rather than per row. See lib/countries.ts.
+const CUR = currencyOf()
+
 
 interface Product {
   id: string
@@ -360,8 +366,8 @@ export default function OffersClient() {
             className="w-full accent-pink-600"
           />
           <div className="flex justify-between text-sm text-gray-600 mt-1">
-            <span>0 ر.س</span>
-            <span className="font-semibold text-pink-600">{maxPrice} ر.س</span>
+            <span>0 {CUR}</span>
+            <span className="font-semibold text-pink-600">{maxPrice} {CUR}</span>
           </div>
         </div>
       </div>

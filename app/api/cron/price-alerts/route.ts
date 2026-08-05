@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { arabicContainsFilter } from '@/lib/arabic-search'
 import { isAuthorizedCron } from '@/lib/cron-auth'
 import { sendToShopper } from '@/lib/push'
+import { currencyOf } from '@/lib/countries'
 
 /**
  * Turn price watches into actual notifications.
@@ -63,9 +64,10 @@ export async function GET(request: Request) {
 
     const name = (best.nameAr || w.nameKey).slice(0, 40)
     const saved = (threshold - best.price).toFixed(2)
+    const cur = currencyOf((best as any).country)
     const sent = await sendToShopper(w.shopperId, {
       title: '💰 نزل السعر!',
-      body: `${name} الآن بـ ${best.price.toFixed(2)} ر.س في ${best.supermarket.nameAr} — وفّر ${saved} ر.س`,
+      body: `${name} الآن بـ ${best.price.toFixed(2)} ${cur} في ${best.supermarket.nameAr} — وفّر ${saved} ${cur}`,
       url: `/product/${best.id}`,
       tag: `watch-${w.id}`,
     })
