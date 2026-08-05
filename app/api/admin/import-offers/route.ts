@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { OfferIngestService } from '@/lib/services/offer-ingest'
 import { prisma } from '@/lib/db'
 import type { ScrapedOffer } from '@/lib/scrapers/types'
+import { resolveCountry } from '@/lib/countries'
 
 /**
  * Accept offers collected by a scraper running outside this deployment.
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
       // no supermarket row yet). Present → create the row; absent → a missing
       // slug stays a 404, so a typo never silently spawns a store. On an
       // existing store it refreshes the logo/website.
-      meta?: { nameAr?: string; nameEn?: string; logo?: string; website?: string }
+      meta?: { nameAr?: string; nameEn?: string; logo?: string; website?: string; country?: string }
       // Delete this retailer's existing offers before importing. The dedup hash
       // ignores imageUrl/discount, so a plain re-import can't fix a bad image
       // URL — replace forces a clean rebuild.
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
 
     let store = await prisma.supermarket.findUnique({
       where: { slug: supermarket },
-      select: { id: true, nameAr: true },
+      select: { id: true, nameAr: true, country: true },
     })
     if (!store && meta?.nameAr) {
       // Onboard a new retailer on first import.
@@ -84,8 +85,9 @@ export async function POST(request: Request) {
           name: meta.nameEn || meta.nameAr,
           logo: meta.logo,
           website: meta.website,
+          country: resolveCountry(meta.country).code,
         },
-        select: { id: true, nameAr: true },
+        select: { id: true, nameAr: true, country: true },
       })
     } else if (store && meta && (meta.logo || meta.website)) {
       // Existing store: let meta refresh the logo/website (e.g. a fixed logo).

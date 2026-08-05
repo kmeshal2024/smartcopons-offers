@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { CategoryMapper } from './category-mapper'
 import { isRestrictedProduct } from '@/lib/restricted-products'
+import { DEFAULT_COUNTRY } from '@/lib/countries'
 import type { ScrapedOffer, ScrapedFlyerAsset } from '@/lib/scrapers/types'
 import { createHash } from 'crypto'
 
@@ -123,6 +124,9 @@ export class OfferIngestService {
         // nightly scrape cannot undo the 3+ content rating. See
         // lib/restricted-products.ts.
         isHidden: isRestrictedProduct(offer.nameAr, offer.nameEn, offer.brand),
+        // Denormalised from the retailer so listing queries can filter by
+        // country without a join. See lib/countries.ts.
+        country: (supermarket as any).country || DEFAULT_COUNTRY,
       })
     }
 

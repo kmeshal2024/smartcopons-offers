@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * LuLu Hypermarket KSA scraper — runs locally, not on Vercel.
+ * LuLu Hypermarket scraper (Saudi + UAE) — runs locally, not on Vercel.
  *
  * An earlier attempt used LuLu's widget API. It worked, but returned prices in
  * AED regardless of the currency cookie, which is worse than no data on a Saudi
@@ -24,12 +24,39 @@
  *   --pages=N   max list pages per category (default 12 = 240 products)
  *   --limit=N   stop after N categories
  *   --deals     keep only discounted items
+ *   --country=  SA (default) or AE — picks the storefront locale and target store
  */
 
 import { chromium } from 'playwright'
 import { writeFileSync } from 'node:fs'
 
 const BASE = 'https://gcc.luluhypermarket.com'
+
+// Lulu serves every GCC market from one host — only the locale segment changes,
+// and the SAME category ids work on both storefronts (verified: 5017, 5250 and
+// 5360 each return comparable product counts under /ar-sa/ and /ar-ae/). So a
+// new country needs no category remapping, unlike Carrefour.
+const COUNTRIES = {
+  SA: {
+    locale: 'ar-sa',
+    playwrightLocale: 'ar-SA',
+    supermarket: 'lulu',
+    currencyLabel: 'ر.س',
+    meta: null, // already onboarded
+  },
+  AE: {
+    locale: 'ar-ae',
+    playwrightLocale: 'ar-AE',
+    supermarket: 'lulu-ae',
+    currencyLabel: 'د.إ',
+    meta: {
+      nameAr: 'لولو هايبرماركت الإمارات',
+      nameEn: 'LuLu Hypermarket UAE',
+      website: 'https://gcc.luluhypermarket.com/ar-ae/',
+      country: 'AE',
+    },
+  },
+}
 
 // Roots to expand. Their children are discovered at runtime, so a reshuffled
 // catalogue widens or narrows the crawl instead of silently shrinking it.
@@ -45,6 +72,13 @@ const args = Object.fromEntries(
   })
 )
 
+const COUNTRY = String(args.country || 'SA').toUpperCase()
+const CFG = COUNTRIES[COUNTRY]
+if (!CFG) {
+  console.error(`Unknown --country=${COUNTRY}. Known: ${Object.keys(COUNTRIES).join(', ')}`)
+  process.exit(1)
+}
+
 const KEY = args.key || process.env.APP_SECRET
 const SITE = args.site || 'https://sa.smartcopons.com'
 const DRY = !!args.dry
@@ -57,7 +91,7 @@ if (!KEY && !DRY) {
 }
 
 const listUrl = (id, page) =>
-  `${BASE}/ar-sa/list/?category_ids=${id}&sorter=-discount_ratio&page=${page}`
+  `${BASE}/${CFG.locale}/list/?category_ids=${id}&sorter=-discount_ratio&page=${page}`
 
 /**
  * Runs inside the page. A card's innerText is, in order:
@@ -209,12 +243,12 @@ async function main() {
   }
 
   const context = await browser.newContext({
-    locale: 'ar-SA',
+    locale: CFG.playwrightLocale,
     timezoneId: 'Asia/Riyadh',
     viewport: { width: 1366, height: 1400 },
     userAgent:
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    extraHTTPHeaders: { 'Accept-Language': 'ar-SA,ar;q=0.9,en;q=0.8' },
+    extraHTTPHeaders: { 'Accept-Language': `${CFG.playwrightLocale},ar;q=0.9,en;q=0.8` },
   })
   await context.addInitScript(() => {
     Object.defineProperty(navigator, 'webdriver', { get: () => undefined })
@@ -226,7 +260,7 @@ async function main() {
   const cats = await discoverCategories(page)
   const LIMIT = args.limit ? parseInt(args.limit, 10) : cats.length
   const targets = cats.slice(0, LIMIT)
-  console.log(`LuLu — ${targets.length} قسماً من ${cats.length}\n`)
+  console.log(`LuLu ${COUNTRY} — ${targets.length} قسماً من ${cats.length}\n`)
 
   const all = new Map()
   const logs = []
@@ -253,7 +287,7 @@ async function main() {
     discountPercent: r.discountPercent ?? undefined,
     imageUrl: r.imageUrl ?? undefined,
     sourceUrl: `${BASE}${r.url}`,
-    tags: ['lulu', r.category, r.sku].join(','),
+    tags: [CFG.supermarket, r.category, r.sku].join(','),
   }))
 
   if (DEALS_ONLY) offers = offers.filter(o => o.discountPercent || o.oldPrice)
@@ -275,7 +309,7 @@ async function main() {
     .slice(0, 3)
     .forEach(o =>
       console.log(
-        `  ${o.nameAr.slice(0, 45)} — ${o.price} ر.س${o.discountPercent ? ` (-${o.discountPercent}%)` : ''}`
+        `  ${o.nameAr.slice(0, 45)} — ${o.price} ${CFG.currencyLabel}${o.discountPercent ? ` (-${o.discountPercent}%)` : ''}`
       )
     )
 
@@ -297,7 +331,8 @@ async function main() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         key: KEY,
-        supermarket: 'lulu',
+        supermarket: CFG.supermarket,
+        ...(CFG.meta ? { meta: CFG.meta } : {}),
         offers: chunk,
         logs: i === 0 ? logs : [`دفعة ${i / BATCH + 1}`],
       }),

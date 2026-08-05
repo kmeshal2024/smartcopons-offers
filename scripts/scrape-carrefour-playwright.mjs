@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Carrefour KSA scraper — runs locally, not on Vercel.
+ * Carrefour scraper (Saudi + UAE) — runs locally, not on Vercel.
  *
  * Carrefour sits behind Akamai: a server-side fetch returns a 53-byte HTML
  * shell, so the catalogue is only reachable from a real browser. Running
@@ -14,6 +14,7 @@
  *
  * Run:
  *   node scripts/scrape-carrefour-playwright.mjs --key=$APP_SECRET
+ *   node scripts/scrape-carrefour-playwright.mjs --key=$APP_SECRET --country=AE
  *
  * Options:
  *   --key=      APP_SECRET (or set APP_SECRET in the environment)
@@ -26,19 +27,61 @@
 import { chromium } from 'playwright'
 import { writeFileSync } from 'node:fs'
 
-const BASE = 'https://www.carrefourksa.com'
-
-// Category landing pages. Carrefour paginates with ?currentPage=N (0-based).
-const CATEGORIES = [
-  { slug: 'FKSA1000000', name: 'مستلزمات الأطفال' },
-  { slug: 'FKSA1500000', name: 'المواد الغذائية' },
-  { slug: 'FKSA1600000', name: 'الطازج' },
-  { slug: 'FKSA1660000', name: 'المخبوزات' },
-  { slug: 'FKSA1700000', name: 'المشروبات' },
-  { slug: 'NFKSA2000000', name: 'العناية الشخصية' },
-  { slug: 'NFKSA3000000', name: 'المنزل' },
-  { slug: 'FKSA6000000', name: 'عروض' },
-]
+// Per-country storefronts. Carrefour KSA and Carrefour UAE are both Majid Al
+// Futtaim sites on the same platform but they do NOT share a category
+// taxonomy — the UAE slugs simply drop the country code (FKSA1500000 ->
+// F1500000) AND renumber, so F1500000 is beverages in the UAE while
+// FKSA1500000 is groceries in Saudi. The UAE slugs below were harvested from
+// carrefouruae.com's own navigation and each verified to return ~120 distinct
+// SKUs with zero cross-category overlap.
+//
+// Do not "guess" a slug for a new country: an unknown category does not 404,
+// it silently falls back to a generic recommendations page. Every FUAE* guess
+// returned HTTP 200 with the same 24 products.
+const COUNTRIES = {
+  SA: {
+    base: 'https://www.carrefourksa.com',
+    path: '/mafsau',
+    locale: 'ar-SA',
+    imgCode: 'SAU', // cdn.mafrservices.com/pim-content/<imgCode>/...
+    currency: 'SAR', // printed on the card; the price regex keys off it
+    supermarket: 'carrefour',
+    meta: null, // already onboarded
+    categories: [
+      { slug: 'FKSA1000000', name: 'مستلزمات الأطفال' },
+      { slug: 'FKSA1500000', name: 'المواد الغذائية' },
+      { slug: 'FKSA1600000', name: 'الطازج' },
+      { slug: 'FKSA1660000', name: 'المخبوزات' },
+      { slug: 'FKSA1700000', name: 'المشروبات' },
+      { slug: 'NFKSA2000000', name: 'العناية الشخصية' },
+      { slug: 'NFKSA3000000', name: 'المنزل' },
+      { slug: 'FKSA6000000', name: 'عروض' },
+    ],
+  },
+  AE: {
+    base: 'https://www.carrefouruae.com',
+    path: '/mafuae',
+    locale: 'ar-AE',
+    imgCode: 'UAE',
+    currency: 'AED',
+    supermarket: 'carrefour-ae',
+    meta: {
+      nameAr: 'كارفور الإمارات',
+      nameEn: 'Carrefour UAE',
+      website: 'https://www.carrefouruae.com',
+      country: 'AE',
+    },
+    categories: [
+      { slug: 'F1000000', name: 'مستلزمات الأطفال' },
+      { slug: 'F1500000', name: 'المشروبات' },
+      { slug: 'F1600000', name: 'أطعمة طازجة' },
+      { slug: 'F11600000', name: 'الخضار والفواكه' },
+      { slug: 'F1700000', name: 'السوبر ماركت' },
+      { slug: 'NF2000000', name: 'العناية الشخصية' },
+      { slug: 'NF4000000', name: 'الإلكترونيات والأجهزة' },
+    ],
+  },
+}
 
 const PAGES_PER_CATEGORY = 3
 const NAV_TIMEOUT = 45_000
@@ -50,6 +93,15 @@ const args = Object.fromEntries(
     return [k, v ?? true]
   })
 )
+
+const COUNTRY = String(args.country || 'SA').toUpperCase()
+const CFG = COUNTRIES[COUNTRY]
+if (!CFG) {
+  console.error(`Unknown --country=${COUNTRY}. Known: ${Object.keys(COUNTRIES).join(', ')}`)
+  process.exit(1)
+}
+const BASE = CFG.base
+const CATEGORIES = CFG.categories
 
 const KEY = args.key || process.env.APP_SECRET
 const SITE = args.site || 'https://sa.smartcopons.com'
@@ -66,7 +118,7 @@ if (!KEY && !DRY) {
  *   a[href*="/p/"]  ->  parent  ->  parent = the card holding price/discount.
  * Verified against the live DOM; if Carrefour restyles, this is what to fix.
  */
-function extractOffers() {
+function extractOffers({ imgCode, currency }) {
   const rows = []
   const seen = new Set()
 
@@ -75,14 +127,22 @@ function extractOffers() {
   // raw HTML and whatever has actually rendered.
   //
   // The path carries a per-product timestamp that cannot be guessed:
-  //   /pim-content/SAU/media/product/{sku}/{ts}/{sku}_main.jpg
+  //   /pim-content/<imgCode>/media/product/{sku}/{ts}/{sku}_main.jpg
+  // imgCode is the storefront's country: SAU for Saudi, UAE for the Emirates
+  // (not ARE — verified against the live pages).
   // Akamai serves these to browsers but returns a 53-byte shell to curl —
   // which is fine, since it is the shopper's browser that loads them.
   const imageBySku = {}
-  const html = document.documentElement.outerHTML
-  const paths = html.match(/pim-content\\?\/SAU\\?\/media\\?\/product\\?\/\d+\\?\/\d+\\?\/\d+_main\.jpg/g) || []
-  for (const p of paths) {
-    const clean = p.replace(/\\/g, '')
+  // Inside the RSC payload the slashes are JSON-escaped ("\/"), so unescape
+  // first and then match with a plain pattern. Trying to make one regex accept
+  // both forms needs `\\?` between every segment, which is a backslash-escaping
+  // trap once the pattern has to be built from a string to inject imgCode.
+  const html = document.documentElement.outerHTML.split('\\/').join('/')
+  const imgRe = new RegExp(
+    'pim-content/' + imgCode + '/media/product/\\d+/\\d+/\\d+_main\\.jpg',
+    'g'
+  )
+  for (const clean of html.match(imgRe) || []) {
     const m = clean.match(/product\/(\d+)\//)
     if (m) imageBySku[m[1]] = 'https://cdn.mafrservices.com/' + clean
   }
@@ -103,14 +163,16 @@ function extractOffers() {
 
     const text = (card.innerText || '').replace(/‏|‎/g, '')
 
-    // Current price renders split, e.g. "19 .15 SAR"
-    const cur = text.match(/(\d[\d,]*)\s*\.\s*(\d{2})\s*SAR/)
+    // Current price renders split, e.g. "19 .15 SAR" — and the UAE storefront
+    // prints AED, so the currency code has to come from the config or this
+    // silently matches nothing and the run reports zero products.
+    const cur = text.match(new RegExp('(\\d[\\d,]*)\\s*\\.\\s*(\\d{2})\\s*' + currency))
     if (!cur) return
     const price = parseFloat(cur[1].replace(/,/g, '') + '.' + cur[2])
     if (!price || price <= 0) return
 
     // Struck-through original renders as "SAR 23.95"
-    const old = text.match(/SAR\s*([\d,]+\.?\d*)/)
+    const old = text.match(new RegExp(currency + '\\s*([\\d,]+\\.?\\d*)'))
     const oldPrice = old ? parseFloat(old[1].replace(/,/g, '')) : null
 
     const disc = text.match(/(\d+)%\s*OFF/i)
@@ -136,7 +198,7 @@ async function scrapeCategory(page, category, imageBySku) {
   const collected = new Map()
 
   for (let p = 0; p < PAGES_PER_CATEGORY; p++) {
-    const url = `${BASE}/mafsau/ar/c/${category.slug}?currentPage=${p}`
+    const url = `${BASE}${CFG.path}/ar/c/${category.slug}?currentPage=${p}`
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT })
       // Products hydrate after load; wait for the first product link.
@@ -158,7 +220,7 @@ async function scrapeCategory(page, category, imageBySku) {
       // Let the last batch of image requests land before extracting.
       await page.waitForTimeout(1200)
 
-      const rows = await page.evaluate(extractOffers)
+      const rows = await page.evaluate(extractOffers, { imgCode: CFG.imgCode, currency: CFG.currency })
       let added = 0
       for (const r of rows) {
         if (!collected.has(r.sku)) {
@@ -192,7 +254,7 @@ async function scrapeCategory(page, category, imageBySku) {
 }
 
 async function main() {
-  console.log(`Carrefour KSA scrape — ${CATEGORIES.slice(0, LIMIT).length} categories\n`)
+  console.log(`Carrefour ${COUNTRY} scrape — ${CATEGORIES.slice(0, LIMIT).length} categories\n`)
 
   // Akamai fingerprints the client. The bundled headless shell gets refused
   // with ERR_HTTP2_PROTOCOL_ERROR, so use the full Chromium build, keep the
@@ -220,7 +282,7 @@ async function main() {
     })
   }
   const context = await browser.newContext({
-    locale: 'ar-SA',
+    locale: CFG.locale,
     timezoneId: 'Asia/Riyadh',
     viewport: { width: 1366, height: 900 },
     userAgent:
@@ -276,7 +338,7 @@ async function main() {
 
   console.log('\nSample:')
   offers.slice(0, 3).forEach(o =>
-    console.log(`  ${o.nameAr.slice(0, 45)} — ${o.price} SAR${o.discountPercent ? ` (-${o.discountPercent}%)` : ''}`)
+    console.log(`  ${o.nameAr.slice(0, 45)} — ${o.price} ${CFG.currency}${o.discountPercent ? ` (-${o.discountPercent}%)` : ''}`)
   )
 
   // A full scrape costs ~20 minutes, so keep a copy before the upload: a
@@ -302,7 +364,8 @@ async function main() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         key: KEY,
-        supermarket: 'carrefour',
+        supermarket: CFG.supermarket,
+        ...(CFG.meta ? { meta: CFG.meta } : {}),
         offers: chunk,
         logs: i === 0 ? logs : [`batch ${i / BATCH + 1}`],
       }),
