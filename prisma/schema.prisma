@@ -308,6 +308,9 @@ model PriceWatch {
   basePrice         Float // price when the watch started
   targetPrice       Float? // optional: only alert at or below this
   lastNotifiedPrice Float? // guards against re-alerting the same drop
+  /// Market the watch was created in. Without it a Saudi shopper could be
+  /// alerted about a Dirham price that merely happens to be lower.
+  country           String   @default("SA")
   createdAt         DateTime @default(now())
 
   shopper Shopper @relation(fields: [shopperId], references: [id], onDelete: Cascade)

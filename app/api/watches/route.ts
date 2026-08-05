@@ -17,14 +17,15 @@ export const dynamic = 'force-dynamic'
 const MAX_WATCHES = 100
 
 /** Cheapest live price for the same item, matched by Arabic-variant name. */
-async function currentBestPrice(nameKey: string): Promise<number | null> {
+async function currentBestPrice(nameKey: string, country: string): Promise<number | null> {
   const term = nameKey.trim().slice(0, 60)
   if (term.length < 4) return null
   const row = await prisma.productOffer.findFirst({
     where: {
       isHidden: false,
-      // Matches price-alerts: PriceWatch has no country column yet.
-      country: DEFAULT_COUNTRY,
+      // Match within the market the watch was created in — a cheaper Dirham
+      // price is not a price drop for a Saudi shopper.
+      country,
       price: { gt: 0 },
       flyer: { endDate: { gte: new Date() } },
       OR: arabicContainsFilter(term, ['nameAr', 'nameEn']),
@@ -65,7 +66,7 @@ export async function GET(request: Request) {
 
   const enriched = await Promise.all(
     watches.map(async w => {
-      const current = await currentBestPrice(w.nameKey)
+      const current = await currentBestPrice(w.nameKey, (w as any).country || DEFAULT_COUNTRY)
       const threshold = w.targetPrice ?? w.basePrice
       const dropped = current != null && current < threshold
       return {
@@ -117,6 +118,7 @@ export async function POST(request: Request) {
       nameKey,
       basePrice: product.price,
       targetPrice: targetPrice ?? null,
+      country: (product as any).country || DEFAULT_COUNTRY,
     },
   })
   return NextResponse.json({ ok: true, watching: true })

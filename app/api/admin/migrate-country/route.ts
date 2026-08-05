@@ -21,6 +21,7 @@ const STATEMENTS = [
   `ALTER TABLE supermarkets   ADD COLUMN IF NOT EXISTS "country"   TEXT NOT NULL DEFAULT 'SA'`,
   `ALTER TABLE product_offers ADD COLUMN IF NOT EXISTS "country"   TEXT NOT NULL DEFAULT 'SA'`,
   `ALTER TABLE stores         ADD COLUMN IF NOT EXISTS "countries" TEXT NOT NULL DEFAULT 'SA'`,
+  `ALTER TABLE price_watches  ADD COLUMN IF NOT EXISTS "country"   TEXT NOT NULL DEFAULT 'SA'`,
 
   `CREATE INDEX IF NOT EXISTS "supermarkets_country_isActive_idx"
      ON supermarkets ("country", "isActive")`,
@@ -35,6 +36,7 @@ const STATEMENTS = [
   `UPDATE supermarkets   SET "country"   = 'SA' WHERE "country"   IS NULL OR "country"   = ''`,
   `UPDATE product_offers SET "country"   = 'SA' WHERE "country"   IS NULL OR "country"   = ''`,
   `UPDATE stores         SET "countries" = 'SA' WHERE "countries" IS NULL OR "countries" = ''`,
+  `UPDATE price_watches  SET "country"   = 'SA' WHERE "country"   IS NULL OR "country"   = ''`,
 ]
 
 async function run() {

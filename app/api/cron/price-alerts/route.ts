@@ -46,10 +46,9 @@ export async function GET(request: Request) {
     const best = await prisma.productOffer.findFirst({
       where: {
         isHidden: false,
-        // PriceWatch has no country column yet, so a watch is assumed to be in
-        // the default market. Add one to the model before /uae ships, or a
-        // Saudi shopper could be alerted about a Dirham price.
-        country: DEFAULT_COUNTRY,
+        // Match within the market the watch was created in — a cheaper Dirham
+        // price is not a price drop for a Saudi shopper.
+        country: (w as any).country || DEFAULT_COUNTRY,
         price: { gt: 0 },
         flyer: { endDate: { gte: new Date() } },
         OR: arabicContainsFilter(term, ['nameAr', 'nameEn']),
