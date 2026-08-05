@@ -32,8 +32,14 @@ const SCRAPERS = [
   { name: 'lulu', script: 'scrape-lulu-playwright.mjs', args: ['--pages=10'] },
   { name: 'aldawaa', script: 'scrape-aldawaa-playwright.mjs', args: [] },
   { name: 'nahdi', script: 'scrape-nahdi-playwright.mjs', args: [] },
+  // UAE. Same two scripts, --country=AE picks the storefront and target store.
+  // Kept next to their Saudi runs so a broken selector shows up for both at
+  // once. Lulu gets fewer pages than Saudi — the UAE catalogue is smaller and
+  // this keeps the nightly window from stretching.
+  { name: 'lulu-ae', script: 'scrape-lulu-playwright.mjs', args: ['--country=AE', '--pages=8'] },
   // Carrefour last: it's the slowest (~25-30 min), so the others land first.
   { name: 'carrefour', script: 'scrape-carrefour-playwright.mjs', args: [] },
+  { name: 'carrefour-ae', script: 'scrape-carrefour-playwright.mjs', args: ['--country=AE'] },
   // Then top up the Carrefour images its listing scrape couldn't capture. A
   // batch per night rather than one multi-hour pass; coverage climbs over days.
   { name: 'carrefour-images', script: 'backfill-carrefour-images.mjs', args: ['--limit=400'] },
