@@ -29,7 +29,14 @@ const nextConfig = {
       // load their JS, CSS and offer data from, and sending those to WordPress
       // would render /ae as an unstyled, dataless shell.
       beforeFiles: [
-        { source: '/', has: APEX, destination: `${WP_ORIGIN}/` },
+        // The homepage cannot be proxied as `/`. WordPress's canonical redirect
+        // sends wp.smartcopons.com/ back to smartcopons.com/, which once the
+        // apex is on Vercel is an infinite loop. Addressing the front page by
+        // its id skips redirect_canonical entirely and needs no change to the
+        // WordPress install. Every other path proxies untouched — verified:
+        // /blog/, /browse-coupons/, /coupon-store/*, /wp-content/*, /wp-json/*
+        // all return 200 on the wp. host.
+        { source: '/', has: APEX, destination: `${WP_ORIGIN}/?page_id=557` },
         {
           source:
             '/:path((?!ae$|ae/|_next/|api/|favicon\\.ico|icon|apple-icon|manifest|robots\\.txt|sitemap).*)',
