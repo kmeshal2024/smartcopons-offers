@@ -7,10 +7,6 @@ import ProductCard from '@/components/ProductCard'
 import Link from 'next/link'
 import { currencyOf, DEFAULT_COUNTRY } from '@/lib/countries'
 
-// A price list is always within one country, so the currency is resolved once
-// here rather than per row. See lib/countries.ts.
-const CUR = currencyOf()
-
 
 interface Product {
   id: string
@@ -84,6 +80,9 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
   // Every API call carries the market, otherwise the UAE listing would render
   // Saudi offers under Dirham labels.
   const CQ = `country=${country}`
+  // Resolved from the prop, not module scope: a module-level constant is fixed
+  // at import time and would label the UAE price slider in Riyals.
+  const CUR = currencyOf(country)
   const router = useRouter()
   const searchParams = useSearchParams()
 
