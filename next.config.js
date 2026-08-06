@@ -14,12 +14,36 @@ const nextConfig = {
     // /offers/category/x are untouched. The lookahead additionally protects the
     // bare /offers/retailer and /offers/category paths, which would otherwise
     // rewrite to /offers/retailer/retailer.
-    return [
-      {
-        source: '/offers/:slug((?!retailer|category)[a-z0-9][a-z0-9-]*)',
-        destination: '/offers/retailer/:slug',
-      },
-    ]
+    const WP_ORIGIN = 'https://wp.smartcopons.com'
+    // Only fires for requests whose Host is the bare apex, so sa.smartcopons.com
+    // and every preview deployment are untouched. Inert until the apex A record
+    // is pointed at Vercel.
+    const APEX = [{ type: 'host', value: 'smartcopons.com' }]
+
+    return {
+      // The apex still belongs to the WordPress site (homepage, /blog, 86 posts,
+      // 87 coupon-store pages). Next.js only owns /ae there, so everything else
+      // proxies back to WordPress at its own hostname.
+      //
+      // The exclusions are not optional: /_next and /api are what the /ae pages
+      // load their JS, CSS and offer data from, and sending those to WordPress
+      // would render /ae as an unstyled, dataless shell.
+      beforeFiles: [
+        { source: '/', has: APEX, destination: `${WP_ORIGIN}/` },
+        {
+          source:
+            '/:path((?!ae$|ae/|_next/|api/|favicon\\.ico|icon|apple-icon|manifest|robots\\.txt|sitemap).*)',
+          has: APEX,
+          destination: `${WP_ORIGIN}/:path`,
+        },
+      ],
+      afterFiles: [
+        {
+          source: '/offers/:slug((?!retailer|category)[a-z0-9][a-z0-9-]*)',
+          destination: '/offers/retailer/:slug',
+        },
+      ],
+    }
   },
 
   images: {
