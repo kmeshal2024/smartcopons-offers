@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
 import Link from 'next/link'
-import { currencyOf } from '@/lib/countries'
+import { currencyOf, DEFAULT_COUNTRY } from '@/lib/countries'
 
 // A price list is always within one country, so the currency is resolved once
 // here rather than per row. See lib/countries.ts.
@@ -80,7 +80,10 @@ interface Pagination {
   totalPages: number
 }
 
-export default function OffersClient() {
+export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: string }) {
+  // Every API call carries the market, otherwise the UAE listing would render
+  // Saudi offers under Dirham labels.
+  const CQ = `country=${country}`
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -109,8 +112,8 @@ export default function OffersClient() {
   // Load categories and supermarkets once
   useEffect(() => {
     Promise.all([
-      fetch('/api/categories').then(r => r.json()),
-      fetch('/api/supermarkets').then(r => r.json()),
+      fetch(`/api/categories?${CQ}`).then(r => r.json()),
+      fetch(`/api/supermarkets?${CQ}`).then(r => r.json()),
     ]).then(([catData, smData]) => {
       const cats: Category[] = catData.categories || []
       setCategories(cats)
@@ -158,6 +161,7 @@ export default function OffersClient() {
     params.set('maxPrice', maxPrice.toString())
     params.set('page', currentPage.toString())
     params.set('limit', '24')
+    params.set('country', country)
 
     const res = await fetch(`/api/offers?${params.toString()}`)
     const data = await res.json()
@@ -178,7 +182,7 @@ export default function OffersClient() {
     // Also search coupons when there's a search query
     if (search && search.length >= 2) {
       try {
-        const searchRes = await fetch(`/api/public/search?q=${encodeURIComponent(search)}&type=coupons`)
+        const searchRes = await fetch(`/api/public/search?q=${encodeURIComponent(search)}&type=coupons&${CQ}`)
         const searchData = await searchRes.json()
         setSearchCoupons(searchData.coupons || [])
       } catch { setSearchCoupons([]) }

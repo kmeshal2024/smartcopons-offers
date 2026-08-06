@@ -9,7 +9,7 @@ import ExpiryBadge from '@/components/ExpiryBadge'
 import WatchButton from '@/components/WatchButton'
 import { getValidity, formatRangeAr } from '@/lib/flyer-utils'
 import { arabicContainsFilter } from '@/lib/arabic-search'
-import { currencyOf, resolveCountry, DEFAULT_COUNTRY } from '@/lib/countries'
+import { currencyOf, resolveCountry, urlFor, DEFAULT_COUNTRY } from '@/lib/countries'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -20,7 +20,10 @@ export const revalidate = 300
 async function getProduct(id: string) {
   return prisma.productOffer.findFirst({
     // price 0 rows are flyer placeholders, not products — no page for them.
-    where: { id, isHidden: false, country: DEFAULT_COUNTRY, price: { gt: 0 } },
+    // No country filter: the id is explicit, and pinning it to Saudi made
+    // every UAE product page a 404. Comparison/related below follow the
+    // product's OWN country so a Dirham price is never compared to a Riyal one.
+    where: { id, isHidden: false, price: { gt: 0 } },
     include: {
       supermarket: { select: { id: true, nameAr: true, name: true, slug: true, logo: true } },
       category: { select: { nameAr: true, slug: true, icon: true } },
@@ -34,13 +37,14 @@ async function getProduct(id: string) {
  * side is what makes a product page worth indexing — without it each page
  * would just restate one price.
  */
-async function getPriceComparison(name: string, excludeId: string) {
+async function getPriceComparison(name: string, excludeId: string, country: string) {
   const term = name.trim().slice(0, 40)
   if (term.length < 4) return []
 
   const rows = await prisma.productOffer.findMany({
     where: {
-      isHidden: false, country: DEFAULT_COUNTRY,
+      isHidden: false,
+      country,
       id: { not: excludeId },
       flyer: { endDate: { gte: new Date() } },
       OR: arabicContainsFilter(term, ['nameAr', 'nameEn']),
@@ -66,12 +70,13 @@ async function getPriceComparison(name: string, excludeId: string) {
   return Array.from(perStore.values()).slice(0, 6)
 }
 
-async function getRelated(categoryId: string | null, excludeId: string) {
+async function getRelated(categoryId: string | null, excludeId: string, country: string) {
   if (!categoryId) return []
   return prisma.productOffer.findMany({
     where: {
       categoryId,
-      isHidden: false, country: DEFAULT_COUNTRY,
+      isHidden: false,
+      country,
       id: { not: excludeId },
       flyer: { endDate: { gte: new Date() } },
     },
@@ -96,28 +101,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const name = p.nameAr || p.nameEn || 'منتج'
   const store = p.supermarket.nameAr
   const validity = getValidity(p.flyer?.startDate, p.flyer?.endDate)
-  const cur = currencyOf((p as any).country)
+  const ctry = resolveCountry((p as any).country)
+  const cur = ctry.currencyAr
   const priceStr = `${p.price.toFixed(2)} ${cur}`
+  const canonical = urlFor(ctry.code, `/product/${p.id}`)
 
   const title = `${name} — سعر ${priceStr} في ${store}`
   const desc = p.discountPercent
-    ? `${name} بسعر ${priceStr} في ${store} (خصم ${p.discountPercent}%). قارن السعر مع باقي المتاجر في السعودية ووفّر أكثر.`
-    : `${name} بسعر ${priceStr} في ${store}. قارن السعر مع باقي المتاجر في السعودية ووفّر أكثر.`
+    ? `${name} بسعر ${priceStr} في ${store} (خصم ${p.discountPercent}%). قارن السعر مع باقي المتاجر في ${ctry.nameAr} ووفّر أكثر.`
+    : `${name} بسعر ${priceStr} في ${store}. قارن السعر مع باقي المتاجر في ${ctry.nameAr} ووفّر أكثر.`
 
   return {
     title,
     description: desc,
     keywords: `${name}, سعر ${name}, ${name} ${store}, عروض ${store}, ${p.brand || ''}`.trim(),
-    alternates: { canonical: `https://sa.smartcopons.com/product/${p.id}` },
+    alternates: { canonical },
     // An ended offer keeps its permalink but must not compete in the index —
     // a stale price is the one thing a price-comparison page must never rank on.
     robots: validity.isExpired ? { index: false, follow: true } : undefined,
     openGraph: {
       title,
       description: desc,
-      locale: 'ar_SA',
+      locale: ctry.locale.replace('-', '_'),
       type: 'website',
-      url: `https://sa.smartcopons.com/product/${p.id}`,
+      url: canonical,
       ...(p.imageUrl && { images: [p.imageUrl] }),
     },
   }
@@ -133,8 +140,8 @@ export default async function ProductPage({ params }: Props) {
   const curIso = resolveCountry((p as any).country).currencyEn
   const validity = getValidity(p.flyer?.startDate, p.flyer?.endDate)
   const [comparison, related] = await Promise.all([
-    getPriceComparison(name, p.id),
-    getRelated(p.categoryId, p.id),
+    getPriceComparison(name, p.id, (p as any).country || DEFAULT_COUNTRY),
+    getRelated(p.categoryId, p.id, (p as any).country || DEFAULT_COUNTRY),
   ])
 
   // Cheapest across this offer + the comparison rows.

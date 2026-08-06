@@ -8,8 +8,9 @@
  * still exactly one country is deliberate: backfilling a country column after
  * mixed data is already stored is far more painful.
  *
- * `slug` is the URL segment (smartcopons.com/sa, /uae) and does not always
- * match the ISO code — "uae" reads better than "ae" and is what people search.
+ * `slug` is the URL segment. Saudi keeps its own subdomain for now; every new
+ * market is a subfolder on the apex, named by ISO code so the pattern scales
+ * predictably as more countries are added.
  */
 
 export type CountryCode = 'SA' | 'AE'
@@ -24,6 +25,13 @@ export interface Country {
   currencyAr: string
   currencyEn: string
   locale: string
+  /** Origin this market is served from. */
+  siteUrl: string
+  /**
+   * Path prefix under that origin. Saudi keeps the bare root of its own
+   * subdomain; new markets are subfolders on the apex (smartcopons.com/ae).
+   */
+  basePath: string
   /** Retailer sites are country-specific; kept here so scrapers stay declarative. */
   hostHint?: string
 }
@@ -37,15 +45,19 @@ export const COUNTRIES: Record<CountryCode, Country> = {
     currencyAr: 'ر.س',
     currencyEn: 'SAR',
     locale: 'ar-SA',
+    siteUrl: 'https://sa.smartcopons.com',
+    basePath: '',
   },
   AE: {
     code: 'AE',
-    slug: 'uae',
+    slug: 'ae',
     nameAr: 'الإمارات',
     nameEn: 'United Arab Emirates',
     currencyAr: 'د.إ',
     currencyEn: 'AED',
     locale: 'ar-AE',
+    siteUrl: 'https://smartcopons.com',
+    basePath: '/ae',
   },
 }
 
@@ -97,4 +109,24 @@ export function formatPrice(
 ): string {
   const n = amount.toFixed(2)
   return opts.withCurrency === false ? n : `${n} ${currencyOf(country)}`
+}
+
+/**
+ * Absolute URL for a path within a market.
+ *   urlFor('SA', '/offers')  -> https://sa.smartcopons.com/offers
+ *   urlFor('AE', '/offers')  -> https://smartcopons.com/ae/offers
+ * Canonicals and sitemaps must go through this — hardcoding the Saudi host is
+ * how a UAE page ends up telling Google it is really a Saudi one.
+ */
+export function urlFor(country: string | null | undefined, path = '/'): string {
+  const c = resolveCountry(country)
+  const p = path.startsWith('/') ? path : `/${path}`
+  return `${c.siteUrl}${c.basePath}${p === '/' ? '' : p}` || c.siteUrl
+}
+
+/** Path within the current market, for internal <Link href>. */
+export function pathFor(country: string | null | undefined, path = '/'): string {
+  const c = resolveCountry(country)
+  const p = path.startsWith('/') ? path : `/${path}`
+  return `${c.basePath}${p}` || '/'
 }
