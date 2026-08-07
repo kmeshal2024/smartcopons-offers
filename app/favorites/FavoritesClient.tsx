@@ -5,6 +5,7 @@ import Link from 'next/link'
 import ProductCard from '@/components/ProductCard'
 import { getDeviceId, useFavorites } from '@/hooks/useFavorites'
 import { currencyOf } from '@/lib/countries'
+import { useI18n } from '@/components/I18nProvider'
 
 // A price list is always within one country, so the currency is resolved once
 // here rather than per row. See lib/countries.ts.
@@ -15,6 +16,7 @@ const CUR = currencyOf()
 // client-rendered; the server wrapper marks it dynamic + noindex and supplies
 // the page chrome (Header/Footer) — Footer must stay server-side, see page.tsx.
 export default function FavoritesClient() {
+  const { t } = useI18n()
   const { count } = useFavorites()
   const [products, setProducts] = useState<any[] | null>(null)
   const [watches, setWatches] = useState<any[]>([])
@@ -39,14 +41,14 @@ export default function FavoritesClient() {
   return (
     <main className="container mx-auto px-4 py-6">
         <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500">
-          <Link href="/" className="hover:text-pink-600 transition">الرئيسية</Link>
+          <Link href="/" className="hover:text-pink-600 transition">{t('nav.home')}</Link>
           <span className="text-gray-300">/</span>
-          <span className="text-gray-900 font-semibold">المفضّلة</span>
+          <span className="text-gray-900 font-semibold">{t('nav.favorites')}</span>
         </nav>
 
         <div className="mb-5 flex items-center gap-2">
           <span className="text-2xl">❤️</span>
-          <h1 className="text-xl font-bold text-gray-900">المفضّلة</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t('nav.favorites')}</h1>
           {products && products.length > 0 && (
             <span className="text-sm text-gray-400">({products.length})</span>
           )}
@@ -57,7 +59,7 @@ export default function FavoritesClient() {
           <section className="mb-8">
             <div className="mb-3 flex items-center gap-2">
               <span className="text-lg">🔔</span>
-              <h2 className="font-bold text-gray-900 text-sm">متابعة الأسعار</h2>
+              <h2 className="font-bold text-gray-900 text-sm">{t('fav.priceWatches')}</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {watches.map(w => (
@@ -80,7 +82,7 @@ export default function FavoritesClient() {
                       {w.currentPrice != null ? (
                         <span className="font-bold text-pink-700">{w.currentPrice.toFixed(2)} {CUR}</span>
                       ) : (
-                        <span className="text-gray-400">غير متوفر حالياً</span>
+                        <span className="text-gray-400">{t('fav.unavailable')}</span>
                       )}
                       {w.basePrice != null && (
                         <span className="text-gray-400 line-through">{w.basePrice.toFixed(2)}</span>
@@ -89,7 +91,7 @@ export default function FavoritesClient() {
                   </div>
                   {w.dropped && (
                     <span className="shrink-0 rounded-full bg-green-100 px-2 py-1 text-[11px] font-bold text-green-700">
-                      نزل السعر ↓
+                      {t('fav.priceDropped')}
                     </span>
                   )}
                 </Link>
@@ -99,14 +101,14 @@ export default function FavoritesClient() {
         )}
 
         {products === null ? (
-          <div className="py-16 text-center text-gray-400 animate-pulse">جارٍ التحميل…</div>
+          <div className="py-16 text-center text-gray-400 animate-pulse">{t('common.loading')}</div>
         ) : products.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
             <span className="text-5xl block mb-4">🤍</span>
-            <p className="text-gray-500">لا توجد منتجات في مفضّلتك بعد</p>
-            <p className="text-gray-400 text-sm mt-1">اضغط على القلب في أي منتج لحفظه هنا</p>
+            <p className="text-gray-500">{t('fav.empty')}</p>
+            <p className="text-gray-400 text-sm mt-1">{t('fav.emptyHint')}</p>
             <Link href="/offers" className="mt-4 inline-block text-pink-600 hover:underline font-semibold text-sm">
-              تصفّح العروض
+              {t('fav.browseOffers')}
             </Link>
           </div>
         ) : (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -18,6 +19,7 @@ const DISMISS_KEY = 'sc-install-dismissed'
  * for 30 days so it isn't nagging).
  */
 export default function InstallPrompt() {
+  const { t, dir } = useI18n()
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
   const [show, setShow] = useState(false)
 
@@ -55,23 +57,23 @@ export default function InstallPrompt() {
 
   return (
     <div
-      dir="rtl"
+      dir={dir}
       className="fixed inset-x-0 bottom-16 z-40 mx-auto max-w-md px-3 sm:bottom-4"
     >
       <div className="flex items-center gap-3 rounded-xl border border-pink-100 bg-white px-4 py-3 shadow-lg">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icons/icon-192.png" alt="سمارت كوبونز" className="h-10 w-10 rounded-lg" />
+        <img src="/icons/icon-192.png" alt="SmartCopons" className="h-10 w-10 rounded-lg" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-gray-900">ثبّت تطبيق سمارت كوبونز</p>
-          <p className="text-[11px] text-gray-500">أسرع، ويعمل من شاشتك الرئيسية</p>
+          <p className="text-sm font-bold text-gray-900">{t('install.title')}</p>
+          <p className="text-[11px] text-gray-500">{t('install.subtitle')}</p>
         </div>
         <button
           onClick={install}
           className="shrink-0 rounded-lg bg-pink-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-pink-700"
         >
-          تثبيت
+          {t('install.button')}
         </button>
-        <button onClick={dismiss} aria-label="إغلاق" className="shrink-0 text-gray-400 hover:text-gray-600">
+        <button onClick={dismiss} aria-label={t('common.close')} className="shrink-0 text-gray-400 hover:text-gray-600">
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>

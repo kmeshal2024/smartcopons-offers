@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { useI18n } from '@/components/I18nProvider'
 
 interface Category {
   id: string
@@ -16,6 +17,7 @@ interface Category {
 }
 
 export default function CategorySidebar() {
+  const { t } = useI18n()
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const searchParams = useSearchParams()
@@ -37,7 +39,7 @@ export default function CategorySidebar() {
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
-      <h3 className="font-bold text-gray-800 mb-4 text-lg">التصنيفات</h3>
+      <h3 className="font-bold text-gray-800 mb-4 text-lg">{t('filters.categories')}</h3>
       
       <div className="space-y-2">
         {/* All Categories */}
@@ -50,7 +52,7 @@ export default function CategorySidebar() {
           }`}
         >
           <div className="flex items-center justify-between">
-            <span>جميع التصنيفات</span>
+            <span>{t('filters.allCategories')}</span>
           </div>
         </Link>
 

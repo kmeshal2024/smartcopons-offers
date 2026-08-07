@@ -1,6 +1,9 @@
+import { getLang } from '@/lib/i18n-server'
+import { dirOf } from '@/lib/i18n'
+
 export default function RetailerLoading() {
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(getLang())}>
       {/* Header placeholder */}
       <div className="h-14 bg-gradient-to-r from-pink-600 to-red-500" />
 

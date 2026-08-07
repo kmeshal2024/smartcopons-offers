@@ -7,6 +7,8 @@ import ProductCard from '@/components/ProductCard'
 import CategorySidebar from '@/components/CategorySidebar'
 import CategorySort from './CategorySort'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate, dirOf } from '@/lib/i18n'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -103,6 +105,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   if (!data) notFound()
 
   const { category, products, total } = data
+  const lang = getLang()
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
+  const catName = lang === 'en' ? (category.nameEn || category.nameAr) : category.nameAr
 
   const jsonLd = products.length > 0 ? {
     '@context': 'https://schema.org',
@@ -134,7 +139,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   } : null
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-red-50" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-red-50" dir={dirOf(lang)}>
       <Header />
       {jsonLd && (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
@@ -143,11 +148,11 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       <main className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="mb-6 text-sm text-gray-600">
-          <Link href="/" className="hover:text-pink-600">الرئيسية</Link>
+          <Link href="/" className="hover:text-pink-600">{t('nav.home')}</Link>
           <span className="mx-2">/</span>
-          <Link href="/offers" className="hover:text-pink-600">العروض</Link>
+          <Link href="/offers" className="hover:text-pink-600">{t('nav.offers')}</Link>
           <span className="mx-2">/</span>
-          <span className="text-gray-800 font-semibold">{category.nameAr}</span>
+          <span className="text-gray-800 font-semibold">{catName}</span>
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -158,9 +163,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           <div className="lg:col-span-3">
             <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
               <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-red-600 bg-clip-text text-transparent mb-2">
-                {category.icon ? `${category.icon} ` : ''}عروض {category.nameAr}
+                {category.icon ? `${category.icon} ` : ''}{t('common.offersOf', { name: catName })}
               </h1>
-              <p className="text-gray-600">{total} منتج</p>
+              <p className="text-gray-600">{t('retailer.productsCount', { n: total })}</p>
             </div>
 
             <CategorySort current={sort} />
@@ -168,7 +173,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             {products.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-2xl shadow-lg">
                 <div className="text-6xl mb-4">📦</div>
-                <p className="text-gray-600 text-xl">لا توجد منتجات في هذا التصنيف</p>
+                <p className="text-gray-600 text-xl">{t('category.none')}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -183,7 +188,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
       <footer className="bg-gradient-to-r from-pink-600 to-red-500 text-white mt-20 py-8">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-lg">© {new Date().getFullYear()} SmartCopons. جميع الحقوق محفوظة 💝</p>
+          <p className="text-lg">© {new Date().getFullYear()} SmartCopons. {t('footer.rights')} 💝</p>
         </div>
       </footer>
     </div>

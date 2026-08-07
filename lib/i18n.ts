@@ -117,6 +117,46 @@ const DICT: Record<string, Entry> = {
   'common.prev': { ar: 'السابق', en: 'Previous' },
   'common.next': { ar: 'التالي', en: 'Next' },
   'common.clearAll': { ar: 'مسح الكل', en: 'Clear all' },
+  'common.all': { ar: 'الكل', en: 'All' },
+  'common.close': { ar: 'إغلاق', en: 'Close' },
+
+  // Install prompt
+  'install.title': { ar: 'ثبّت تطبيق سمارت كوبونز', en: 'Install the SmartCopons app' },
+  'install.subtitle': { ar: 'أسرع، ويعمل من شاشتك الرئيسية', en: 'Faster, and works from your home screen' },
+  'install.button': { ar: 'تثبيت', en: 'Install' },
+
+  // Shopping list widget
+  'cart.title': { ar: 'قائمة التسوق', en: 'Shopping list' },
+  'cart.empty': { ar: 'قائمتك فارغة', en: 'Your list is empty' },
+  'cart.emptyHint': { ar: 'أضف العروض التي تنوي شراءها', en: 'Add the offers you plan to buy' },
+  'cart.total': { ar: 'الإجمالي', en: 'Total' },
+  'cart.savings': { ar: 'إجمالي التوفير 🎉', en: 'Total savings 🎉' },
+  'cart.shareWhatsapp': { ar: 'مشاركة القائمة عبر واتساب', en: 'Share list on WhatsApp' },
+  'cart.clearPurchased': { ar: 'حذف المشترى ({n})', en: 'Clear purchased ({n})' },
+  'cart.clearAll': { ar: 'إفراغ القائمة', en: 'Clear list' },
+  'cart.decrease': { ar: 'إنقاص', en: 'Decrease' },
+  'cart.increase': { ar: 'زيادة', en: 'Increase' },
+  'cart.remove': { ar: 'حذف', en: 'Remove' },
+  'cart.share.title': { ar: '🛒 *قائمة التسوق - SmartCopons*', en: '🛒 *Shopping list - SmartCopons*' },
+  'cart.share.total': { ar: '💰 الإجمالي:', en: '💰 Total:' },
+  'cart.share.saved': { ar: '🎉 وفّرت:', en: '🎉 You saved:' },
+  'cart.share.via': { ar: 'عبر sa.smartcopons.com', en: 'via sa.smartcopons.com' },
+
+  // Category listing
+  'category.none': { ar: 'لا توجد منتجات في هذا التصنيف', en: 'No products in this category' },
+  'category.couponsNone': { ar: 'لا توجد كوبونات في هذا التصنيف حالياً', en: 'No coupons in this category right now' },
+
+  // Retailer page
+  'retailer.results': { ar: '{n} نتيجة', en: '{n} results' },
+  'retailer.productsCount': { ar: '{n} منتج', en: '{n} products' },
+  'retailer.endsOn': { ar: 'ينتهي {date}', en: 'ends {date}' },
+  'retailer.flyerSoon': { ar: 'تصفّح العروض أدناه، وسنضيف النشرة فور صدورها', en: "Browse the offers below — we'll add the flyer as soon as it's out" },
+  'retailer.flyerPage': { ar: 'صفحة هذه النشرة ←', en: "This flyer's page →" },
+  'retailer.noResults': { ar: 'لم يتم العثور على نتائج', en: 'No results found' },
+  'retailer.noOffers': { ar: 'لا توجد عروض حالياً', en: 'No offers right now' },
+  'retailer.noMatch': { ar: 'لا توجد منتجات تطابق "{q}"', en: 'No products match "{q}"' },
+  'retailer.tryFilters': { ar: 'جرب تغيير الفلاتر أو البحث', en: 'Try changing the filters or search' },
+  'retailer.clearFiltersSearch': { ar: 'مسح الفلاتر والبحث', en: 'Clear filters and search' },
 
   // Offers page + filters
   'offers.title': { ar: 'عروض السوبرماركت', en: 'Supermarket offers' },
@@ -143,6 +183,7 @@ const DICT: Record<string, Entry> = {
   'filters.categories': { ar: 'الفئات', en: 'Categories' },
   'filters.allCategories': { ar: 'جميع الفئات', en: 'All categories' },
   'filters.price': { ar: 'السعر', en: 'Price' },
+  'sort.by': { ar: 'ترتيب حسب:', en: 'Sort by:' },
   'sort.discount': { ar: 'الأكثر خصماً', en: 'Biggest discount' },
   'sort.ending': { ar: 'ينتهي قريباً', en: 'Ending soon' },
   'sort.priceLow': { ar: 'السعر: الأقل', en: 'Price: low to high' },
@@ -154,6 +195,10 @@ const DICT: Record<string, Entry> = {
   'coupons.title': { ar: 'كوبونات الخصم والعروض', en: 'Discount coupons & deals' },
   'coupons.subtitle': { ar: 'وفر أكثر مع أحدث أكواد الخصم — {n} كوبون متوفر', en: 'Save more with the latest codes — {n} coupons available' },
   'coupons.browseCategory': { ar: 'تصفّح حسب الفئة', en: 'Browse by category' },
+  'coupons.allCoupons': { ar: 'كل الكوبونات', en: 'All coupons' },
+  'coupons.aeTitle': { ar: 'كوبونات الخصم في الإمارات', en: 'Discount coupons in the UAE' },
+  'coupons.aeSubtitle': { ar: '{n} كوبون فعّال — انسخ الكود واستخدمه عند الدفع', en: '{n} active coupons — copy the code and use it at checkout' },
+  'coupons.aeNone': { ar: 'لا توجد كوبونات متاحة للإمارات حالياً.', en: 'No coupons available for the UAE right now.' },
   'coupons.all': { ar: 'الكل ({n})', en: 'All ({n})' },
   'coupons.none': { ar: 'لا توجد كوبونات حالياً', en: 'No coupons right now' },
   'coupons.followUs': { ar: 'تابعنا للحصول على أحدث الكوبونات', en: 'Follow us for the latest coupons' },
@@ -163,12 +208,53 @@ const DICT: Record<string, Entry> = {
     en: 'Discover the latest discount coupons and promo codes from the top stores in Saudi Arabia — Noon, Namshi, Amazon and more. Copy the code and use it at checkout for an instant discount.',
   },
   'couponCard.details': { ar: 'عرض التفاصيل', en: 'View details' },
+  'coupon.codeLabel': { ar: 'كود الكوبون:', en: 'Coupon code:' },
+  'coupon.detailsHeading': { ar: 'تفاصيل الكوبون', en: 'Coupon details' },
+  'coupon.useNow': { ar: 'استخدم الكوبون الآن ←', en: 'Use the coupon now →' },
+  'coupon.copyHint': { ar: 'انسخ الكود «{code}» ثم الصقه عند إتمام الطلب في {store}', en: 'Copy the code "{code}" and paste it at checkout with {store}' },
+  'coupon.seoTitle': { ar: 'كود خصم {store}', en: '{store} discount code' },
+  'coupon.seoP1': {
+    ar: 'وفّر على مشترياتك من {store} باستخدام كود الخصم «{code}» للحصول على {discount}. نحدّث كوبونات وأكواد خصم {store} أولاً بأول لتحصل على أحدث العروض السارية في السعودية. انسخ الكود، انتقل إلى المتجر، والصقه في خانة كود الخصم عند الدفع.',
+    en: 'Save on your {store} purchases with the code "{code}" to get {discount}. We keep {store} coupons and codes up to date so you get the latest working offers in Saudi Arabia. Copy the code, go to the store, and paste it in the promo-code field at checkout.',
+  },
+  'coupon.moreFrom': { ar: 'كوبونات {store} الأخرى', en: 'More {store} coupons' },
+
+  // Favourites
+  'fav.priceWatches': { ar: 'متابعة الأسعار', en: 'Price watches' },
+  'fav.unavailable': { ar: 'غير متوفر حالياً', en: 'Not available now' },
+  'fav.priceDropped': { ar: 'نزل السعر ↓', en: 'Price dropped ↓' },
+  'fav.empty': { ar: 'لا توجد منتجات في مفضّلتك بعد', en: 'No products in your favourites yet' },
+  'fav.emptyHint': { ar: 'اضغط على القلب في أي منتج لحفظه هنا', en: 'Tap the heart on any product to save it here' },
+  'fav.browseOffers': { ar: 'تصفّح العروض', en: 'Browse offers' },
+
+  // Coupon-store page
+  'store.couponsOf': { ar: 'كوبونات {name}', en: '{name} coupons' },
+  'store.activeCount': { ar: '{n} كوبون وكود خصم ساري', en: '{n} active coupons & codes' },
+  'store.noneNow': { ar: 'لا توجد كوبونات سارية حالياً', en: 'No active coupons right now' },
+  'store.noneAvailable': { ar: 'لا توجد كوبونات متاحة حالياً', en: 'No coupons available right now' },
+  'store.browseAll': { ar: 'تصفّح كل الكوبونات', en: 'Browse all coupons' },
+  'store.seoTitle': { ar: 'كوبونات وأكواد خصم {name}', en: '{name} coupons & discount codes' },
+  'store.seoP1': {
+    ar: 'تصفّح أحدث كوبونات {name} وأكواد الخصم السارية في السعودية. نحرص على تحديث الأكواد باستمرار لضمان حصولك على خصم فعّال. اختر الكوبون المناسب، انسخ الكود، ثم استخدمه عند إتمام طلبك في {name} لتوفير المزيد.',
+    en: 'Browse the latest {name} coupons and active discount codes in Saudi Arabia. We keep the codes updated so you always get a working discount. Pick the right coupon, copy the code, then use it at checkout with {name} to save more.',
+  },
 
   // Supermarkets directory
   'stores.title': { ar: 'المتاجر في السعودية', en: 'Stores in Saudi Arabia' },
   'stores.subtitle': { ar: 'اختر المتجر لتصفح أحدث العروض والخصومات', en: 'Pick a store to browse its latest deals and discounts' },
   'stores.flyers': { ar: '{n} نشرة', en: '{n} flyers' },
   'stores.none': { ar: 'لا توجد متاجر حالياً', en: 'No stores right now' },
+
+  // Deal validity (ExpiryBadge, cards, flyer status pill)
+  'validity.active': { ar: 'عرض ساري', en: 'Active offer' },
+  'validity.startsIn': { ar: 'يبدأ خلال {days}', en: 'Starts in {days}' },
+  'validity.expired': { ar: 'انتهى العرض', en: 'Offer ended' },
+  'validity.today': { ar: 'ينتهي اليوم!', en: 'Ends today!' },
+  'validity.endsIn': { ar: 'ينتهي خلال {days}', en: 'Ends in {days}' },
+  'validity.day1': { ar: 'يوم واحد', en: '1 day' },
+  'validity.day2': { ar: 'يومين', en: '2 days' },
+  'validity.daysFew': { ar: '{n} أيام', en: '{n} days' },
+  'validity.daysMany': { ar: '{n} يوماً', en: '{n} days' },
 
   // Flyer
   'flyer.breadcrumb': { ar: 'نشرة {date}', en: 'Flyer {date}' },
@@ -245,6 +331,20 @@ const DICT: Record<string, Entry> = {
   },
   'privacy.h.contact': { ar: 'التواصل', en: 'Contact' },
   'privacy.p.contact': { ar: 'لأي استفسار بخصوص الخصوصية:', en: 'For any privacy question:' },
+
+  // Compare page
+  'compare.title': { ar: 'مقارنة الأسعار', en: 'Price comparison' },
+  'compare.subtitle': { ar: 'قارن سعر المنتج بين جميع المتاجر واعثر على الأرخص', en: "Compare a product's price across all stores and find the cheapest" },
+  'compare.searchPlaceholder': { ar: 'قارن سعر منتج… مثال: أرز بسمتي', en: "Compare a product's price… e.g. basmati rice" },
+  'compare.compareBtn': { ar: 'قارن', en: 'Compare' },
+  'compare.discount': { ar: 'الخصم', en: 'Discount' },
+  'compare.prompt': { ar: 'ابحث عن منتج لمقارنة أسعاره بين المتاجر', en: 'Search for a product to compare its price across stores' },
+  'compare.noResults': { ar: 'لا توجد عروض حالية لـ «{q}» للمقارنة', en: 'No current offers to compare for "{q}"' },
+  'compare.oldPrice': { ar: 'السعر الأصلي', en: 'Original price' },
+  'compare.validUntil': { ar: 'ساري حتى', en: 'Valid until' },
+  'compare.validUntilShort': { ar: 'ساري حتى {date}', en: 'Valid until {date}' },
+  'compare.last30': { ar: 'آخر 30 يوم', en: 'Last 30 days' },
+  'common.storesCount': { ar: '{n} متاجر', en: '{n} stores' },
 
   // Product page
   'product.cheapest': { ar: 'الأرخص 🏆', en: 'Cheapest 🏆' },

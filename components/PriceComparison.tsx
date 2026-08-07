@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Sparkline from '@/components/Sparkline'
 import { formatDateAr, getValidity } from '@/lib/flyer-utils'
 import { currencyOf } from '@/lib/countries'
+import { useI18n } from '@/components/I18nProvider'
 
 // A price list is always within one country, so the currency is resolved once
 // here rather than per row. See lib/countries.ts.
@@ -41,6 +42,7 @@ interface Props {
 }
 
 export default function PriceComparison({ query = '', showSearch = true }: Props) {
+  const { lang, dir, t } = useI18n()
   const [q, setQ] = useState(query)
   const [input, setInput] = useState(query)
   const [data, setData] = useState<CompareResponse | null>(null)
@@ -88,17 +90,17 @@ export default function PriceComparison({ query = '', showSearch = true }: Props
   }
 
   return (
-    <div dir="rtl" className="w-full">
+    <div dir={dir} className="w-full">
       {showSearch && (
         <form onSubmit={submit} className="mb-4 flex gap-2">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="قارن سعر منتج… مثال: أرز بسمتي"
+            placeholder={t('compare.searchPlaceholder')}
             className="flex-1 rounded-full border-2 border-pink-200 px-5 py-3 text-base focus:border-[#E91E8C] focus:outline-none focus:ring-4 focus:ring-pink-100"
           />
           <button type="submit" className="rounded-full bg-[#E91E8C] px-6 py-3 font-bold text-white transition hover:brightness-110">
-            قارن
+            {t('compare.compareBtn')}
           </button>
         </form>
       )}
@@ -106,11 +108,11 @@ export default function PriceComparison({ query = '', showSearch = true }: Props
       {/* Sort controls */}
       {rows.length > 0 && (
         <div className="mb-3 flex items-center gap-2 text-sm">
-          <span className="text-gray-500">ترتيب حسب:</span>
+          <span className="text-gray-500">{t('sort.by')}</span>
           {([
-            ['price', 'السعر'],
-            ['discount', 'الخصم'],
-            ['store', 'المتجر'],
+            ['price', t('product.thPrice')],
+            ['discount', t('compare.discount')],
+            ['store', t('product.thStore')],
           ] as [SortKey, string][]).map(([key, label]) => (
             <button
               key={key}
@@ -132,11 +134,11 @@ export default function PriceComparison({ query = '', showSearch = true }: Props
           ))}
         </div>
       ) : !q || q.length < 2 ? (
-        <p className="py-10 text-center text-gray-400">ابحث عن منتج لمقارنة أسعاره بين المتاجر</p>
+        <p className="py-10 text-center text-gray-400">{t('compare.prompt')}</p>
       ) : rows.length === 0 ? (
         <div className="rounded-2xl bg-white py-12 text-center shadow">
           <div className="mb-2 text-5xl">🔍</div>
-          <p className="text-gray-600">لا توجد عروض حالية لـ «{q}» للمقارنة</p>
+          <p className="text-gray-600">{t('compare.noResults', { q })}</p>
         </div>
       ) : (
         <>
@@ -144,7 +146,7 @@ export default function PriceComparison({ query = '', showSearch = true }: Props
           <div className="mb-3 flex items-center gap-2">
             <h3 className="text-lg font-bold text-gray-800">{data?.productName}</h3>
             <span className="rounded-full bg-pink-100 px-2 py-0.5 text-xs font-semibold text-[#E91E8C]">
-              {rows.length} متاجر
+              {t('common.storesCount', { n: rows.length })}
             </span>
           </div>
 
@@ -153,18 +155,18 @@ export default function PriceComparison({ query = '', showSearch = true }: Props
             <table className="w-full text-right text-sm">
               <thead className="bg-pink-50 text-xs uppercase tracking-wide text-gray-500">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">المتجر</th>
-                  <th className="px-4 py-3 font-semibold">السعر</th>
-                  <th className="px-4 py-3 font-semibold">السعر الأصلي</th>
-                  <th className="px-4 py-3 font-semibold">الخصم</th>
-                  <th className="px-4 py-3 font-semibold">ساري حتى</th>
-                  <th className="px-4 py-3 font-semibold">الفرق</th>
-                  <th className="px-4 py-3 font-semibold">آخر 30 يوم</th>
+                  <th className="px-4 py-3 font-semibold">{t('product.thStore')}</th>
+                  <th className="px-4 py-3 font-semibold">{t('product.thPrice')}</th>
+                  <th className="px-4 py-3 font-semibold">{t('compare.oldPrice')}</th>
+                  <th className="px-4 py-3 font-semibold">{t('compare.discount')}</th>
+                  <th className="px-4 py-3 font-semibold">{t('compare.validUntil')}</th>
+                  <th className="px-4 py-3 font-semibold">{t('product.thDiff')}</th>
+                  <th className="px-4 py-3 font-semibold">{t('compare.last30')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {rows.map((r) => {
-                  const v = getValidity(null, r.validUntil)
+                  const v = getValidity(null, r.validUntil, undefined, lang)
                   return (
                     <tr key={r.supermarket.id} className={r.isCheapest ? 'bg-emerald-50/60' : 'hover:bg-gray-50'}>
                       <td className="px-4 py-3">
@@ -179,7 +181,7 @@ export default function PriceComparison({ query = '', showSearch = true }: Props
                           )}
                           <span className="font-semibold text-gray-800">{r.supermarket.nameAr}</span>
                           {r.isCheapest && (
-                            <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white">الأرخص 🏆</span>
+                            <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white">{t('product.cheapest')}</span>
                           )}
                         </div>
                       </td>
@@ -242,7 +244,7 @@ export default function PriceComparison({ query = '', showSearch = true }: Props
                     <span className="font-bold text-gray-800">{r.supermarket.nameAr}</span>
                   </div>
                   {r.isCheapest && (
-                    <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white">الأرخص 🏆</span>
+                    <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white">{t('product.cheapest')}</span>
                   )}
                 </div>
                 <div className="flex items-end justify-between">
@@ -255,7 +257,7 @@ export default function PriceComparison({ query = '', showSearch = true }: Props
                       {r.discountPercent ? <span className="font-bold text-red-600">-{r.discountPercent}%</span> : null}
                       {r.diffFromCheapest > 0 && <span className="font-semibold text-red-500">+{r.diffFromCheapest.toFixed(2)}</span>}
                     </div>
-                    {r.validUntil && <div className="mt-1 text-[11px] text-gray-400">ساري حتى {formatDateAr(r.validUntil)}</div>}
+                    {r.validUntil && <div className="mt-1 text-[11px] text-gray-400">{t('compare.validUntilShort', { date: formatDateAr(r.validUntil) })}</div>}
                   </div>
                   <Sparkline data={r.history} width={80} height={32} />
                 </div>

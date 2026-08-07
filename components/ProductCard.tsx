@@ -45,7 +45,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const displayName = productName(lang, product.nameAr, product.nameEn)
   const hasDiscount = product.discountPercent && product.discountPercent > 0
   const [imgError, setImgError] = useState(false)
-  const validity = getValidity(product.flyer?.startDate, product.flyer?.endDate)
+  const validity = getValidity(product.flyer?.startDate, product.flyer?.endDate, undefined, lang)
   const { add, has } = useShoppingList()
   const inList = has(product.id)
   const { isFavorite, toggle } = useFavorites()

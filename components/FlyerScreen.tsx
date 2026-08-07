@@ -17,7 +17,7 @@ export default function FlyerScreen({ flyer, country }: { flyer: FlyerWithStore;
   const lang = getLang()
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
   const store = flyer.supermarket.nameAr
-  const validity = getValidity(flyer.startDate, flyer.endDate)
+  const validity = getValidity(flyer.startDate, flyer.endDate, undefined, lang)
   const dateAr = formatDateAr(flyer.startDate)
   const pageImages = parsePageImages((flyer as any).pageImages)
 

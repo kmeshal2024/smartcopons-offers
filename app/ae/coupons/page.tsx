@@ -4,6 +4,8 @@ import Footer from '@/components/Footer'
 import CouponCard from '@/components/CouponCard'
 import { getCouponsData } from '@/lib/coupons'
 import { COUNTRIES, urlFor } from '@/lib/countries'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate, dirOf } from '@/lib/i18n'
 
 /**
  * UAE coupons.
@@ -33,21 +35,23 @@ export const dynamic = 'force-dynamic'
 
 export default async function UaeCouponsPage() {
   const { coupons } = await getCouponsData(COUNTRY.code)
+  const lang = getLang()
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(lang)}>
       <Header />
       <main className="container mx-auto px-4 py-6">
         <header className="mb-6">
-          <h1 className="text-xl font-extrabold text-gray-900">كوبونات الخصم في الإمارات</h1>
+          <h1 className="text-xl font-extrabold text-gray-900">{t('coupons.aeTitle')}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {coupons.length.toLocaleString('en')} كوبون فعّال — انسخ الكود واستخدمه عند الدفع
+            {t('coupons.aeSubtitle', { n: coupons.length.toLocaleString('en') })}
           </p>
         </header>
 
         {coupons.length === 0 ? (
           <p className="rounded-xl border border-gray-100 bg-white py-14 text-center text-gray-500">
-            لا توجد كوبونات متاحة للإمارات حالياً.
+            {t('coupons.aeNone')}
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

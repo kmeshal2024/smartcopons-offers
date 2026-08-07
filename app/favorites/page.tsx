@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import FavoritesClient from './FavoritesClient'
+import { getLang } from '@/lib/i18n-server'
+import { dirOf } from '@/lib/i18n'
 
 export const metadata: Metadata = {
   title: 'المفضّلة',
@@ -17,8 +19,9 @@ export const dynamic = 'force-dynamic'
 // file bundles PrismaClient into the browser and the page dies on mount with
 // "Application error: a client-side exception has occurred".
 export default function FavoritesPage() {
+  const lang = getLang()
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(lang)}>
       <Header />
       <FavoritesClient />
       <Footer />

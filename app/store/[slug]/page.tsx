@@ -5,6 +5,8 @@ import type { Metadata } from 'next'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import CouponCard from '@/components/CouponCard'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate, dirOf } from '@/lib/i18n'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -61,6 +63,8 @@ export default async function StorePage({ params }: Props) {
   if (!store) notFound()
 
   const coupons = store.coupons
+  const lang = getLang()
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -97,15 +101,15 @@ export default async function StorePage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(lang)}>
       <Header />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <main className="container mx-auto px-4 py-6">
         <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500">
-          <Link href="/" className="hover:text-pink-600 transition">الرئيسية</Link>
+          <Link href="/" className="hover:text-pink-600 transition">{t('nav.home')}</Link>
           <span className="text-gray-300">/</span>
-          <Link href="/coupons" className="hover:text-pink-600 transition">كوبونات</Link>
+          <Link href="/coupons" className="hover:text-pink-600 transition">{t('nav.coupons')}</Link>
           <span className="text-gray-300">/</span>
           <span className="text-gray-900 font-semibold">{store.name}</span>
         </nav>
@@ -117,9 +121,9 @@ export default async function StorePage({ params }: Props) {
               <img src={store.logo} alt={store.name} className="w-12 h-12 rounded-lg bg-white object-contain p-1" />
             )}
             <div>
-              <h1 className="text-2xl font-bold">كوبونات {store.name}</h1>
+              <h1 className="text-2xl font-bold">{t('store.couponsOf', { name: store.name })}</h1>
               <p className="text-sm opacity-90 mt-1">
-                {coupons.length > 0 ? `${coupons.length} كوبون وكود خصم ساري` : 'لا توجد كوبونات سارية حالياً'}
+                {coupons.length > 0 ? t('store.activeCount', { n: coupons.length }) : t('store.noneNow')}
               </p>
             </div>
           </div>
@@ -128,9 +132,9 @@ export default async function StorePage({ params }: Props) {
         {coupons.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
             <span className="text-5xl block mb-4">🎟️</span>
-            <p className="text-gray-500">لا توجد كوبونات متاحة حالياً</p>
+            <p className="text-gray-500">{t('store.noneAvailable')}</p>
             <Link href="/coupons" className="mt-3 inline-block text-pink-600 hover:underline font-semibold text-sm">
-              تصفّح كل الكوبونات
+              {t('store.browseAll')}
             </Link>
           </div>
         ) : (
@@ -152,12 +156,8 @@ export default async function StorePage({ params }: Props) {
 
         {/* SEO body */}
         <section className="mt-10 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-          <h2 className="text-base font-bold text-gray-900 mb-2">كوبونات وأكواد خصم {store.name}</h2>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            تصفّح أحدث كوبونات {store.name} وأكواد الخصم السارية في السعودية. نحرص على تحديث الأكواد
-            باستمرار لضمان حصولك على خصم فعّال. اختر الكوبون المناسب، انسخ الكود، ثم استخدمه عند إتمام
-            طلبك في {store.name} لتوفير المزيد.
-          </p>
+          <h2 className="text-base font-bold text-gray-900 mb-2">{t('store.seoTitle', { name: store.name })}</h2>
+          <p className="text-sm text-gray-600 leading-relaxed">{t('store.seoP1', { name: store.name })}</p>
         </section>
       </main>
 

@@ -6,6 +6,8 @@ import type { Metadata } from 'next'
 import { formatDateAr, formatRangeAr, getValidity } from '@/lib/flyer-utils'
 import { getFlyerBySlugDate } from '@/lib/flyer-query'
 import { COUNTRIES, urlFor } from '@/lib/countries'
+import { getLang } from '@/lib/i18n-server'
+import { dirOf } from '@/lib/i18n'
 
 const COUNTRY = COUNTRIES.AE
 
@@ -81,7 +83,7 @@ export default async function AeWeeklyFlyerPage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(getLang())}>
       <Header />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <FlyerScreen flyer={flyer} country="AE" />

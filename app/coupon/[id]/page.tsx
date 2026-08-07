@@ -6,6 +6,8 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import CouponCard from '@/components/CouponCard'
 import CopyCodeButton from './CopyCodeButton'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate, dirOf } from '@/lib/i18n'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -69,6 +71,8 @@ export default async function CouponPage({ params }: Props) {
 
   const store = coupon.store.name
   const more = await getMoreFromStore(coupon.storeId, coupon.id)
+  const lang = getLang()
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
 
   // Coupons have no first-class rich-result type, but an Offer with the store
   // as seller is valid structured data and describes the discount honestly.
@@ -102,16 +106,16 @@ export default async function CouponPage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(lang)}>
       <Header />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <main className="container mx-auto px-4 py-6">
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500">
-          <Link href="/" className="hover:text-pink-600 transition">الرئيسية</Link>
+          <Link href="/" className="hover:text-pink-600 transition">{t('nav.home')}</Link>
           <span className="text-gray-300">/</span>
-          <Link href="/coupons" className="hover:text-pink-600 transition">كوبونات</Link>
+          <Link href="/coupons" className="hover:text-pink-600 transition">{t('nav.coupons')}</Link>
           <span className="text-gray-300">/</span>
           <span className="text-gray-900 font-semibold line-clamp-1">{store}</span>
         </nav>
@@ -139,7 +143,7 @@ export default async function CouponPage({ params }: Props) {
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-semibold mb-2 text-gray-700">كود الكوبون:</label>
+              <label className="block text-sm font-semibold mb-2 text-gray-700">{t('coupon.codeLabel')}</label>
               <div className="flex gap-2">
                 <div className="flex-1 bg-gray-50 border-2 border-dashed border-pink-300 rounded-lg px-4 py-3 font-mono text-lg font-bold text-center text-pink-700">
                   {coupon.code}
@@ -150,7 +154,7 @@ export default async function CouponPage({ params }: Props) {
 
             {coupon.description && (
               <div className="mb-6">
-                <h2 className="text-lg font-bold mb-2 text-gray-900">تفاصيل الكوبون</h2>
+                <h2 className="text-lg font-bold mb-2 text-gray-900">{t('coupon.detailsHeading')}</h2>
                 <p className="text-gray-600 text-sm leading-relaxed">{coupon.description}</p>
               </div>
             )}
@@ -162,29 +166,25 @@ export default async function CouponPage({ params }: Props) {
                 rel="noopener noreferrer sponsored"
                 className="block w-full bg-pink-600 text-white text-center px-6 py-4 rounded-lg hover:bg-pink-700 transition font-bold text-lg"
               >
-                استخدم الكوبون الآن ←
+                {t('coupon.useNow')}
               </a>
               <p className="text-center text-xs text-gray-400 mt-3">
-                انسخ الكود «{coupon.code}» ثم الصقه عند إتمام الطلب في {store}
+                {t('coupon.copyHint', { code: coupon.code, store })}
               </p>
             </div>
           </div>
 
           {/* SEO body: a real sentence for the query, not just a code */}
           <section className="mt-6 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-            <h2 className="text-base font-bold text-gray-900 mb-2">كود خصم {store}</h2>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              وفّر على مشترياتك من {store} باستخدام كود الخصم «{coupon.code}» للحصول على {coupon.discountText}.
-              نحدّث كوبونات وأكواد خصم {store} أولاً بأول لتحصل على أحدث العروض السارية في السعودية.
-              انسخ الكود، انتقل إلى المتجر، والصقه في خانة كود الخصم عند الدفع.
-            </p>
+            <h2 className="text-base font-bold text-gray-900 mb-2">{t('coupon.seoTitle', { store })}</h2>
+            <p className="text-sm text-gray-600 leading-relaxed">{t('coupon.seoP1', { store, code: coupon.code, discount: coupon.discountText })}</p>
           </section>
 
           {more.length > 0 && (
             <section className="mt-8">
               <div className="mb-3 flex items-center gap-2">
                 <div className="w-1 h-5 bg-pink-600 rounded-full" />
-                <h2 className="font-bold text-gray-900 text-sm">كوبونات {store} الأخرى</h2>
+                <h2 className="font-bold text-gray-900 text-sm">{t('coupon.moreFrom', { store })}</h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {more.map(c => (

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useI18n } from '@/components/I18nProvider'
 
 interface Category {
   nameAr: string
@@ -22,6 +23,7 @@ export default function RetailerFilters({
   slug, categories, currentSort, currentCategory, currentSearch, totalResults
 }: RetailerFiltersProps) {
   const router = useRouter()
+  const { t } = useI18n()
   const [searchValue, setSearchValue] = useState(currentSearch)
 
   const buildUrl = (overrides: { sort?: string; category?: string; search?: string }) => {
@@ -58,7 +60,7 @@ export default function RetailerFilters({
           </svg>
           <input
             type="text"
-            placeholder="ابحث عن منتج..."
+            placeholder={t('offers.searchPlaceholder')}
             value={searchValue}
             onChange={e => setSearchValue(e.target.value)}
             className="w-full pr-9 pl-9 py-2 sm:py-2.5 rounded-lg border border-gray-200 bg-gray-50
@@ -79,7 +81,7 @@ export default function RetailerFilters({
         {/* Sort + Count */}
         <div className="flex items-center gap-2.5">
           <span className="text-xs text-gray-400 whitespace-nowrap hidden sm:inline">
-            {totalResults} نتيجة
+            {t('retailer.results', { n: totalResults })}
           </span>
           <select
             value={currentSort}
@@ -88,11 +90,11 @@ export default function RetailerFilters({
                        focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-400
                        transition min-w-[120px]"
           >
-            <option value="newest">الأحدث</option>
-            <option value="price-low">السعر: الأقل</option>
-            <option value="price-high">السعر: الأعلى</option>
-            <option value="discount">الخصم الأكبر</option>
-            <option value="popular">الأكثر مشاهدة</option>
+            <option value="newest">{t('sort.newest')}</option>
+            <option value="price-low">{t('sort.priceLow')}</option>
+            <option value="price-high">{t('sort.priceHigh')}</option>
+            <option value="discount">{t('sort.discount')}</option>
+            <option value="popular">{t('sort.popular')}</option>
           </select>
         </div>
       </div>
@@ -109,7 +111,7 @@ export default function RetailerFilters({
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              الكل
+              {t('common.all')}
             </button>
             {categories.map(cat => (
               <button
@@ -134,7 +136,7 @@ export default function RetailerFilters({
         <div className="border-t border-gray-50 px-3 sm:px-4 py-2 flex flex-wrap gap-1.5 items-center">
           {currentSearch && (
             <span className="inline-flex items-center gap-1 bg-pink-50 text-pink-700 text-[11px] px-2.5 py-1 rounded-full font-medium">
-              بحث: {currentSearch}
+              {t('offers.searchChip', { q: currentSearch })}
               <button onClick={clearSearch} className="hover:text-pink-900 mr-0.5">
                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -157,7 +159,7 @@ export default function RetailerFilters({
             onClick={() => { setSearchValue(''); router.push(`/offers/retailer/${slug}`) }}
             className="text-[11px] text-gray-400 hover:text-red-500 transition mr-1"
           >
-            مسح الكل
+            {t('common.clearAll')}
           </button>
         </div>
       )}

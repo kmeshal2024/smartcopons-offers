@@ -1,6 +1,7 @@
 'use client'
 
 import { getValidity, formatRangeAr, type Validity } from '@/lib/flyer-utils'
+import { useI18n } from '@/components/I18nProvider'
 
 interface ExpiryBadgeProps {
   /** Deal start date (flyer.startDate). Optional. */
@@ -31,9 +32,10 @@ export default function ExpiryBadge({
   hideWhenOpenEnded = true,
   className = '',
 }: ExpiryBadgeProps) {
+  const { lang } = useI18n()
   if (!validTo && hideWhenOpenEnded) return null
 
-  const v = getValidity(validFrom, validTo)
+  const v = getValidity(validFrom, validTo, undefined, lang)
   const pad = size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-3 py-1 text-xs'
 
   return (

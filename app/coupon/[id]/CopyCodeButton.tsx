@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 
 /**
  * Just the copy interaction. The code itself is rendered server-side by the
@@ -8,6 +9,7 @@ import { useState } from 'react'
  * the clipboard button on top.
  */
 export default function CopyCodeButton({ code }: { code: string }) {
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
@@ -23,7 +25,7 @@ export default function CopyCodeButton({ code }: { code: string }) {
         copied ? 'bg-green-500 text-white' : 'bg-pink-600 text-white hover:bg-pink-700'
       }`}
     >
-      {copied ? '✓ تم النسخ' : 'نسخ الكود'}
+      {copied ? t('home.coupons.copied') : t('home.coupons.copy')}
     </button>
   )
 }

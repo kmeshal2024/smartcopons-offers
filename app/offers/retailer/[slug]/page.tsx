@@ -9,6 +9,8 @@ import type { Metadata } from 'next'
 import RetailerFilters from './RetailerFilters'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate, dirOf } from '@/lib/i18n'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -176,6 +178,9 @@ export default async function RetailerPage({ params, searchParams }: Props) {
   if (!data) return notFound()
 
   const { supermarket, products, total, categories, activeFlyers, totalPages, currentPage } = data
+  const lang = getLang()
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
+  const dateLocale = lang === 'en' ? 'en-GB' : 'ar-SA'
 
   // Helper to build pagination URLs
   function buildPageUrl(pageNum: number) {
@@ -241,7 +246,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
   } : null
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(lang)}>
       <Header />
 
       <script
@@ -258,11 +263,11 @@ export default async function RetailerPage({ params, searchParams }: Props) {
       <main className="container mx-auto px-4 py-5">
         {/* Breadcrumb */}
         <nav className="mb-4 text-sm text-gray-500 flex items-center gap-1.5">
-          <Link href="/" className="hover:text-pink-600 transition">الرئيسية</Link>
+          <Link href="/" className="hover:text-pink-600 transition">{t('nav.home')}</Link>
           <svg className="w-3.5 h-3.5 text-gray-300 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
-          <Link href="/supermarkets" className="hover:text-pink-600 transition">المتاجر</Link>
+          <Link href="/supermarkets" className="hover:text-pink-600 transition">{t('nav.stores')}</Link>
           <svg className="w-3.5 h-3.5 text-gray-300 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
@@ -281,9 +286,9 @@ export default async function RetailerPage({ params, searchParams }: Props) {
             </div>
             <div className="min-w-0">
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-0.5">
-                عروض {supermarket.nameAr}
+                {t('common.offersOf', { name: supermarket.nameAr })}
               </h1>
-              <p className="text-sm text-gray-500">{total} عرض متوفر</p>
+              <p className="text-sm text-gray-500">{t('offers.available', { n: total })}</p>
             </div>
           </div>
 
@@ -294,7 +299,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
                 <div key={flyer.id} className="flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
                   <div className="font-medium text-gray-700 text-sm whitespace-nowrap">{flyer.titleAr || flyer.title}</div>
                   <div className="text-xs text-gray-500">
-                    {flyer._count.productOffers} منتج · ينتهي {new Date(flyer.endDate).toLocaleDateString('ar-SA')}
+                    {t('retailer.productsCount', { n: flyer._count.productOffers })} · {t('retailer.endsOn', { date: new Date(flyer.endDate).toLocaleDateString(dateLocale) })}
                   </div>
                 </div>
               ))}
@@ -320,7 +325,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
                     href={`/flyers/${supermarket.slug}/${new Date(flyer.startDate).toISOString().split('T')[0]}`}
                     className="mt-2 inline-block text-sm font-semibold text-pink-600 hover:text-pink-700"
                   >
-                    صفحة هذه النشرة ←
+                    {t('retailer.flyerPage')}
                   </Link>
                 </div>
               ))}
@@ -331,8 +336,8 @@ export default async function RetailerPage({ params, searchParams }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l4 4v10a2 2 0 01-2 2z" />
             </svg>
-            <p className="text-sm text-gray-500">لا توجد نشرة متاحة حالياً</p>
-            <p className="mt-1 text-xs text-gray-400">تصفّح العروض أدناه، وسنضيف النشرة فور صدورها</p>
+            <p className="text-sm text-gray-500">{t('flyer.none')}</p>
+            <p className="mt-1 text-xs text-gray-400">{t('retailer.flyerSoon')}</p>
           </div>
         )}
 
@@ -354,17 +359,17 @@ export default async function RetailerPage({ params, searchParams }: Props) {
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <p className="text-gray-500 text-lg font-medium mb-1">
-              {search ? 'لم يتم العثور على نتائج' : 'لا توجد عروض حالياً'}
+              {search ? t('retailer.noResults') : t('retailer.noOffers')}
             </p>
             <p className="text-gray-400 text-sm">
-              {search ? `لا توجد منتجات تطابق "${search}"` : 'جرب تغيير الفلاتر أو البحث'}
+              {search ? t('retailer.noMatch', { q: search }) : t('retailer.tryFilters')}
             </p>
             {(search || category) && (
               <Link
                 href={`/offers/retailer/${slug}`}
                 className="inline-block mt-4 text-pink-600 hover:text-pink-700 text-sm font-medium transition"
               >
-                مسح الفلاتر والبحث
+                {t('retailer.clearFiltersSearch')}
               </Link>
             )}
           </div>
@@ -373,11 +378,11 @@ export default async function RetailerPage({ params, searchParams }: Props) {
             {/* Results summary */}
             <div className="flex items-center justify-between mb-3 px-0.5">
               <span className="text-xs sm:text-sm text-gray-400">
-                عرض {products.length} من {total} منتج
+                {t('offers.showing', { shown: products.length, total })}
               </span>
               {totalPages > 1 && (
                 <span className="text-xs text-gray-400">
-                  صفحة {currentPage} من {totalPages}
+                  {t('offers.pageOf', { page: currentPage, total: totalPages })}
                 </span>
               )}
             </div>
@@ -396,7 +401,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
                     href={buildPageUrl(currentPage - 1)}
                     className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition"
                   >
-                    السابق
+                    {t('common.prev')}
                   </Link>
                 )}
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -421,7 +426,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
                     href={buildPageUrl(currentPage + 1)}
                     className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition"
                   >
-                    التالي
+                    {t('common.next')}
                   </Link>
                 )}
               </div>

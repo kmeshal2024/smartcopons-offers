@@ -3,6 +3,8 @@
 // the deal-expiry badges on cards (Feature 2). All UI strings are Arabic (RTL).
 // ============================================================================
 
+import { t, type Lang } from '@/lib/i18n'
+
 export const BRAND = '#E91E8C' // SmartCopons pink
 
 export type ValidityKind = 'active' | 'expiring' | 'today' | 'expired'
@@ -26,22 +28,25 @@ function startOfDay(d: Date): number {
   return x.getTime()
 }
 
-/** Arabic-aware day count: "يوم واحد" / "يومين" / "٣ أيام" / "١٢ يوماً". */
-function arabicDays(n: number): string {
-  if (n === 1) return 'يوم واحد'
-  if (n === 2) return 'يومين'
-  if (n >= 3 && n <= 10) return `${n} أيام`
-  return `${n} يوماً`
+/** Localized day count: "يوم واحد"/"يومين"/"٣ أيام" or "1 day"/"N days". */
+function dayCount(n: number, lang: Lang): string {
+  if (n === 1) return t(lang, 'validity.day1')
+  if (n === 2) return t(lang, 'validity.day2')
+  if (n >= 3 && n <= 10) return t(lang, 'validity.daysFew', { n })
+  return t(lang, 'validity.daysMany', { n })
 }
 
 /**
  * Compute validity status for a deal/flyer given its start and end dates.
- * `now` is injectable for testing / SSR-determinism.
+ * `now` is injectable for testing / SSR-determinism. `lang` localizes the
+ * label — it defaults to Arabic so existing callers are unaffected; pass the
+ * request/UI language to render the badge in English.
  */
 export function getValidity(
   start: string | Date | null | undefined,
   end: string | Date | null | undefined,
-  now: Date = new Date()
+  now: Date = new Date(),
+  lang: Lang = 'ar'
 ): Validity {
   const today = startOfDay(now)
 
@@ -49,7 +54,7 @@ export function getValidity(
     return {
       kind: 'active',
       daysRemaining: Infinity,
-      label: 'عرض ساري',
+      label: t(lang, 'validity.active'),
       badgeClass: 'bg-emerald-100 text-emerald-700',
       dotClass: 'bg-emerald-500',
       isExpired: false,
@@ -67,7 +72,7 @@ export function getValidity(
       return {
         kind: 'active',
         daysRemaining,
-        label: `يبدأ خلال ${arabicDays(inDays)}`,
+        label: t(lang, 'validity.startsIn', { days: dayCount(inDays, lang) }),
         badgeClass: 'bg-sky-100 text-sky-700',
         dotClass: 'bg-sky-500',
         isExpired: false,
@@ -79,7 +84,7 @@ export function getValidity(
     return {
       kind: 'expired',
       daysRemaining,
-      label: 'انتهى العرض',
+      label: t(lang, 'validity.expired'),
       badgeClass: 'bg-gray-200 text-gray-500',
       dotClass: 'bg-gray-400',
       isExpired: true,
@@ -90,7 +95,7 @@ export function getValidity(
     return {
       kind: 'today',
       daysRemaining,
-      label: 'ينتهي اليوم!',
+      label: t(lang, 'validity.today'),
       badgeClass: 'bg-red-600 text-white',
       dotClass: 'bg-red-500',
       isExpired: false,
@@ -101,7 +106,7 @@ export function getValidity(
     return {
       kind: 'expiring',
       daysRemaining,
-      label: `ينتهي خلال ${arabicDays(daysRemaining)}`,
+      label: t(lang, 'validity.endsIn', { days: dayCount(daysRemaining, lang) }),
       badgeClass: 'bg-red-100 text-red-700',
       dotClass: 'bg-red-500',
       isExpired: false,
@@ -112,7 +117,7 @@ export function getValidity(
     return {
       kind: 'active',
       daysRemaining,
-      label: `ينتهي خلال ${arabicDays(daysRemaining)}`,
+      label: t(lang, 'validity.endsIn', { days: dayCount(daysRemaining, lang) }),
       badgeClass: 'bg-amber-100 text-amber-700',
       dotClass: 'bg-amber-500',
       isExpired: false,
@@ -122,7 +127,7 @@ export function getValidity(
   return {
     kind: 'active',
     daysRemaining,
-    label: `ينتهي خلال ${arabicDays(daysRemaining)}`,
+    label: t(lang, 'validity.endsIn', { days: dayCount(daysRemaining, lang) }),
     badgeClass: 'bg-emerald-100 text-emerald-700',
     dotClass: 'bg-emerald-500',
     isExpired: false,

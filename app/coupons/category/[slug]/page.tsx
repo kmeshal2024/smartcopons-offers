@@ -10,6 +10,8 @@ import {
   FALLBACK_CATEGORY,
   getCouponCategory,
 } from '@/lib/coupon-categories'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate, dirOf } from '@/lib/i18n'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -71,6 +73,8 @@ export default async function CouponCategoryPage({ params }: Props) {
 
   const coupons = await getCategoryCoupons(slug)
   const others = COUPON_CATEGORIES.filter(c => c.slug !== slug)
+  const lang = getLang()
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -104,15 +108,15 @@ export default async function CouponCategoryPage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(lang)}>
       <Header />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <main className="container mx-auto px-4 py-6">
         <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500">
-          <Link href="/" className="hover:text-pink-600 transition">الرئيسية</Link>
+          <Link href="/" className="hover:text-pink-600 transition">{t('nav.home')}</Link>
           <span className="text-gray-300">/</span>
-          <Link href="/coupons" className="hover:text-pink-600 transition">كوبونات</Link>
+          <Link href="/coupons" className="hover:text-pink-600 transition">{t('nav.coupons')}</Link>
           <span className="text-gray-300">/</span>
           <span className="text-gray-900 font-semibold">{category.label}</span>
         </nav>
@@ -123,7 +127,7 @@ export default async function CouponCategoryPage({ params }: Props) {
             <div>
               <h1 className="text-2xl font-bold">{category.keyword}</h1>
               <p className="text-sm opacity-90 mt-1">
-                {coupons.length > 0 ? `${coupons.length} كوبون وكود خصم ساري` : 'لا توجد كوبونات سارية حالياً'}
+                {coupons.length > 0 ? t('store.activeCount', { n: coupons.length }) : t('store.noneNow')}
               </p>
             </div>
           </div>
@@ -135,7 +139,7 @@ export default async function CouponCategoryPage({ params }: Props) {
             href="/coupons"
             className="bg-white text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 hover:border-pink-300 hover:text-pink-600 transition"
           >
-            كل الكوبونات
+            {t('coupons.allCoupons')}
           </Link>
           {others.map(c => (
             <Link
@@ -151,9 +155,9 @@ export default async function CouponCategoryPage({ params }: Props) {
         {coupons.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
             <span className="text-5xl block mb-4">🎟️</span>
-            <p className="text-gray-500">لا توجد كوبونات في هذه الفئة حالياً</p>
+            <p className="text-gray-500">{t('category.couponsNone')}</p>
             <Link href="/coupons" className="mt-3 inline-block text-pink-600 hover:underline font-semibold text-sm">
-              تصفّح كل الكوبونات
+              {t('store.browseAll')}
             </Link>
           </div>
         ) : (
