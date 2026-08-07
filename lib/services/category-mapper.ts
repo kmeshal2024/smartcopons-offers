@@ -1,5 +1,17 @@
 import { prisma } from '@/lib/db'
 
+/**
+ * Does `needle` appear in `haystack` as a whole word?
+ *
+ * Kept as a plain function rather than an inline template so the regex escaping
+ * stays readable. `\p{L}` covers Arabic and Latin alike, so "زيت" (oil) does
+ * not match inside "زيتون" (olives).
+ */
+function boundedMatch(haystack: string, needle: string): boolean {
+  const esc = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(^|[^\\p{L}])${esc}($|[^\\p{L}])`, 'u').test(haystack)
+}
+
 export class CategoryMapper {
   private categoryKeywords: Map<string, string[]> = new Map()
   /** Resolved once in initialize() — see the note in mapToCategory(). */
@@ -31,14 +43,33 @@ export class CategoryMapper {
 
     const normalizedName = productName.toLowerCase()
 
-    // Try to match keywords
+    // Score EVERY category and take the best, rather than returning the first
+    // keyword that happens to hit. First-match-wins depended on the order the
+    // categories came back from the database, so "ماء عطر جيفنشي" (eau de
+    // parfum) landed in beverages because "ماء" was checked before "عطر" —
+    // which then put perfume at the top of every search for water.
+    //
+    // The score is the length of the matched keyword, so the most specific
+    // match wins: the phrase "ماء عطر" beats the bare word "ماء".
+    let bestId: string | null = null
+    let bestScore = 0
+
     for (const [categoryId, keywords] of Array.from(this.categoryKeywords.entries())) {
+      let score = 0
       for (const keyword of keywords) {
-        if (normalizedName.includes(keyword.toLowerCase())) {
-          return categoryId
-        }
+        const k = keyword.toLowerCase()
+        if (!normalizedName.includes(k)) continue
+        // Whole-word matches count for more than a keyword buried inside a
+        // longer word — "زيت" (oil) must not score on "زيتون" (olives).
+        const bounded = boundedMatch(normalizedName, k)
+        score = Math.max(score, bounded ? k.length * 2 : k.length)
+      }
+      if (score > bestScore) {
+        bestScore = score
+        bestId = categoryId
       }
     }
+    if (bestId) return bestId
 
     // Fall back to "Uncategorized". This used to query the database on every
     // unmatched product — hundreds of extra round trips per scrape, which is
@@ -109,6 +140,9 @@ export class CategoryMapper {
         'huggies', 'wipes', 'مناديل مبللة', 'nanny', 'similac', 'aptamil', 'cerelac',
       ],
       'personal-care': [
+        // Phrases first: they outscore the bare words they contain, which is
+        // how "ماء عطر" stops being read as water.
+        'ماء عطر', 'ماء تواليت', 'eau de parfum', 'eau de toilette', 'ماء كولونيا',
         'shampoo', 'شامبو', 'perfume', 'عطر', 'deodorant', 'مزيل عرق', 'toothpaste', 'معجون',
         'soap', 'صابون', 'body wash', 'غسول', 'lotion', 'مرطب', 'razor', 'شفرة',
         'pantene', 'dove', 'nivea', 'colgate', 'oral-b', 'head & shoulders', 'sunsilk',

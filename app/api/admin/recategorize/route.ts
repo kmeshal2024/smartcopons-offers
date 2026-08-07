@@ -3,81 +3,103 @@ import { prisma } from '@/lib/db'
 import { CategoryMapper } from '@/lib/services/category-mapper'
 
 /**
- * Re-run category matching over products already in the database.
+ * Re-run the category mapper over offers already in the database.
  *
- * The keyword map was keyed by slugs that didn't exist ('fruits-vegetables',
- * 'bread-bakery', 'home-kitchen', 'canned-goods') while the real categories are
- * 'fruits', 'vegetables', 'bakery', 'household', 'canned-dry'. Every lookup for
- * those returned no keywords, so five categories sat at zero. Fixing the map
- * only helps future scrapes — the rows already stored need this pass.
+ * The mapper used to return the FIRST category whose keyword appeared in the
+ * name, and the order depended on how the categories came back from the
+ * database. "ماء عطر جيفنشي" (eau de parfum) therefore landed in beverages
+ * because "ماء" was tested before "عطر" — which put perfume at the top of
+ * every search for water. The mapper now scores every category and keeps the
+ * most specific match, but rows stamped by the old logic keep their wrong
+ * category until this runs.
  *
- * Runs in batches so it stays inside the function limit; call until `remaining`
- * reaches 0. APP_SECRET-guarded.
+ * Guarded by APP_SECRET. Idempotent — a row whose category already matches is
+ * left alone, so it is safe to re-run.
  *
- *   curl -X POST .../api/admin/recategorize -d '{"key":"…","limit":2000}'
+ *   Preview:  GET  ...?key=$APP_SECRET&dry=1
+ *   Apply:    POST ... {"key":"..."}
  */
 export const dynamic = 'force-dynamic'
-export const maxDuration = 120
+export const maxDuration = 300
 
-export async function POST(request: Request) {
-  const body = await request.json().catch(() => ({}))
-  const { key, limit } = body as { key?: string; limit?: number }
-
-  const appSecret = process.env.APP_SECRET
-  if (!appSecret || key !== appSecret) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const take = Math.min(limit || 2000, 5000)
-
+async function run(dry: boolean, limit: number) {
   const mapper = new CategoryMapper()
   await mapper.initialize()
 
-  // Only touch rows that have no category or sit in "uncategorized" — a product
-  // a human or an earlier good match already placed shouldn't be second-guessed.
-  const uncategorized = await prisma.category.findFirst({
-    where: { slug: 'uncategorized' },
-    select: { id: true },
+  const cats = await prisma.category.findMany({ select: { id: true, slug: true } })
+  const slugById = new Map(cats.map(c => [c.id, c.slug]))
+
+  const offers = await prisma.productOffer.findMany({
+    select: { id: true, nameAr: true, nameEn: true, categoryId: true },
+    take: limit,
   })
-  const where = uncategorized
-    ? { OR: [{ categoryId: null }, { categoryId: uncategorized.id }] }
-    : { categoryId: null }
 
-  const [products, remainingBefore] = await Promise.all([
-    prisma.productOffer.findMany({
-      where,
-      select: { id: true, nameAr: true, nameEn: true },
-      take,
-    }),
-    prisma.productOffer.count({ where }),
-  ])
-
-  // Group by resolved category so this is a handful of updateMany calls instead
-  // of one round trip per product.
-  const byCategory = new Map<string, string[]>()
-  for (const p of products) {
-    const catId = await mapper.mapToCategory(p.nameAr || p.nameEn || '')
-    if (!catId || catId === uncategorized?.id) continue
-    const list = byCategory.get(catId) || []
-    list.push(p.id)
-    byCategory.set(catId, list)
+  const changes: Array<{ id: string; name: string; from: string; to: string }> = []
+  for (const o of offers) {
+    const name = o.nameAr || o.nameEn || ''
+    if (!name) continue
+    const next = await mapper.mapToCategory(name)
+    if (!next || next === o.categoryId) continue
+    changes.push({
+      id: o.id,
+      name: name.slice(0, 55),
+      from: slugById.get(o.categoryId || '') || '(none)',
+      to: slugById.get(next) || '(none)',
+    })
   }
 
-  let updated = 0
-  for (const [catId, ids] of Array.from(byCategory.entries())) {
-    for (let i = 0; i < ids.length; i += 500) {
-      const res = await prisma.productOffer.updateMany({
-        where: { id: { in: ids.slice(i, i + 500) } },
-        data: { categoryId: catId },
-      })
-      updated += res.count
+  if (!dry) {
+    // Group by target so this is a handful of updateMany calls rather than one
+    // round trip per row.
+    const byTarget = new Map<string, string[]>()
+    for (const c of changes) {
+      const target = cats.find(x => slugById.get(x.id) === c.to)?.id
+      if (!target) continue
+      const list = byTarget.get(target) || []
+      list.push(c.id)
+      byTarget.set(target, list)
+    }
+    for (const [categoryId, ids] of Array.from(byTarget.entries())) {
+      for (let i = 0; i < ids.length; i += 500) {
+        await prisma.productOffer.updateMany({
+          where: { id: { in: ids.slice(i, i + 500) } },
+          data: { categoryId },
+        })
+      }
     }
   }
 
-  return NextResponse.json({
-    success: true,
-    scanned: products.length,
-    updated,
-    remaining: Math.max(0, remainingBefore - updated),
-  })
+  const moves: Record<string, number> = {}
+  for (const c of changes) {
+    const k = `${c.from} -> ${c.to}`
+    moves[k] = (moves[k] || 0) + 1
+  }
+
+  return {
+    scanned: offers.length,
+    changed: changes.length,
+    dry,
+    topMoves: Object.fromEntries(Object.entries(moves).sort((a, b) => b[1] - a[1]).slice(0, 12)),
+    samples: changes.slice(0, 15).map(c => `[${c.from} -> ${c.to}] ${c.name}`),
+  }
+}
+
+function authed(key: string | null) {
+  return !!process.env.APP_SECRET && key === process.env.APP_SECRET
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url)
+  if (!authed(url.searchParams.get('key'))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  // GET is preview-only so a leaked URL can never rewrite the catalogue.
+  return NextResponse.json(await run(true, Number(url.searchParams.get('limit')) || 50000))
+}
+
+export async function POST(request: Request) {
+  const body: any = await request.json().catch(() => ({}))
+  const key = body?.key ?? new URL(request.url).searchParams.get('key')
+  if (!authed(key)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  return NextResponse.json(await run(body?.dry === true, Number(body?.limit) || 50000))
 }
