@@ -130,3 +130,18 @@ export function pathFor(country: string | null | undefined, path = '/'): string 
   const p = path.startsWith('/') ? path : `/${path}`
   return `${c.basePath}${p}` || '/'
 }
+
+/**
+ * Which market a URL path belongs to: /ae/offers -> AE, /offers -> SA.
+ *
+ * Client components derive the market from the path rather than taking a prop,
+ * so shared chrome (header, search) follows whichever section the shopper is
+ * in without every page having to pass it down. Without this the header search
+ * on /ae sent shoppers to the Saudi results.
+ */
+export function countryFromPath(pathname?: string | null): CountryCode {
+  if (!pathname) return DEFAULT_COUNTRY
+  const first = pathname.split('/').filter(Boolean)[0]?.toLowerCase()
+  const hit = COUNTRY_LIST.find(c => c.basePath && c.slug === first)
+  return hit ? hit.code : DEFAULT_COUNTRY
+}

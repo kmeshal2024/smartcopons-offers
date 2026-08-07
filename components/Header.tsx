@@ -5,25 +5,39 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import SearchAutocomplete from './SearchAutocomplete'
+import CountrySwitcher from './CountrySwitcher'
+import { countryFromPath, pathFor, resolveCountry } from '@/lib/countries'
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const pathname = usePathname()
 
-  const isActive = (href: string) => {
-    if (href === '/') return pathname === '/'
-    return pathname?.startsWith(href) || false
+  // Every link is built for the market in the URL, so the header works
+  // unchanged on /ae without each page passing a country down.
+  const country = countryFromPath(pathname)
+  const base = resolveCountry(country).basePath
+  const href = (p: string) => pathFor(country, p)
+
+  const isActive = (h: string) => {
+    if (h === base || h === '/') return pathname === (base || '/')
+    return pathname?.startsWith(h) || false
   }
 
   // /offers has its own richer search + sort + filter bar, so don't double up
   // the header search there.
-  const showSearch = pathname !== '/offers'
+  const showSearch = pathname !== '/offers' && pathname !== `${base}/offers`
 
   const navLinks = [
-    { href: '/', label: 'الرئيسية' },
-    { href: '/offers', label: 'العروض' },
-    { href: '/coupons', label: 'كوبونات' },
-    { href: '/supermarkets', label: 'المتاجر' },
+    { href: href('/'), label: 'الرئيسية' },
+    { href: href('/offers'), label: 'العروض' },
+    // Coupons and the retailer directory are Saudi-only for now, so they stay
+    // on the Saudi paths rather than 404ing under /ae.
+    ...(country === 'SA'
+      ? [
+          { href: '/coupons', label: 'كوبونات' },
+          { href: '/supermarkets', label: 'المتاجر' },
+        ]
+      : []),
   ]
 
   return (
@@ -31,7 +45,7 @@ export default function Header() {
       <div className="container mx-auto px-4">
         <div className="flex items-center gap-3 h-14 md:h-16">
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0">
+          <Link href={href('/')} className="flex-shrink-0">
             <Image
               src="/logo.png.png"
               alt="SmartCopons"
@@ -41,6 +55,10 @@ export default function Header() {
               priority
             />
           </Link>
+
+          {/* Market picker — beside the logo so it is reachable on phones, not
+              buried in the desktop-only nav. */}
+          <CountrySwitcher />
 
           {/* Desktop Search Bar */}
           {showSearch ? (

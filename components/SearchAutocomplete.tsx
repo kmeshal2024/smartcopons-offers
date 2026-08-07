@@ -1,13 +1,8 @@
 'use client'
-import { currencyOf } from '@/lib/countries'
+import { currencyOf, countryFromPath, pathFor } from '@/lib/countries'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-
-// A price list is always within one country, so the currency is resolved once
-// here rather than per row. See lib/countries.ts.
-const CUR = currencyOf()
-
+import { useRouter, usePathname } from 'next/navigation'
 
 interface ProductHit {
   id: string
@@ -51,6 +46,12 @@ export default function SearchAutocomplete({
   onClose,
 }: SearchAutocompleteProps) {
   const router = useRouter()
+  // The market comes from the URL, so the header search follows whichever
+  // section the shopper is in. A module-level constant would be fixed at
+  // import time and always point at Saudi.
+  const pathname = usePathname()
+  const country = countryFromPath(pathname)
+  const CUR = currencyOf(country)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Results>(EMPTY)
   const [isOpen, setIsOpen] = useState(false)
@@ -115,7 +116,7 @@ export default function SearchAutocomplete({
     }
     setIsLoading(true)
     try {
-      const res = await fetch(`/api/public/search?q=${encodeURIComponent(q)}&type=all`)
+      const res = await fetch(`/api/public/search?q=${encodeURIComponent(q)}&type=all&country=${country}`)
       const data = await res.json()
       setResults({
         products: (data.products || []).slice(0, 6),
@@ -159,7 +160,7 @@ export default function SearchAutocomplete({
 
   const navigateToSearch = (searchTerm: string) => {
     saveRecent(searchTerm)
-    router.push(`/offers?search=${encodeURIComponent(searchTerm)}`)
+    router.push(pathFor(country, `/offers?search=${encodeURIComponent(searchTerm)}`))
     reset()
   }
 
@@ -172,15 +173,15 @@ export default function SearchAutocomplete({
         // Go straight to the product, not a re-search — that's what the shopper
         // asked for by picking it.
         saveRecent(opt.label)
-        router.push(`/product/${opt.hit.id}`)
+        router.push(pathFor(country, `/product/${opt.hit.id}`))
         reset()
         break
       case 'store':
-        router.push(`/offers?supermarket=${opt.hit.id}`)
+        router.push(pathFor(country, `/offers?supermarket=${opt.hit.id}`))
         reset()
         break
       case 'category':
-        router.push(`/offers?category=${opt.hit.slug}`)
+        router.push(pathFor(country, `/offers?category=${opt.hit.slug}`))
         reset()
         break
     }
