@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import ExpiryBadge from '@/components/ExpiryBadge'
+import { useI18n } from '@/components/I18nProvider'
 
 interface FlyerViewerProps {
   pdfUrl: string
@@ -12,6 +13,7 @@ interface FlyerViewerProps {
 }
 
 export default function FlyerViewer({ pdfUrl, title, startDate, endDate }: FlyerViewerProps) {
+  const { t } = useI18n()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
@@ -191,7 +193,7 @@ export default function FlyerViewer({ pdfUrl, title, startDate, endDate }: Flyer
             {title && <h3 className="font-semibold text-gray-800 text-sm truncate">{title}</h3>}
             {endDate && <ExpiryBadge validFrom={startDate} validTo={endDate} />}
           </div>
-          {numPages > 0 && <span className="text-xs text-gray-500 flex-shrink-0">{numPages} صفحة</span>}
+          {numPages > 0 && <span className="text-xs text-gray-500 flex-shrink-0">{t('flyer.pages', { n: numPages })}</span>}
         </div>
       )}
 
@@ -208,13 +210,13 @@ export default function FlyerViewer({ pdfUrl, title, startDate, endDate }: Flyer
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-pink-600 mb-2"></div>
-              <p className="text-sm text-gray-500">جاري تحميل النشرة...</p>
+              <p className="text-sm text-gray-500">{t('flyer.loading')}</p>
             </div>
           </div>
         )}
         {rendering && !loading && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-3 py-1 rounded-full z-10">
-            جاري التحميل...
+            {t('common.loading')}
           </div>
         )}
 
@@ -223,7 +225,7 @@ export default function FlyerViewer({ pdfUrl, title, startDate, endDate }: Flyer
           <button
             onClick={() => goPage(-1)}
             disabled={currentPage <= 1}
-            aria-label="الصفحة السابقة"
+            aria-label={t('flyer.prevPage')}
             className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 shadow flex items-center justify-center text-gray-700 hover:bg-white disabled:opacity-30"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
@@ -237,7 +239,7 @@ export default function FlyerViewer({ pdfUrl, title, startDate, endDate }: Flyer
           <button
             onClick={() => goPage(1)}
             disabled={currentPage >= numPages}
-            aria-label="الصفحة التالية"
+            aria-label={t('flyer.nextPage')}
             className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 shadow flex items-center justify-center text-gray-700 hover:bg-white disabled:opacity-30"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -256,7 +258,7 @@ export default function FlyerViewer({ pdfUrl, title, startDate, endDate }: Flyer
                 key={p}
                 ref={(el) => { thumbBtnRefs.current[i] = el }}
                 onClick={() => jumpTo(p)}
-                aria-label={`صفحة ${p}`}
+                aria-label={t('flyer.pageAria', { n: p })}
                 aria-current={active}
                 className={`relative flex-shrink-0 rounded-md overflow-hidden border-2 transition bg-white ${
                   active ? 'border-pink-600 scale-105' : 'border-transparent opacity-70 hover:opacity-100'
@@ -279,12 +281,12 @@ export default function FlyerViewer({ pdfUrl, title, startDate, endDate }: Flyer
             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            التالي
+            {t('common.next')}
           </button>
 
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700">{currentPage}</span>
-            <span className="text-xs text-gray-400">من</span>
+            <span className="text-xs text-gray-400">{t('flyer.of')}</span>
             <span className="text-sm font-medium text-gray-700">{numPages}</span>
           </div>
 
@@ -293,7 +295,7 @@ export default function FlyerViewer({ pdfUrl, title, startDate, endDate }: Flyer
             disabled={currentPage <= 1 || rendering}
             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
-            السابق
+            {t('common.prev')}
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </button>
         </div>

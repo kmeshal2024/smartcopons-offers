@@ -6,6 +6,7 @@ import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
 import Link from 'next/link'
 import { currencyOf, DEFAULT_COUNTRY } from '@/lib/countries'
+import { useI18n } from '@/components/I18nProvider'
 
 
 interface Product {
@@ -83,6 +84,11 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
   // Resolved from the prop, not module scope: a module-level constant is fixed
   // at import time and would label the UAE price slider in Riyals.
   const CUR = currencyOf(country)
+  const { lang, dir, t } = useI18n()
+  // Category names carry an English variant; store names don't, so those stay
+  // as-is (brand names read fine in either language).
+  const catName = (c: { nameAr: string; nameEn?: string | null }) =>
+    lang === 'en' ? (c.nameEn || c.nameAr) : c.nameAr
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -242,8 +248,8 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
     const btnId = elementId.startsWith('copy-') || elementId.startsWith('search-copy-') ? elementId : `copy-${elementId}`
     const btn = document.getElementById(btnId)
     if (btn) {
-      btn.textContent = 'تم!'
-      setTimeout(() => { if (btn) btn.textContent = 'نسخ' }, 2000)
+      btn.textContent = t('common.copied')
+      setTimeout(() => { if (btn) btn.textContent = t('common.copy') }, 2000)
     }
   }
 
@@ -251,7 +257,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
     <div className="space-y-6">
       {/* Supermarket filter */}
       <div>
-        <h3 className="font-bold text-gray-800 mb-3 text-sm">المتاجر</h3>
+        <h3 className="font-bold text-gray-800 mb-3 text-sm">{t('filters.stores')}</h3>
         <div className="space-y-1">
           <button
             onClick={() => handleSupermarketSelect('')}
@@ -261,7 +267,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
                 : 'hover:bg-gray-50 text-gray-700'
             }`}
           >
-            جميع المتاجر
+            {t('filters.allStores')}
           </button>
           {supermarkets.map(sm => (
             <button
@@ -288,7 +294,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
 
       {/* Category filter */}
       <div>
-        <h3 className="font-bold text-gray-800 mb-3 text-sm">الفئات</h3>
+        <h3 className="font-bold text-gray-800 mb-3 text-sm">{t('filters.categories')}</h3>
         <div className="space-y-1">
           <button
             onClick={() => handleCategorySelect('')}
@@ -298,7 +304,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
                 : 'hover:bg-gray-50 text-gray-700'
             }`}
           >
-            جميع الفئات
+            {t('filters.allCategories')}
           </button>
           {categories.map(cat => (
             <div key={cat.id}>
@@ -312,7 +318,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
                   }`}
                 >
                   {cat.icon && <span>{cat.icon}</span>}
-                  <span className="flex-1">{cat.nameAr}</span>
+                  <span className="flex-1">{catName(cat)}</span>
                   {cat._count.products > 0 && (
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       selectedCategory === cat.id ? 'bg-pink-700' : 'bg-gray-100 text-gray-600'
@@ -343,7 +349,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
                   }`}
                 >
                   {child.icon && <span>{child.icon}</span>}
-                  <span className="flex-1">{child.nameAr}</span>
+                  <span className="flex-1">{catName(child)}</span>
                   {child._count.products > 0 && (
                     <span className="text-xs text-gray-400">{child._count.products}</span>
                   )}
@@ -356,7 +362,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
 
       {/* Price filter */}
       <div>
-        <h3 className="font-bold text-gray-800 mb-3 text-sm">السعر</h3>
+        <h3 className="font-bold text-gray-800 mb-3 text-sm">{t('filters.price')}</h3>
         <div className="px-2">
           <input
             type="range"
@@ -378,14 +384,14 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
   )
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dir}>
       <Header />
 
       <main className="container mx-auto px-4 py-5">
         {/* Page Header */}
         <div className="mb-5">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">عروض السوبرماركت</h1>
-          <p className="text-sm text-gray-500">اكتشف أفضل العروض والخصومات</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('offers.title')}</h1>
+          <p className="text-sm text-gray-500">{t('offers.subtitle')}</p>
         </div>
 
         {/* Search + Sort Bar */}
@@ -398,7 +404,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="ابحث عن منتج، علامة تجارية..."
+                placeholder={t('offers.searchPlaceholder')}
                 value={search}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
@@ -420,12 +426,12 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
               onChange={(e) => { setSort(e.target.value); setPage(1) }}
               className="px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-400 text-sm transition min-w-[120px]"
             >
-              <option value="discount">الأكثر خصماً</option>
-              <option value="ending">ينتهي قريباً</option>
-              <option value="price-low">السعر: الأقل</option>
-              <option value="price-high">السعر: الأعلى</option>
-              <option value="newest">الأحدث</option>
-              <option value="popular">الأكثر مشاهدة</option>
+              <option value="discount">{t('sort.discount')}</option>
+              <option value="ending">{t('sort.ending')}</option>
+              <option value="price-low">{t('sort.priceLow')}</option>
+              <option value="price-high">{t('sort.priceHigh')}</option>
+              <option value="newest">{t('sort.newest')}</option>
+              <option value="popular">{t('sort.popular')}</option>
             </select>
             <button
               onClick={() => setShowMobileFilters(!showMobileFilters)}
@@ -442,7 +448,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
             <div className="flex flex-wrap gap-1.5 mt-3">
               {search && (
                 <span className="inline-flex items-center gap-1 bg-pink-50 text-pink-700 text-xs px-2.5 py-1 rounded-full font-medium">
-                  بحث: {search}
+                  {t('offers.searchChip', { q: search })}
                   <button onClick={() => { setSearch(''); fetchProducts(true) }} className="hover:text-pink-900">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
@@ -458,8 +464,11 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
               )}
               {selectedCategory && (
                 <span className="inline-flex items-center gap-1 bg-pink-50 text-pink-700 text-xs px-2.5 py-1 rounded-full font-medium">
-                  {categories.find(c => c.id === selectedCategory)?.nameAr ||
-                    categories.flatMap(c => c.children).find(c => c.id === selectedCategory)?.nameAr}
+                  {(() => {
+                    const c = categories.find(c => c.id === selectedCategory) ||
+                      categories.flatMap(c => c.children).find(c => c.id === selectedCategory)
+                    return c ? catName(c) : ''
+                  })()}
                   <button onClick={() => { setSelectedCategory(''); setPage(1) }} className="hover:text-pink-900">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
@@ -474,7 +483,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
                 }}
                 className="text-xs text-gray-400 hover:text-red-500 transition"
               >
-                مسح الكل
+                {t('common.clearAll')}
               </button>
             </div>
           )}
@@ -487,8 +496,8 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
               <div className="w-1 h-5 bg-pink-600 rounded-full" />
               <h2 className="font-bold text-gray-900 text-sm">
                 {selectedSupermarket
-                  ? `كوبونات ${supermarkets.find(s => s.id === selectedSupermarket)?.nameAr || ''}`
-                  : 'أحدث كوبونات الخصم'}
+                  ? t('offers.couponsOf', { name: supermarkets.find(s => s.id === selectedSupermarket)?.nameAr || '' })
+                  : t('offers.couponsLatest')}
               </h2>
             </div>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
@@ -516,7 +525,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
                       onClick={() => handleCopyCode(coupon.code, coupon.id)}
                       className="bg-pink-600 text-white px-2.5 py-1 rounded-md text-xs font-bold hover:bg-pink-700 transition"
                     >
-                      نسخ
+                      {t('common.copy')}
                     </button>
                   </div>
                 </div>
@@ -541,7 +550,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="font-bold text-lg text-gray-900">الفلاتر</h2>
+                  <h2 className="font-bold text-lg text-gray-900">{t('filters.title')}</h2>
                   <button onClick={() => setShowMobileFilters(false)} className="text-gray-400 hover:text-gray-600">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -553,7 +562,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
                   onClick={() => setShowMobileFilters(false)}
                   className="w-full mt-6 bg-pink-600 text-white py-3 rounded-lg font-bold text-sm"
                 >
-                  عرض النتائج {pagination ? `(${pagination.total})` : ''}
+                  {t('offers.showResults')} {pagination ? `(${pagination.total})` : ''}
                 </button>
               </div>
             </div>
@@ -566,7 +575,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-1 h-5 bg-green-500 rounded-full" />
-                  <h2 className="font-bold text-gray-900 text-sm">كوبونات خصم مطابقة ({searchCoupons.length})</h2>
+                  <h2 className="font-bold text-gray-900 text-sm">{t('offers.matchingCoupons', { n: searchCoupons.length })}</h2>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {searchCoupons.map(coupon => (
@@ -596,7 +605,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
                           onClick={() => handleCopyCode(coupon.code, `search-copy-${coupon.id}`)}
                           className="flex-shrink-0 bg-pink-600 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-pink-700 transition"
                         >
-                          نسخ
+                          {t('common.copy')}
                         </button>
                       </div>
                     </div>
@@ -609,11 +618,11 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
             {!loading && pagination && (
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-gray-500 text-sm">
-                  عرض {products.length} من {pagination.total} منتج
+                  {t('offers.showing', { shown: products.length, total: pagination.total })}
                 </span>
                 {pagination.totalPages > 1 && (
                   <span className="text-gray-400 text-xs">
-                    صفحة {pagination.page} من {pagination.totalPages}
+                    {t('offers.pageOf', { page: pagination.page, total: pagination.totalPages })}
                   </span>
                 )}
               </div>
@@ -637,7 +646,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
                 <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <p className="text-gray-500 text-lg mb-1">لا توجد منتجات متطابقة</p>
+                <p className="text-gray-500 text-lg mb-1">{t('offers.noProducts')}</p>
                 {(search || selectedCategory || selectedSupermarket) && (
                   <button
                     onClick={() => {
@@ -648,7 +657,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
                     }}
                     className="mt-3 text-pink-600 hover:underline font-semibold text-sm"
                   >
-                    مسح الفلاتر
+                    {t('offers.clearFilters')}
                   </button>
                 )}
               </div>
@@ -668,7 +677,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
                       disabled={page === 1}
                       className="px-3 py-2 rounded-lg border border-gray-200 disabled:opacity-30 hover:border-pink-400 hover:text-pink-600 transition text-sm font-medium"
                     >
-                      السابق
+                      {t('common.prev')}
                     </button>
                     {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                       const p = Math.max(1, Math.min(pagination.totalPages - 4, page - 2)) + i
@@ -691,7 +700,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
                       disabled={page === pagination.totalPages}
                       className="px-3 py-2 rounded-lg border border-gray-200 disabled:opacity-30 hover:border-pink-400 hover:text-pink-600 transition text-sm font-medium"
                     >
-                      التالي
+                      {t('common.next')}
                     </button>
                   </div>
                 )}
@@ -704,10 +713,10 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
       {/* Simple footer for client component */}
       <footer className="bg-gray-900 text-gray-400 mt-16 py-6 pb-20 md:pb-6">
         <div className="container mx-auto px-4 text-center text-sm">
-          <p>© {new Date().getFullYear()} SmartCopons - جميع الحقوق محفوظة</p>
+          <p>© {new Date().getFullYear()} SmartCopons - {t('footer.rights')}</p>
           <div className="flex justify-center gap-4 mt-2 text-xs">
-            <Link href="/" className="hover:text-white transition">الرئيسية</Link>
-            <Link href="/supermarkets" className="hover:text-white transition">المتاجر</Link>
+            <Link href="/" className="hover:text-white transition">{t('nav.home')}</Link>
+            <Link href="/supermarkets" className="hover:text-white transition">{t('nav.stores')}</Link>
           </div>
         </div>
       </footer>

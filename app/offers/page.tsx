@@ -8,6 +8,8 @@ import Link from 'next/link'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 import type { Metadata } from 'next'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate, dirOf } from '@/lib/i18n'
 
 export const metadata: Metadata = {
   title: 'عروض السوبرماركت اليوم في السعودية',
@@ -93,15 +95,16 @@ async function getInitialProducts() {
 
 function BestDealsSection({ deals }: { deals: any[] }) {
   if (deals.length === 0) return null
+  const lang = getLang()
 
   return (
     <section className="mb-6">
       <div className="bg-gradient-to-l from-pink-50 to-white rounded-xl border border-pink-100 p-4 sm:p-5">
         <div className="flex items-center gap-2 mb-4">
           <span className="text-xl">🔥</span>
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900">أفضل عروض الأسبوع</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900">{translate(lang, 'offers.bestWeek')}</h2>
           <span className="text-xs bg-pink-600 text-white px-2 py-0.5 rounded-full font-bold">
-            خصم حتى {deals[0]?.discountPercent || 0}%
+            {translate(lang, 'offers.discountUpTo', { n: deals[0]?.discountPercent || 0 })}
           </span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
@@ -116,12 +119,13 @@ function BestDealsSection({ deals }: { deals: any[] }) {
 
 function StoreStrip({ stores }: { stores: any[] }) {
   if (stores.length === 0) return null
+  const lang = getLang()
 
   return (
     <section className="mb-5">
       <div className="flex items-center gap-2 mb-3">
         <div className="w-1 h-5 bg-pink-600 rounded-full" />
-        <h2 className="font-bold text-gray-900 text-sm">تسوق حسب المتجر</h2>
+        <h2 className="font-bold text-gray-900 text-sm">{translate(lang, 'offers.shopByStore')}</h2>
       </div>
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
         {stores.map(store => (
@@ -139,7 +143,7 @@ function StoreStrip({ stores }: { stores: any[] }) {
             </div>
             <div className="min-w-0">
               <div className="font-semibold text-gray-800 text-sm truncate">{store.nameAr}</div>
-              <div className="text-[10px] text-gray-400">{store._count.productOffers} عرض</div>
+              <div className="text-[10px] text-gray-400">{store._count.productOffers} {translate(getLang(), 'common.offer')}</div>
             </div>
           </Link>
         ))}
@@ -149,12 +153,13 @@ function StoreStrip({ stores }: { stores: any[] }) {
 }
 
 function SSRFallback({ products, total, bestDeals, stores }: { products: any[]; total: number; bestDeals: any[]; stores: any[] }) {
+  const lang = getLang()
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(lang)}>
       <Header />
       <main className="container mx-auto px-4 py-5">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">عروض السوبرماركت</h1>
-        <p className="text-sm text-gray-500 mb-5">{total} عرض متوفر</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">{translate(lang, 'offers.title')}</h1>
+        <p className="text-sm text-gray-500 mb-5">{translate(lang, 'offers.available', { n: total })}</p>
 
         <StoreStrip stores={stores} />
         <BestDealsSection deals={bestDeals} />
@@ -167,7 +172,7 @@ function SSRFallback({ products, total, bestDeals, stores }: { products: any[]; 
 
         {/* Loading indicator for when filters hydrate */}
         <div className="text-center py-8 text-gray-400 text-sm animate-pulse">
-          جاري تحميل الفلاتر...
+          {translate(lang, 'offers.loadingFilters')}
         </div>
       </main>
       <Footer />

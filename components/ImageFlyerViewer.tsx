@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import ExpiryBadge from '@/components/ExpiryBadge'
+import { useI18n } from '@/components/I18nProvider'
 
 interface ImageFlyerViewerProps {
   /** Full-page image URLs, in order. Rendered with plain <img> (no CORS needed). */
@@ -21,6 +22,7 @@ interface ImageFlyerViewerProps {
  * the two viewers feel identical to a shopper.
  */
 export default function ImageFlyerViewer({ pages, title, startDate, endDate }: ImageFlyerViewerProps) {
+  const { t } = useI18n()
   const [current, setCurrent] = useState(0)
   const [loaded, setLoaded] = useState<Record<number, boolean>>({})
   const stageRef = useRef<HTMLDivElement>(null)
@@ -79,7 +81,7 @@ export default function ImageFlyerViewer({ pages, title, startDate, endDate }: I
             {title && <h3 className="font-semibold text-gray-800 text-sm truncate">{title}</h3>}
             {endDate && <ExpiryBadge validFrom={startDate} validTo={endDate} />}
           </div>
-          <span className="text-xs text-gray-500 flex-shrink-0">{numPages} صفحة</span>
+          <span className="text-xs text-gray-500 flex-shrink-0">{t('flyer.pages', { n: numPages })}</span>
         </div>
       )}
 
@@ -103,18 +105,18 @@ export default function ImageFlyerViewer({ pages, title, startDate, endDate }: I
           <button
             onClick={() => go(-1)}
             disabled={current <= 0}
-            aria-label="الصفحة السابقة"
+            aria-label={t('flyer.prevPage')}
             className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 shadow flex items-center justify-center text-gray-700 hover:bg-white disabled:opacity-30"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </button>
         )}
 
-        <a href={pages[current]} target="_blank" rel="noopener noreferrer" title="فتح الصورة بالحجم الكامل">
+        <a href={pages[current]} target="_blank" rel="noopener noreferrer" title={t('flyer.openFull')}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={pages[current]}
-            alt={`${title || 'نشرة العروض'} — صفحة ${current + 1}`}
+            alt={`${title || ''} — ${t('flyer.pageAria', { n: current + 1 })}`}
             className="max-h-[75vh] w-auto max-w-full object-contain"
             style={{ display: loaded[current] ? 'block' : 'none' }}
             onLoad={() => setLoaded(l => ({ ...l, [current]: true }))}
@@ -127,7 +129,7 @@ export default function ImageFlyerViewer({ pages, title, startDate, endDate }: I
           <button
             onClick={() => go(1)}
             disabled={current >= numPages - 1}
-            aria-label="الصفحة التالية"
+            aria-label={t('flyer.nextPage')}
             className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 shadow flex items-center justify-center text-gray-700 hover:bg-white disabled:opacity-30"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -145,7 +147,7 @@ export default function ImageFlyerViewer({ pages, title, startDate, endDate }: I
                 key={i}
                 ref={el => { thumbRefs.current[i] = el }}
                 onClick={() => setCurrent(i)}
-                aria-label={`صفحة ${i + 1}`}
+                aria-label={t('flyer.pageAria', { n: i + 1 })}
                 aria-current={active}
                 className={`relative flex-shrink-0 rounded-md overflow-hidden border-2 transition bg-white ${
                   active ? 'border-pink-600 scale-105' : 'border-transparent opacity-70 hover:opacity-100'
@@ -169,11 +171,11 @@ export default function ImageFlyerViewer({ pages, title, startDate, endDate }: I
             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            التالي
+            {t('common.next')}
           </button>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700">{current + 1}</span>
-            <span className="text-xs text-gray-400">من</span>
+            <span className="text-xs text-gray-400">{t('flyer.of')}</span>
             <span className="text-sm font-medium text-gray-700">{numPages}</span>
           </div>
           <button
@@ -181,7 +183,7 @@ export default function ImageFlyerViewer({ pages, title, startDate, endDate }: I
             disabled={current <= 0}
             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
-            السابق
+            {t('common.prev')}
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </button>
         </div>

@@ -7,6 +7,8 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
 import { COUNTRIES, urlFor } from '@/lib/countries'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate, dirOf } from '@/lib/i18n'
 
 const COUNTRY = COUNTRIES.AE
 
@@ -94,12 +96,15 @@ export default async function UaeStorePage({ params }: Props) {
     }),
   ])
 
+  const lang = getLang()
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
+
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(lang)}>
       <Header />
       <main className="container mx-auto px-4 py-6">
         <nav className="mb-5 flex items-center gap-2 text-sm text-gray-500">
-          <Link href="/ae" className="hover:text-pink-600">الإمارات</Link>
+          <Link href="/ae" className="hover:text-pink-600">{lang === 'en' ? COUNTRY.nameEn : COUNTRY.nameAr}</Link>
           <span className="text-gray-300">/</span>
           <span className="font-semibold text-gray-900">{store.nameAr}</span>
         </nav>
@@ -111,8 +116,8 @@ export default async function UaeStorePage({ params }: Props) {
             <span className="text-3xl">🛒</span>
           )}
           <div>
-            <h1 className="text-lg font-extrabold text-gray-900">عروض {store.nameAr}</h1>
-            <p className="text-sm text-gray-500">{total.toLocaleString('en')} عرض متوفر</p>
+            <h1 className="text-lg font-extrabold text-gray-900">{t('common.offersOf', { name: store.nameAr })}</h1>
+            <p className="text-sm text-gray-500">{t('offers.available', { n: total.toLocaleString('en') })}</p>
           </div>
         </header>
 
@@ -128,9 +133,9 @@ export default async function UaeStorePage({ params }: Props) {
               <span className="text-3xl">📄</span>
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-extrabold text-gray-900">تصفّح النشرة الأسبوعية</p>
+              <p className="text-sm font-extrabold text-gray-900">{t('flyer.browseWeekly')}</p>
               <p className="mt-0.5 text-xs text-gray-500">
-                عروض {store.nameAr} صفحة بصفحة{flyer?.totalPages ? ` — ${flyer.totalPages} صفحة` : ''}
+                {t('flyer.pageByPage', { store: store.nameAr })}{flyer?.totalPages ? ` — ${t('flyer.pages', { n: flyer.totalPages })}` : ''}
               </p>
             </div>
             <svg className="h-5 w-5 flex-shrink-0 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -139,7 +144,7 @@ export default async function UaeStorePage({ params }: Props) {
 
         {offers.length === 0 ? (
           <p className="rounded-xl border border-gray-100 bg-white py-14 text-center text-gray-500">
-            لا توجد عروض متاحة حالياً — تُحدَّث يومياً.
+            {t('home.ae.noOffers')}
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

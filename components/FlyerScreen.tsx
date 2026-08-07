@@ -5,6 +5,8 @@ import ProductCard from '@/components/ProductCard'
 import { formatDateAr, formatRangeAr, getValidity } from '@/lib/flyer-utils'
 import { parsePageImages, type FlyerWithStore } from '@/lib/flyer-query'
 import { pathFor, type CountryCode } from '@/lib/countries'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate } from '@/lib/i18n'
 
 /**
  * The flyer page body, shared by the Saudi (/flyers) and UAE (/ae/flyers)
@@ -12,6 +14,8 @@ import { pathFor, type CountryCode } from '@/lib/countries'
  * page images (ImageFlyerViewer) → PDF (FlyerViewer) → an empty state.
  */
 export default function FlyerScreen({ flyer, country }: { flyer: FlyerWithStore; country: CountryCode }) {
+  const lang = getLang()
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
   const store = flyer.supermarket.nameAr
   const validity = getValidity(flyer.startDate, flyer.endDate)
   const dateAr = formatDateAr(flyer.startDate)
@@ -24,11 +28,11 @@ export default function FlyerScreen({ flyer, country }: { flyer: FlyerWithStore;
     <main className="container mx-auto px-4 py-5">
       {/* Breadcrumb */}
       <nav className="mb-4 text-xs text-gray-500">
-        <Link href={homeHref} className="hover:text-pink-600">الرئيسية</Link>
+        <Link href={homeHref} className="hover:text-pink-600">{t('nav.home')}</Link>
         <span className="mx-1.5">/</span>
-        <Link href={storeHref} className="hover:text-pink-600">عروض {store}</Link>
+        <Link href={storeHref} className="hover:text-pink-600">{t('common.offersOf', { name: store })}</Link>
         <span className="mx-1.5">/</span>
-        <span className="text-gray-700">نشرة {dateAr}</span>
+        <span className="text-gray-700">{t('flyer.breadcrumb', { date: dateAr })}</span>
       </nav>
 
       <div className="mb-5 flex flex-wrap items-center gap-3">
@@ -37,7 +41,7 @@ export default function FlyerScreen({ flyer, country }: { flyer: FlyerWithStore;
           <img src={flyer.supermarket.logo} alt={store} className="h-10 w-10 rounded-full bg-white object-contain p-1 shadow-sm" />
         )}
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-gray-900">عروض {store} — {dateAr}</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t('flyer.headingOf', { store, date: dateAr })}</h1>
           <p className="text-sm text-gray-500">{formatRangeAr(flyer.startDate, flyer.endDate)}</p>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${validity.badgeClass}`}>
@@ -65,8 +69,8 @@ export default function FlyerScreen({ flyer, country }: { flyer: FlyerWithStore;
         </div>
       ) : (
         <div className="mb-6 rounded-xl border border-gray-200 bg-white px-4 py-8 text-center">
-          <p className="text-sm text-gray-500">لا توجد نشرة متاحة حالياً</p>
-          <p className="mt-1 text-xs text-gray-400">تصفّح العروض أدناه</p>
+          <p className="text-sm text-gray-500">{t('flyer.none')}</p>
+          <p className="mt-1 text-xs text-gray-400">{t('flyer.browseBelow')}</p>
         </div>
       )}
 
@@ -74,11 +78,11 @@ export default function FlyerScreen({ flyer, country }: { flyer: FlyerWithStore;
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-bold text-gray-900">
-              أبرز عروض هذه النشرة
+              {t('flyer.highlights')}
               <span className="mr-2 text-sm font-normal text-gray-400">({flyer._count.productOffers})</span>
             </h2>
             <Link href={storeHref} className="text-sm font-semibold text-pink-600 hover:text-pink-700">
-              كل عروض {store}
+              {t('flyer.allOffersOf', { store })}
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
