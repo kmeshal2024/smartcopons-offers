@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import { useI18n } from '@/components/I18nProvider'
 
 interface CouponCardProps {
   id: string
@@ -14,6 +15,7 @@ interface CouponCardProps {
 }
 
 export default function CouponCard({ id, title, code, discountText, storeName, storeSlug, storeLogo }: CouponCardProps) {
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
@@ -52,7 +54,7 @@ export default function CouponCard({ id, title, code, discountText, storeName, s
               : 'bg-pink-600 text-white hover:bg-pink-700'
           }`}
         >
-          {copied ? '✓ تم!' : 'نسخ'}
+          {copied ? t('home.coupons.copied') : t('common.copy')}
         </button>
       </div>
 
@@ -60,7 +62,7 @@ export default function CouponCard({ id, title, code, discountText, storeName, s
         href={`/coupon/${id}`}
         className="mt-3 block text-center text-pink-600 hover:text-pink-700 font-semibold hover:underline text-sm"
       >
-        عرض التفاصيل
+        {t('couponCard.details')}
       </Link>
     </div>
   )

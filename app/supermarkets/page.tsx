@@ -5,6 +5,8 @@ import Footer from '@/components/Footer'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 import type { Metadata } from 'next'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate, dirOf } from '@/lib/i18n'
 
 export const metadata: Metadata = {
   title: 'عروض السوبرماركت في السعودية',
@@ -40,19 +42,21 @@ async function getSupermarkets() {
 
 export default async function SupermarketsPage() {
   const supermarkets = await getSupermarkets()
+  const lang = getLang()
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(lang)}>
       <Header />
 
       <main className="container mx-auto px-4 py-8">
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-            المتاجر في السعودية
+            {t('stores.title')}
           </h1>
           <p className="text-gray-500 text-sm">
-            اختر المتجر لتصفح أحدث العروض والخصومات
+            {t('stores.subtitle')}
           </p>
         </div>
 
@@ -83,12 +87,12 @@ export default async function SupermarketsPage() {
               <div className="flex justify-center gap-2 text-xs">
                 {sm._count.flyers > 0 && (
                   <span className="bg-pink-50 text-pink-600 px-2.5 py-1 rounded-full font-semibold">
-                    {sm._count.flyers} نشرة
+                    {t('stores.flyers', { n: sm._count.flyers })}
                   </span>
                 )}
                 {sm._count.productOffers > 0 && (
                   <span className="bg-green-50 text-green-600 px-2.5 py-1 rounded-full font-semibold">
-                    {sm._count.productOffers} عرض
+                    {sm._count.productOffers} {t('common.offer')}
                   </span>
                 )}
               </div>
@@ -101,7 +105,7 @@ export default async function SupermarketsPage() {
             <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
-            <p className="text-gray-500 text-lg">لا توجد متاجر حالياً</p>
+            <p className="text-gray-500 text-lg">{t('stores.none')}</p>
           </div>
         )}
       </main>

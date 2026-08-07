@@ -7,6 +7,8 @@ import type { Metadata } from 'next'
 import { COUPON_CATEGORIES } from '@/lib/coupon-categories'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
 import { getCouponsData } from '@/lib/coupons'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate, dirOf } from '@/lib/i18n'
 
 export const metadata: Metadata = {
   title: 'كوبونات الخصم والعروض',
@@ -21,6 +23,8 @@ export const dynamic = 'force-dynamic'
 
 export default async function CouponsPage() {
   const { coupons, stores } = await getCouponsData(DEFAULT_COUNTRY)
+  const lang = getLang()
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -55,18 +59,18 @@ export default async function CouponsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(lang)}>
       <Header />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <main className="container mx-auto px-4 py-6">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-          <Link href="/" className="hover:text-pink-600 transition">الرئيسية</Link>
+          <Link href="/" className="hover:text-pink-600 transition">{t('nav.home')}</Link>
           <svg className="w-3 h-3 text-gray-400 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          <span className="text-gray-900 font-semibold">كوبونات وخصومات</span>
+          <span className="text-gray-900 font-semibold">{t('home.section.coupons')}</span>
         </nav>
 
         {/* Page Header */}
@@ -74,8 +78,8 @@ export default async function CouponsPage() {
           <div className="flex items-center gap-3 mb-2">
             <span className="text-3xl">🎟️</span>
             <div>
-              <h1 className="text-2xl font-bold">كوبونات الخصم والعروض</h1>
-              <p className="text-sm opacity-90 mt-1">وفر أكثر مع أحدث أكواد الخصم — {coupons.length} كوبون متوفر</p>
+              <h1 className="text-2xl font-bold">{t('coupons.title')}</h1>
+              <p className="text-sm opacity-90 mt-1">{t('coupons.subtitle', { n: coupons.length })}</p>
             </div>
           </div>
         </div>
@@ -83,7 +87,7 @@ export default async function CouponsPage() {
         {/* Category links — the SEO win: each targets a broad query like
             "كوبونات أزياء" that a flat coupon list can't rank for. */}
         <div className="mb-6">
-          <h2 className="text-sm font-bold text-gray-800 mb-3">تصفّح حسب الفئة</h2>
+          <h2 className="text-sm font-bold text-gray-800 mb-3">{t('coupons.browseCategory')}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {COUPON_CATEGORIES.map(cat => (
               <Link
@@ -105,7 +109,7 @@ export default async function CouponsPage() {
         {stores.filter(s => s._count.coupons > 0).length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6">
             <span className="bg-pink-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold">
-              الكل ({coupons.length})
+              {t('coupons.all', { n: coupons.length })}
             </span>
             {stores.filter(s => s._count.coupons > 0).map(store => (
               <Link
@@ -138,20 +142,16 @@ export default async function CouponsPage() {
         ) : (
           <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
             <span className="text-5xl block mb-4">🎟️</span>
-            <p className="text-gray-500 text-lg">لا توجد كوبونات حالياً</p>
-            <p className="text-gray-400 text-sm mt-1">تابعنا للحصول على أحدث الكوبونات</p>
+            <p className="text-gray-500 text-lg">{t('coupons.none')}</p>
+            <p className="text-gray-400 text-sm mt-1">{t('coupons.followUs')}</p>
           </div>
         )}
 
         {/* SEO Content */}
         <section className="mt-10">
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 text-gray-600 leading-relaxed">
-            <h2 className="text-base font-bold text-gray-900 mb-2">كوبونات خصم السعودية</h2>
-            <p className="text-sm">
-              اكتشف أحدث كوبونات الخصم وأكواد التخفيض من أشهر المتاجر في السعودية.
-              نوفر لك كوبونات نون، نمشي، أمازون وغيرها من المتاجر الإلكترونية.
-              انسخ الكود واستخدمه عند الدفع للحصول على خصم فوري.
-            </p>
+            <h2 className="text-base font-bold text-gray-900 mb-2">{t('coupons.seoTitle')}</h2>
+            <p className="text-sm">{t('coupons.seoP1')}</p>
           </div>
         </section>
       </main>

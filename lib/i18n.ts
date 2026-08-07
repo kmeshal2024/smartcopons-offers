@@ -150,6 +150,26 @@ const DICT: Record<string, Entry> = {
   'sort.newest': { ar: 'الأحدث', en: 'Newest' },
   'sort.popular': { ar: 'الأكثر مشاهدة', en: 'Most viewed' },
 
+  // Coupons page + card
+  'coupons.title': { ar: 'كوبونات الخصم والعروض', en: 'Discount coupons & deals' },
+  'coupons.subtitle': { ar: 'وفر أكثر مع أحدث أكواد الخصم — {n} كوبون متوفر', en: 'Save more with the latest codes — {n} coupons available' },
+  'coupons.browseCategory': { ar: 'تصفّح حسب الفئة', en: 'Browse by category' },
+  'coupons.all': { ar: 'الكل ({n})', en: 'All ({n})' },
+  'coupons.none': { ar: 'لا توجد كوبونات حالياً', en: 'No coupons right now' },
+  'coupons.followUs': { ar: 'تابعنا للحصول على أحدث الكوبونات', en: 'Follow us for the latest coupons' },
+  'coupons.seoTitle': { ar: 'كوبونات خصم السعودية', en: 'Saudi discount coupons' },
+  'coupons.seoP1': {
+    ar: 'اكتشف أحدث كوبونات الخصم وأكواد التخفيض من أشهر المتاجر في السعودية. نوفر لك كوبونات نون، نمشي، أمازون وغيرها من المتاجر الإلكترونية. انسخ الكود واستخدمه عند الدفع للحصول على خصم فوري.',
+    en: 'Discover the latest discount coupons and promo codes from the top stores in Saudi Arabia — Noon, Namshi, Amazon and more. Copy the code and use it at checkout for an instant discount.',
+  },
+  'couponCard.details': { ar: 'عرض التفاصيل', en: 'View details' },
+
+  // Supermarkets directory
+  'stores.title': { ar: 'المتاجر في السعودية', en: 'Stores in Saudi Arabia' },
+  'stores.subtitle': { ar: 'اختر المتجر لتصفح أحدث العروض والخصومات', en: 'Pick a store to browse its latest deals and discounts' },
+  'stores.flyers': { ar: '{n} نشرة', en: '{n} flyers' },
+  'stores.none': { ar: 'لا توجد متاجر حالياً', en: 'No stores right now' },
+
   // Flyer
   'flyer.breadcrumb': { ar: 'نشرة {date}', en: 'Flyer {date}' },
   'flyer.headingOf': { ar: 'عروض {store} — {date}', en: '{store} offers — {date}' },
@@ -166,6 +186,77 @@ const DICT: Record<string, Entry> = {
   'flyer.pageAria': { ar: 'صفحة {n}', en: 'Page {n}' },
   'flyer.browseWeekly': { ar: 'تصفّح النشرة الأسبوعية', en: 'Browse the weekly flyer' },
   'flyer.pageByPage': { ar: 'عروض {store} صفحة بصفحة', en: '{store} offers, page by page' },
+
+  // Privacy policy
+  'privacy.title': { ar: 'سياسة الخصوصية', en: 'Privacy policy' },
+  'privacy.updated': { ar: 'آخر تحديث: {date}', en: 'Last updated: {date}' },
+  'privacy.intro': {
+    ar: 'تشرح هذه السياسة ما تجمعه منصة سمارت كوبونز (الموقع sa.smartcopons.com وتطبيق الجوال) وكيف نستخدمه. باستخدامك المنصة فإنك توافق على ما ورد هنا.',
+    en: 'This policy explains what SmartCopons (the site sa.smartcopons.com and the mobile app) collects and how we use it. By using the platform you agree to what is described here.',
+  },
+  'privacy.h.noAccount': { ar: 'لا نطلب حساباً ولا بيانات شخصية', en: 'No account or personal data required' },
+  'privacy.p.noAccount': {
+    ar: 'لا يتطلب استخدام سمارت كوبونز التسجيل أو تسجيل الدخول. لا نجمع الاسم أو البريد الإلكتروني أو رقم الجوال أو العنوان أو أي بيانات دفع، ولا نطلب صلاحيات الكاميرا أو جهات الاتصال أو الموقع الجغرافي.',
+    en: 'Using SmartCopons requires no sign-up or login. We do not collect your name, email, phone number, address or any payment details, and we do not request camera, contacts or location permissions.',
+  },
+  'privacy.h.store': { ar: 'ما الذي نخزّنه فعلاً', en: 'What we actually store' },
+  'privacy.li.device': {
+    ar: 'مُعرّف جهاز مجهول: رقم عشوائي يُنشأ في متصفحك/تطبيقك لحفظ المفضّلة ومتابعة الأسعار. هذا المعرّف لا يرتبط بهويتك ولا يمكننا من معرفة من أنت.',
+    en: 'An anonymous device id: a random number generated in your browser/app to save your favourites and price watches. It is not tied to your identity and does not let us know who you are.',
+  },
+  'privacy.li.local': {
+    ar: 'قائمة التسوّق وعمليات البحث السابقة: تُحفظ داخل جهازك فقط (Local Storage) ولا تُرسل إلى خوادمنا.',
+    en: 'Your shopping list and recent searches: stored on your device only (Local Storage) and never sent to our servers.',
+  },
+  'privacy.li.usage': {
+    ar: 'بيانات استخدام مجمّعة: عدد مشاهدات المنتجات وإحصاءات زيارة عامة، لتحسين ترتيب العروض والأداء.',
+    en: 'Aggregated usage data: product view counts and general visit statistics, used to improve offer ranking and performance.',
+  },
+  'privacy.h.analytics': { ar: 'أدوات التحليل', en: 'Analytics' },
+  'privacy.p.analytics': {
+    ar: 'نستخدم Google Analytics لفهم كيفية استخدام المنصة بشكل إجمالي (الصفحات الأكثر زيارة، نوع الجهاز، مصدر الزيارة). قد تضع هذه الأداة ملفات تعريف ارتباط أو معرّفات مشابهة. البيانات مجمّعة ولا تُستخدم لتحديد هويتك. يمكنك الاطلاع على',
+    en: 'We use Google Analytics to understand how the platform is used in aggregate (most-visited pages, device type, traffic source). It may set cookies or similar identifiers. The data is aggregated and is not used to identify you. You can read',
+  },
+  'privacy.link.google': { ar: 'سياسة خصوصية Google', en: "Google's privacy policy" },
+  'privacy.h.external': { ar: 'روابط المتاجر الخارجية', en: 'External store links' },
+  'privacy.p.external': {
+    ar: 'نعرض عروضاً وكوبونات من متاجر خارجية (بنده، كارفور، التميمي، لولو، النهدي، الدواء، وغيرها). عند الضغط على عرض أو كوبون قد تنتقل إلى موقع المتجر، وعندها تسري سياسة خصوصية ذلك المتجر لا سياستنا. الأسعار والعروض مملوكة لأصحابها ونعرضها للمقارنة فقط.',
+    en: 'We show offers and coupons from external stores (Panda, Carrefour, Tamimi, LuLu, Nahdi, Al Dawaa and others). Tapping an offer or coupon may take you to the store’s site, where that store’s privacy policy applies, not ours. Prices and offers belong to their owners and are shown for comparison only.',
+  },
+  'privacy.h.sharing': { ar: 'مشاركة البيانات', en: 'Data sharing' },
+  'privacy.p.sharing': {
+    ar: 'لا نبيع بياناتك ولا نؤجّرها ولا نشاركها لأغراض تسويقية. نستعين بمزوّدي خدمة تقنيين لتشغيل المنصة (الاستضافة وقاعدة البيانات وأدوات التحليل) ضمن ما يلزم لتشغيلها فقط.',
+    en: 'We do not sell, rent or share your data for marketing. We rely on technical service providers to run the platform (hosting, database and analytics) only as needed to operate it.',
+  },
+  'privacy.h.rights': { ar: 'حقوقك', en: 'Your rights' },
+  'privacy.p.rights': {
+    ar: 'يمكنك في أي وقت حذف مفضّلتك ومتابعاتك من داخل التطبيق، أو مسح بيانات التطبيق/المتصفح — وبذلك يُحذف مُعرّف الجهاز المجهول وتُفقد المفضّلة المرتبطة به. كما يمكنك مراسلتنا لطلب حذف أي بيانات مرتبطة بمعرّف جهازك.',
+    en: 'You can delete your favourites and watches from within the app at any time, or clear the app/browser data — which removes the anonymous device id and the favourites linked to it. You can also email us to request deletion of any data linked to your device id.',
+  },
+  'privacy.h.children': { ar: 'خصوصية الأطفال', en: 'Children’s privacy' },
+  'privacy.p.children': {
+    ar: 'المنصة موجّهة للجمهور العام ولا نجمع عن قصد أي بيانات من الأطفال دون سن 13 عاماً.',
+    en: 'The platform is intended for a general audience and we do not knowingly collect data from children under 13.',
+  },
+  'privacy.h.changes': { ar: 'التعديلات', en: 'Changes' },
+  'privacy.p.changes': {
+    ar: 'قد نحدّث هذه السياسة، وسيظهر تاريخ آخر تحديث أعلى الصفحة. استمرارك في استخدام المنصة بعد التحديث يعني موافقتك على النسخة المحدّثة.',
+    en: 'We may update this policy; the last-updated date at the top of the page will reflect it. Continuing to use the platform after an update means you accept the updated version.',
+  },
+  'privacy.h.contact': { ar: 'التواصل', en: 'Contact' },
+  'privacy.p.contact': { ar: 'لأي استفسار بخصوص الخصوصية:', en: 'For any privacy question:' },
+
+  // Product page
+  'product.cheapest': { ar: 'الأرخص 🏆', en: 'Cheapest 🏆' },
+  'product.cheapestShort': { ar: 'الأرخص', en: 'Cheapest' },
+  'product.compareTitle': { ar: 'مقارنة السعر في متاجر أخرى', en: 'Price comparison across stores' },
+  'product.storesCount': { ar: '({n} متاجر)', en: '({n} stores)' },
+  'product.thStore': { ar: 'المتجر', en: 'Store' },
+  'product.thPrice': { ar: 'السعر', en: 'Price' },
+  'product.thDiff': { ar: 'الفرق', en: 'Difference' },
+  'product.thisPage': { ar: '(هذه الصفحة)', en: '(this page)' },
+  'product.related': { ar: 'عروض مشابهة', en: 'Similar offers' },
+  'product.relatedIn': { ar: 'عروض مشابهة في {cat}', en: 'Similar offers in {cat}' },
 
   // Product card
   'card.noImage': { ar: 'لا توجد صورة', en: 'No image' },

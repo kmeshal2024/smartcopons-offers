@@ -10,6 +10,8 @@ import WatchButton from '@/components/WatchButton'
 import { getValidity, formatRangeAr } from '@/lib/flyer-utils'
 import { arabicContainsFilter } from '@/lib/arabic-search'
 import { currencyOf, resolveCountry, urlFor, DEFAULT_COUNTRY } from '@/lib/countries'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate, dirOf, productName } from '@/lib/i18n'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -136,6 +138,9 @@ export default async function ProductPage({ params }: Props) {
   if (!p) notFound()
 
   const name = p.nameAr || p.nameEn || 'منتج'
+  const lang = getLang()
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
+  const displayName = productName(lang, p.nameAr, p.nameEn)
   const cur = currencyOf((p as any).country)
   const curIso = resolveCountry((p as any).country).currencyEn
   const validity = getValidity(p.flyer?.startDate, p.flyer?.endDate)
@@ -198,16 +203,16 @@ export default async function ProductPage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(lang)}>
       <Header />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <main className="container mx-auto px-4 py-5">
         <nav className="mb-4 text-xs text-gray-500">
-          <Link href="/" className="hover:text-pink-600">الرئيسية</Link>
+          <Link href="/" className="hover:text-pink-600">{t('nav.home')}</Link>
           <span className="mx-1.5">/</span>
           <Link href={`/offers/${p.supermarket.slug}`} className="hover:text-pink-600">
-            عروض {p.supermarket.nameAr}
+            {t('common.offersOf', { name: p.supermarket.nameAr })}
           </Link>
           {p.category && (
             <>
@@ -224,7 +229,7 @@ export default async function ProductPage({ params }: Props) {
           <div className="flex items-center justify-center rounded-xl border border-gray-100 bg-white p-6">
             {p.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.imageUrl} alt={name} className="max-h-80 w-auto object-contain" />
+              <img src={p.imageUrl} alt={displayName} className="max-h-80 w-auto object-contain" />
             ) : (
               <div className="flex h-64 w-full items-center justify-center text-gray-300">
                 <span className="text-6xl">🛒</span>
@@ -235,14 +240,14 @@ export default async function ProductPage({ params }: Props) {
           {/* Details */}
           <div>
             {p.brand && <p className="mb-1 text-sm text-gray-400">{p.brand}</p>}
-            <h1 className="mb-2 text-xl font-bold text-gray-900 sm:text-2xl">{name}</h1>
+            <h1 className="mb-2 text-xl font-bold text-gray-900 sm:text-2xl">{displayName}</h1>
             {p.sizeText && <p className="mb-3 text-sm text-gray-500">{p.sizeText}</p>}
 
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <ExpiryBadge validFrom={p.flyer?.startDate as any} validTo={p.flyer?.endDate as any} size="md" />
               {isCheapestHere && comparison.length > 0 && (
                 <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white">
-                  الأرخص 🏆
+                  {t('product.cheapest')}
                 </span>
               )}
             </div>
@@ -280,7 +285,7 @@ export default async function ProductPage({ params }: Props) {
                 href={`/offers/${p.supermarket.slug}`}
                 className="inline-block rounded-full bg-pink-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-pink-700"
               >
-                كل عروض {p.supermarket.nameAr}
+                {t('flyer.allOffersOf', { store: p.supermarket.nameAr })}
               </Link>
               <WatchButton productId={p.id} />
             </div>
@@ -291,16 +296,16 @@ export default async function ProductPage({ params }: Props) {
         {comparison.length > 0 && (
           <section className="mt-8">
             <h2 className="mb-3 font-bold text-gray-900">
-              مقارنة السعر في متاجر أخرى
-              <span className="mr-2 text-sm font-normal text-gray-400">({comparison.length + 1} متاجر)</span>
+              {t('product.compareTitle')}
+              <span className="mr-2 text-sm font-normal text-gray-400">{t('product.storesCount', { n: comparison.length + 1 })}</span>
             </h2>
             <div className="overflow-hidden rounded-xl border border-gray-100 bg-white">
               <table className="w-full text-right text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500">
                   <tr>
-                    <th className="px-4 py-2.5 font-semibold">المتجر</th>
-                    <th className="px-4 py-2.5 font-semibold">السعر</th>
-                    <th className="px-4 py-2.5 font-semibold">الفرق</th>
+                    <th className="px-4 py-2.5 font-semibold">{t('product.thStore')}</th>
+                    <th className="px-4 py-2.5 font-semibold">{t('product.thPrice')}</th>
+                    <th className="px-4 py-2.5 font-semibold">{t('product.thDiff')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -312,12 +317,12 @@ export default async function ProductPage({ params }: Props) {
                         <tr key={row.id} className={row.price === cheapest ? 'bg-emerald-50/50' : ''}>
                           <td className="px-4 py-2.5">
                             <span className="font-medium text-gray-800">{row.supermarket.nameAr}</span>
-                            {row.here && <span className="mr-2 text-[10px] text-gray-400">(هذه الصفحة)</span>}
+                            {row.here && <span className="mr-2 text-[10px] text-gray-400">{t('product.thisPage')}</span>}
                           </td>
                           <td className="px-4 py-2.5 font-bold text-gray-900">{row.price.toFixed(2)} {cur}</td>
                           <td className="px-4 py-2.5">
                             {diff === 0 ? (
-                              <span className="font-semibold text-emerald-600">الأرخص</span>
+                              <span className="font-semibold text-emerald-600">{t('product.cheapestShort')}</span>
                             ) : (
                               <span className="text-red-500">+{diff.toFixed(2)}</span>
                             )}
@@ -334,7 +339,7 @@ export default async function ProductPage({ params }: Props) {
         {related.length > 0 && (
           <section className="mt-8">
             <h2 className="mb-3 font-bold text-gray-900">
-              عروض مشابهة{p.category ? ` في ${p.category.nameAr}` : ''}
+              {p.category ? t('product.relatedIn', { cat: p.category.nameAr }) : t('product.related')}
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {related.map(r => (
