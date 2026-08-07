@@ -6,11 +6,14 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import SearchAutocomplete from './SearchAutocomplete'
 import CountrySwitcher from './CountrySwitcher'
+import LanguageSwitcher from './LanguageSwitcher'
+import { useI18n } from '@/components/I18nProvider'
 import { countryFromPath, pathFor, resolveCountry } from '@/lib/countries'
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const pathname = usePathname()
+  const { t } = useI18n()
 
   // Every link is built for the market in the URL, so the header works
   // unchanged on /ae without each page passing a country down.
@@ -28,12 +31,12 @@ export default function Header() {
   const showSearch = pathname !== '/offers' && pathname !== `${base}/offers`
 
   const navLinks = [
-    { href: href('/'), label: 'الرئيسية' },
-    { href: href('/offers'), label: 'العروض' },
-    { href: href('/coupons'), label: 'كوبونات' },
+    { href: href('/'), label: t('nav.home') },
+    { href: href('/offers'), label: t('nav.offers') },
+    { href: href('/coupons'), label: t('nav.coupons') },
     // The retailer directory is Saudi-only for now, so it is hidden rather
     // than 404ing under /ae.
-    ...(country === 'SA' ? [{ href: '/supermarkets', label: 'المتاجر' }] : []),
+    ...(country === 'SA' ? [{ href: '/supermarkets', label: t('nav.stores') }] : []),
   ]
 
   return (
@@ -56,12 +59,15 @@ export default function Header() {
               buried in the desktop-only nav. */}
           <CountrySwitcher />
 
+          {/* Language toggle (AR/EN) — next to the market picker. */}
+          <LanguageSwitcher />
+
           {/* Desktop Search Bar */}
           {showSearch ? (
             <div className="hidden md:block flex-1 max-w-xl mx-4">
               <SearchAutocomplete
                 variant="header"
-                placeholder="ابحث عن منتج، متجر أو تصنيف..."
+                placeholder={t('search.placeholder')}
               />
             </div>
           ) : (
@@ -90,7 +96,7 @@ export default function Header() {
             <button
               onClick={() => setMenuOpen(!menuOpen)}
               className={`p-2 rounded-lg transition ${menuOpen ? 'text-pink-600 bg-pink-50' : 'text-gray-600 hover:bg-gray-100'}`}
-              aria-label="القائمة"
+              aria-label={t('a11y.menu')}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {menuOpen ? (
@@ -109,7 +115,7 @@ export default function Header() {
           <div className="md:hidden pb-2.5 -mt-0.5">
             <SearchAutocomplete
               variant="header"
-              placeholder="ابحث عن منتج، متجر أو تصنيف..."
+              placeholder={t('search.placeholder')}
             />
           </div>
         )}

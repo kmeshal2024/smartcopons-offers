@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { COUNTRY_LIST, countryFromPath, resolveCountry } from '@/lib/countries'
+import { useI18n } from '@/components/I18nProvider'
 
 /** Flag per market. Emoji rather than image files — no request, no layout shift. */
 const FLAG: Record<string, string> = { SA: '🇸🇦', AE: '🇦🇪' }
@@ -18,7 +19,9 @@ const FLAG: Record<string, string> = { SA: '🇸🇦', AE: '🇦🇪' }
 export default function CountrySwitcher() {
   const router = useRouter()
   const pathname = usePathname()
+  const { lang, t } = useI18n()
   const current = resolveCountry(countryFromPath(pathname))
+  const nameOf = (c: { nameAr: string; nameEn: string }) => (lang === 'en' ? c.nameEn : c.nameAr)
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
 
@@ -50,12 +53,12 @@ export default function CountrySwitcher() {
     <div className="relative flex-shrink-0" ref={box}>
       <button
         onClick={() => setOpen(o => !o)}
-        aria-label="تغيير الدولة"
+        aria-label={t('a11y.changeCountry')}
         aria-expanded={open}
         className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm font-semibold text-gray-700 transition hover:border-pink-300 hover:text-pink-600"
       >
         <span className="text-base leading-none">{FLAG[current.code]}</span>
-        <span className="hidden sm:inline">{current.nameAr}</span>
+        <span className="hidden sm:inline">{nameOf(current)}</span>
         <svg className={`h-3.5 w-3.5 transition ${open ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
         </svg>
@@ -74,7 +77,7 @@ export default function CountrySwitcher() {
               }`}
             >
               <span className="text-base leading-none">{FLAG[c.code]}</span>
-              <span className="flex-1 text-right">{c.nameAr}</span>
+              <span className="flex-1 text-right">{nameOf(c)}</span>
               {c.code === current.code && (
                 <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0L3.3 9.7a1 1 0 111.4-1.4l3.8 3.8 6.8-6.8a1 1 0 011.4 0z" clipRule="evenodd" />

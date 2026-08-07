@@ -6,6 +6,8 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
 import { COUNTRIES, urlFor } from '@/lib/countries'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate, dirOf } from '@/lib/i18n'
 
 /**
  * UAE landing page.
@@ -75,33 +77,35 @@ async function getData() {
 
 export default async function UaeHome() {
   const { stores, deals, total } = await getData()
+  const lang = getLang()
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(lang)}>
       <Header />
 
       <main className="container mx-auto px-4 py-6">
         <section className="mb-8 rounded-2xl bg-gradient-to-l from-[#E91E8C] to-[#f4608f] px-5 py-7 text-white">
           <h1 className="text-xl font-extrabold sm:text-2xl">
-            أفضل عروض وخصومات السوبرماركت في الإمارات
+            {t('home.ae.hero')}
           </h1>
           <p className="mt-2 text-sm text-white/90">
-            أسعار محدّثة يومياً بالدرهم من أكبر متاجر الإمارات
+            {t('home.ae.sub')}
           </p>
           <div className="mt-5 flex gap-8">
             <div>
               <div className="text-2xl font-extrabold">+{total.toLocaleString('en')}</div>
-              <div className="text-xs text-white/80">عرض متوفر</div>
+              <div className="text-xs text-white/80">{t('home.stat.offers')}</div>
             </div>
             <div>
               <div className="text-2xl font-extrabold">{stores.length}</div>
-              <div className="text-xs text-white/80">متجر</div>
+              <div className="text-xs text-white/80">{t('home.stat.stores')}</div>
             </div>
           </div>
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-lg font-bold text-gray-900">المتاجر</h2>
+          <h2 className="mb-3 text-lg font-bold text-gray-900">{t('home.section.stores')}</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {stores.map(s => (
               <Link
@@ -122,7 +126,7 @@ export default async function UaeHome() {
                 )}
                 <span className="text-sm font-semibold text-gray-800">{s.nameAr}</span>
                 <span className="text-xs text-pink-600">
-                  {s._count.productOffers.toLocaleString('en')} عرض
+                  {s._count.productOffers.toLocaleString('en')} {t('common.offer')}
                 </span>
               </Link>
             ))}
@@ -131,14 +135,14 @@ export default async function UaeHome() {
 
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-gray-900">أقوى الخصومات</h2>
+            <h2 className="text-lg font-bold text-gray-900">{t('home.ae.topDeals')}</h2>
             <Link href="/ae/offers" className="text-sm font-semibold text-pink-600 hover:underline">
-              عرض الكل
+              {t('common.viewAll')}
             </Link>
           </div>
           {deals.length === 0 ? (
             <p className="rounded-xl border border-gray-100 bg-white py-12 text-center text-gray-500">
-              لا توجد عروض متاحة حالياً — تُحدَّث يومياً.
+              {t('home.ae.noOffers')}
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

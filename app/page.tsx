@@ -6,6 +6,8 @@ import Footer from '@/components/Footer'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 import type { Metadata } from 'next'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
+import { getLang } from '@/lib/i18n-server'
+import { t as translate, dirOf } from '@/lib/i18n'
 
 export const metadata: Metadata = {
   // `absolute` bypasses the layout's `%s | SmartCopons` template so the brand
@@ -139,6 +141,8 @@ async function getHomeData() {
 
 export default async function HomePage() {
   const { coupons, couponCount, supermarkets, latestProducts, topDiscounts, mostViewed, categories, totalProducts, totalStores, endingSoon } = await getHomeData()
+  const lang = getLang()
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -150,7 +154,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={dirOf(lang)}>
       <Header />
 
       <script
@@ -164,23 +168,23 @@ export default async function HomePage() {
           <div className="container mx-auto px-4">
             <div className="text-center mb-2">
               <span className="text-sm font-medium opacity-90">
-                اكتشف أفضل عروض وخصومات السوبرماركت في السعودية
+                {t('home.banner')}
               </span>
             </div>
             <div className="flex justify-center gap-6 sm:gap-10">
               <div className="text-center">
                 <div className="text-xl sm:text-2xl font-bold">{totalProducts.toLocaleString()}+</div>
-                <div className="text-[10px] sm:text-xs opacity-80">عرض متوفر</div>
+                <div className="text-[10px] sm:text-xs opacity-80">{t('home.stat.offers')}</div>
               </div>
               <div className="w-px bg-white/20" />
               <div className="text-center">
                 <div className="text-xl sm:text-2xl font-bold">{totalStores}</div>
-                <div className="text-[10px] sm:text-xs opacity-80">متجر</div>
+                <div className="text-[10px] sm:text-xs opacity-80">{t('home.stat.stores')}</div>
               </div>
               <div className="w-px bg-white/20" />
               <div className="text-center">
                 <div className="text-xl sm:text-2xl font-bold">{couponCount}</div>
-                <div className="text-[10px] sm:text-xs opacity-80">كوبون خصم</div>
+                <div className="text-[10px] sm:text-xs opacity-80">{t('home.stat.coupons')}</div>
               </div>
             </div>
           </div>
@@ -191,9 +195,9 @@ export default async function HomePage() {
           <section className="container mx-auto px-4 mt-6">
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-                <h2 className="font-bold text-gray-900">المتاجر</h2>
+                <h2 className="font-bold text-gray-900">{t('home.section.stores')}</h2>
                 <Link href="/supermarkets" className="text-pink-600 hover:text-pink-700 text-sm font-semibold">
-                  عرض الكل
+                  {t('common.viewAll')}
                 </Link>
               </div>
               <div className="p-4">
@@ -215,7 +219,7 @@ export default async function HomePage() {
                       </div>
                       <span className="text-xs font-semibold text-gray-700 line-clamp-1 block">{sm.nameAr}</span>
                       {sm._count.productOffers > 0 && (
-                        <span className="text-[10px] text-pink-600 font-medium">{sm._count.productOffers} عرض</span>
+                        <span className="text-[10px] text-pink-600 font-medium">{sm._count.productOffers} {t('common.offer')}</span>
                       )}
                     </Link>
                   ))}
@@ -232,11 +236,11 @@ export default async function HomePage() {
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">🎟️</span>
-                  <h2 className="font-bold text-gray-900">كوبونات وخصومات</h2>
+                  <h2 className="font-bold text-gray-900">{t('home.section.coupons')}</h2>
                   <span className="bg-pink-100 text-pink-700 text-[10px] font-bold px-2 py-0.5 rounded-full">COUPONS &amp; DEALS</span>
                 </div>
                 <Link href="/coupons" className="text-pink-600 hover:text-pink-700 text-sm font-semibold">
-                  عرض الكل
+                  {t('common.viewAll')}
                 </Link>
               </div>
               <div className="p-4">
@@ -269,7 +273,7 @@ export default async function HomePage() {
                           className="coupon-copy-btn bg-pink-600 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-pink-700 transition active:scale-95 whitespace-nowrap"
                           data-code={coupon.code}
                         >
-                          نسخ الكود
+                          {t('home.coupons.copy')}
                         </button>
                       </div>
                     </div>
@@ -298,7 +302,7 @@ export default async function HomePage() {
           <section className="container mx-auto px-4 mt-6">
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-                <h2 className="font-bold text-gray-900">التصنيفات</h2>
+                <h2 className="font-bold text-gray-900">{t('home.section.categories')}</h2>
               </div>
               <div className="p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
@@ -308,8 +312,8 @@ export default async function HomePage() {
                     className="group text-center p-3 rounded-lg bg-pink-50 hover:bg-pink-100 border border-pink-200 hover:border-pink-300 transition-all"
                   >
                     <div className="text-2xl mb-1.5">🎟️</div>
-                    <span className="text-xs font-bold text-pink-700 block">كوبونات وخصومات</span>
-                    <span className="text-[10px] text-pink-500">{couponCount} كوبون</span>
+                    <span className="text-xs font-bold text-pink-700 block">{t('home.section.coupons')}</span>
+                    <span className="text-[10px] text-pink-500">{t('home.couponCount', { n: couponCount })}</span>
                   </Link>
 
                   {categories.map(cat => (
@@ -323,7 +327,7 @@ export default async function HomePage() {
                         {cat.nameAr}
                       </span>
                       {cat._count.products > 0 && (
-                        <span className="text-[10px] text-gray-400">{cat._count.products} عرض</span>
+                        <span className="text-[10px] text-gray-400">{cat._count.products} {t('common.offer')}</span>
                       )}
                     </Link>
                   ))}
@@ -340,13 +344,13 @@ export default async function HomePage() {
               <div className="flex items-center gap-2">
                 <div className="w-1 h-6 bg-orange-500 rounded-full" />
                 <span className="text-xl">⏰</span>
-                <h2 className="text-lg font-bold text-gray-900">ينتهي قريباً</h2>
+                <h2 className="text-lg font-bold text-gray-900">{t('home.section.endingSoon')}</h2>
                 <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">
-                  خلال 3 أيام
+                  {t('home.section.within3')}
                 </span>
               </div>
               <Link href="/offers?sort=ending" className="text-pink-600 hover:text-pink-700 text-sm font-semibold">
-                عرض المزيد
+                {t('common.viewMore')}
               </Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -363,10 +367,10 @@ export default async function HomePage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-1 h-6 bg-pink-600 rounded-full" />
-                <h2 className="text-lg font-bold text-gray-900">أكبر الخصومات</h2>
+                <h2 className="text-lg font-bold text-gray-900">{t('home.section.topDiscounts')}</h2>
               </div>
               <Link href="/offers?sort=discount" className="text-pink-600 hover:text-pink-700 text-sm font-semibold">
-                عرض المزيد
+                {t('common.viewMore')}
               </Link>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -383,11 +387,11 @@ export default async function HomePage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-1 h-6 bg-orange-500 rounded-full" />
-                <h2 className="text-lg font-bold text-gray-900">الأكثر مشاهدة</h2>
+                <h2 className="text-lg font-bold text-gray-900">{t('home.section.mostViewed')}</h2>
                 <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">TRENDING</span>
               </div>
               <Link href="/offers?sort=popular" className="text-pink-600 hover:text-pink-700 text-sm font-semibold">
-                عرض المزيد
+                {t('common.viewMore')}
               </Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
@@ -413,10 +417,10 @@ export default async function HomePage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-1 h-6 bg-pink-600 rounded-full" />
-                <h2 className="text-lg font-bold text-gray-900">أحدث العروض</h2>
+                <h2 className="text-lg font-bold text-gray-900">{t('home.section.latest')}</h2>
               </div>
               <Link href="/offers" className="text-pink-600 hover:text-pink-700 text-sm font-semibold">
-                عرض الكل
+                {t('common.viewAll')}
               </Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -430,15 +434,9 @@ export default async function HomePage() {
         {/* SEO Content */}
         <section className="container mx-auto px-4 mt-12 mb-8">
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 md:p-8 text-gray-600 leading-relaxed">
-            <h2 className="text-lg font-bold text-gray-900 mb-3">عروض السوبرماركت في السعودية</h2>
-            <p className="mb-3 text-sm">
-              موقع SmartCopons يقدم لك أحدث عروض وخصومات السوبرماركت في المملكة العربية السعودية.
-              تصفح عروض بنده، كارفور، لولو هايبرماركت، الدانوب وغيرها من المتاجر الكبرى.
-            </p>
-            <p className="text-sm">
-              نحدث العروض يوميا لنوفر لك أفضل الأسعار على المنتجات الغذائية، المنظفات،
-              الإلكترونيات وكل ما تحتاجه لمنزلك. وفر أكثر مع كوبونات الخصم الحصرية.
-            </p>
+            <h2 className="text-lg font-bold text-gray-900 mb-3">{t('home.seo.title')}</h2>
+            <p className="mb-3 text-sm">{t('home.seo.p1')}</p>
+            <p className="text-sm">{t('home.seo.p2')}</p>
           </div>
         </section>
       </main>
@@ -446,7 +444,7 @@ export default async function HomePage() {
       {/* Coupon copy script */}
       <script
         dangerouslySetInnerHTML={{
-          __html: `document.addEventListener('click',function(e){var btn=e.target.closest('.coupon-copy-btn');if(btn){var code=btn.getAttribute('data-code');navigator.clipboard.writeText(code).then(function(){var orig=btn.textContent;btn.textContent='\\u2713 \\u062A\\u0645!';btn.style.backgroundColor='#16a34a';setTimeout(function(){btn.textContent=orig;btn.style.backgroundColor='';},2000);});}});`,
+          __html: `document.addEventListener('click',function(e){var btn=e.target.closest('.coupon-copy-btn');if(btn){var code=btn.getAttribute('data-code');navigator.clipboard.writeText(code).then(function(){var orig=btn.textContent;btn.textContent=${JSON.stringify(t('home.coupons.copied'))};btn.style.backgroundColor='#16a34a';setTimeout(function(){btn.textContent=orig;btn.style.backgroundColor='';},2000);});}});`,
         }}
       />
 

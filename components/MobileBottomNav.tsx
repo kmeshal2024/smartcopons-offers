@@ -2,16 +2,18 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useI18n } from '@/components/I18nProvider'
 
 export default function MobileBottomNav() {
   const pathname = usePathname()
+  const { t } = useI18n()
 
   // Don't show on admin pages
   if (pathname?.startsWith('/admin')) return null
 
   const navItems = [
     {
-      label: 'الرئيسية',
+      label: t('nav.home'),
       href: '/',
       icon: (active: boolean) => (
         <svg className="w-5 h-5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
@@ -21,7 +23,7 @@ export default function MobileBottomNav() {
       ),
     },
     {
-      label: 'العروض',
+      label: t('nav.offers'),
       href: '/offers',
       icon: (active: boolean) => (
         <svg className="w-5 h-5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
@@ -31,7 +33,7 @@ export default function MobileBottomNav() {
       ),
     },
     {
-      label: 'كوبونات',
+      label: t('nav.coupons'),
       href: '/coupons',
       icon: (active: boolean) => (
         <svg className="w-5 h-5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
@@ -41,7 +43,7 @@ export default function MobileBottomNav() {
       ),
     },
     {
-      label: 'المفضّلة',
+      label: t('nav.favorites'),
       href: '/favorites',
       icon: (active: boolean) => (
         <svg className="w-5 h-5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
@@ -51,7 +53,7 @@ export default function MobileBottomNav() {
       ),
     },
     {
-      label: 'المتاجر',
+      label: t('nav.stores'),
       href: '/supermarkets',
       icon: (active: boolean) => (
         <svg className="w-5 h-5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">

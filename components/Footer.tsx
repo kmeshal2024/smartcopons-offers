@@ -3,6 +3,8 @@ import Image from 'next/image'
 import { prisma } from '@/lib/db'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
+import { getLang } from '@/lib/i18n-server'
+import { t } from '@/lib/i18n'
 
 async function getFooterData() {
   const supermarkets = await prisma.supermarket.findMany({
@@ -29,6 +31,7 @@ async function getFooterData() {
 
 export default async function Footer() {
   const supermarkets = await getFooterData()
+  const lang = getLang()
 
   return (
     <footer className="bg-gray-900 text-gray-300 mt-16 pb-20 md:pb-0">
@@ -46,36 +49,36 @@ export default async function Footer() {
               />
             </div>
             <p className="text-sm text-gray-400 leading-relaxed">
-              أفضل عروض وخصومات السوبرماركت في المملكة العربية السعودية. وفر أكثر كل يوم.
+              {t(lang, 'footer.tagline')}
             </p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="font-bold text-white text-sm mb-4">روابط سريعة</h3>
+            <h3 className="font-bold text-white text-sm mb-4">{t(lang, 'footer.quickLinks')}</h3>
             <div className="space-y-2.5 text-sm">
               <Link href="/" className="block text-gray-400 hover:text-white transition">
-                الرئيسية
+                {t(lang, 'nav.home')}
               </Link>
               <Link href="/offers" className="block text-gray-400 hover:text-white transition">
-                العروض
+                {t(lang, 'nav.offers')}
               </Link>
               <Link href="/supermarkets" className="block text-gray-400 hover:text-white transition">
-                المتاجر
+                {t(lang, 'nav.stores')}
               </Link>
               <Link href="/coupons" className="block text-gray-400 hover:text-white transition">
-                كوبونات الخصم
+                {t(lang, 'footer.couponsFull')}
               </Link>
               {/* App stores require a reachable privacy policy link. */}
               <Link href="/privacy" className="block text-gray-400 hover:text-white transition">
-                سياسة الخصوصية
+                {t(lang, 'footer.privacy')}
               </Link>
             </div>
           </div>
 
           {/* Stores */}
           <div>
-            <h3 className="font-bold text-white text-sm mb-4">المتاجر</h3>
+            <h3 className="font-bold text-white text-sm mb-4">{t(lang, 'nav.stores')}</h3>
             <div className="space-y-2.5 text-sm">
               {supermarkets.map(sm => (
                 <Link
@@ -83,7 +86,7 @@ export default async function Footer() {
                   href={`/offers/retailer/${sm.slug}`}
                   className="block text-gray-400 hover:text-white transition"
                 >
-                  عروض {sm.nameAr}
+                  {t(lang, 'common.offersOf', { name: sm.nameAr })}
                 </Link>
               ))}
             </div>
@@ -91,7 +94,7 @@ export default async function Footer() {
 
           {/* Contact */}
           <div>
-            <h3 className="font-bold text-white text-sm mb-4">تواصل معنا</h3>
+            <h3 className="font-bold text-white text-sm mb-4">{t(lang, 'footer.contact')}</h3>
             <div className="space-y-2.5 text-sm text-gray-400">
               <p>support@smartcopons.com</p>
               <div className="flex gap-3 mt-3">
@@ -116,7 +119,7 @@ export default async function Footer() {
       {/* Copyright Bar */}
       <div className="border-t border-gray-800">
         <div className="container mx-auto px-4 py-4 text-center text-sm text-gray-500">
-          © {new Date().getFullYear()} SmartCopons - جميع الحقوق محفوظة
+          © {new Date().getFullYear()} SmartCopons - {t(lang, 'footer.rights')}
         </div>
       </div>
     </footer>

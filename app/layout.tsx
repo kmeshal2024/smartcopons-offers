@@ -7,6 +7,9 @@ import ShoppingListWidget from '@/components/ShoppingListWidget'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 import InstallPrompt from '@/components/InstallPrompt'
 import Analytics from '@/components/Analytics'
+import I18nProvider from '@/components/I18nProvider'
+import { getLang } from '@/lib/i18n-server'
+import { dirOf } from '@/lib/i18n'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -47,16 +50,19 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const lang = getLang()
   return (
-    <html lang="ar" dir="rtl">
+    <html lang={lang} dir={dirOf(lang)}>
       <body className={inter.className}>
-        {children}
-        <ShoppingListWidget />
-        <MobileBottomNav />
-        <BackToTop />
-        <ServiceWorkerRegister />
-        <InstallPrompt />
-        <Analytics />
+        <I18nProvider lang={lang}>
+          {children}
+          <ShoppingListWidget />
+          <MobileBottomNav />
+          <BackToTop />
+          <ServiceWorkerRegister />
+          <InstallPrompt />
+          <Analytics />
+        </I18nProvider>
       </body>
     </html>
   )
