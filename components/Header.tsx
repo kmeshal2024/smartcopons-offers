@@ -30,14 +30,10 @@ export default function Header() {
   const navLinks = [
     { href: href('/'), label: 'الرئيسية' },
     { href: href('/offers'), label: 'العروض' },
-    // Coupons and the retailer directory are Saudi-only for now, so they stay
-    // on the Saudi paths rather than 404ing under /ae.
-    ...(country === 'SA'
-      ? [
-          { href: '/coupons', label: 'كوبونات' },
-          { href: '/supermarkets', label: 'المتاجر' },
-        ]
-      : []),
+    { href: href('/coupons'), label: 'كوبونات' },
+    // The retailer directory is Saudi-only for now, so it is hidden rather
+    // than 404ing under /ae.
+    ...(country === 'SA' ? [{ href: '/supermarkets', label: 'المتاجر' }] : []),
   ]
 
   return (

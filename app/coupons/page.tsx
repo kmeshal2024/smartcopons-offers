@@ -5,6 +5,8 @@ import CouponCard from '@/components/CouponCard'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { COUPON_CATEGORIES } from '@/lib/coupon-categories'
+import { DEFAULT_COUNTRY } from '@/lib/countries'
+import { getCouponsData } from '@/lib/coupons'
 
 export const metadata: Metadata = {
   title: 'كوبونات الخصم والعروض',
@@ -16,28 +18,9 @@ export const metadata: Metadata = {
 // a suspend can't reach it. Functions sit next to the DB in Frankfurt.
 export const dynamic = 'force-dynamic'
 
-async function getCouponsData() {
-  const [coupons, stores] = await Promise.all([
-    prisma.coupon.findMany({
-      where: { isActive: true },
-      include: {
-        store: { select: { name: true, slug: true, logo: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.store.findMany({
-      include: {
-        _count: { select: { coupons: { where: { isActive: true } } } },
-      },
-      orderBy: { name: 'asc' },
-    }),
-  ])
-
-  return { coupons, stores }
-}
 
 export default async function CouponsPage() {
-  const { coupons, stores } = await getCouponsData()
+  const { coupons, stores } = await getCouponsData(DEFAULT_COUNTRY)
 
   const jsonLd = {
     '@context': 'https://schema.org',

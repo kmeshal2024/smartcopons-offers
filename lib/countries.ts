@@ -132,6 +132,19 @@ export function pathFor(country: string | null | undefined, path = '/'): string 
 }
 
 /**
+ * Does a coupon store serve this market?
+ *
+ * `stores.countries` is a comma list ("SA,AE") because a coupon store is often
+ * GCC-wide — Noon, Namshi and Centrepoint all trade in both markets. An empty
+ * value means globally valid (AliExpress, iHerb), so it serves everywhere.
+ */
+export function storeServesCountry(countries: string | null | undefined, code: string): boolean {
+  const list = (countries || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+  if (!list.length) return true
+  return list.includes(resolveCountry(code).code)
+}
+
+/**
  * Which market a URL path belongs to: /ae/offers -> AE, /offers -> SA.
  *
  * Client components derive the market from the path rather than taking a prop,
