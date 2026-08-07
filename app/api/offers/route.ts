@@ -92,19 +92,42 @@ async function relevanceSearch(opts: {
   // Rank on BOTH names. English used to skip this and fall through to
   // discount-only ordering, which is why "coffee" led with coffee-flavoured
   // biscuits while Arabic "قهوة" returned actual coffee.
+  // WHOLE-WORD, not prefix. `ILIKE 'زيت%'` also matches زيتون (olives), so a
+  // search for oil led with olives. The WHERE stays permissive so nothing is
+  // lost from the result set — only the ORDER changes, pushing
+  // prefix-of-a-longer-word matches below real ones.
   const startExpr = firstVars
-    .flatMap(v => [`po."nameAr" ILIKE ${addI(v + '%')}`, `po."nameEn" ILIKE ${addI(v + '%')}`])
+    .flatMap(v => [
+      `po."nameAr" ~* ${addI('^' + v + '([^[:alpha:]]|$)')}`,
+      `po."nameEn" ~* ${addI('^' + v + '([^[:alpha:]]|$)')}`,
+    ])
     .join(' OR ')
   const wordExpr = firstVars
     .flatMap(v => [
-      `po."nameAr" ILIKE ${addI('% ' + v + '%')}`,
-      `po."nameEn" ILIKE ${addI('% ' + v + '%')}`,
+      `po."nameAr" ~* ${addI('[^[:alpha:]]' + v + '([^[:alpha:]]|$)')}`,
+      `po."nameEn" ~* ${addI('[^[:alpha:]]' + v + '([^[:alpha:]]|$)')}`,
     ])
     .join(' OR ')
-  const rel = `CASE WHEN ${startExpr} THEN 0 WHEN ${wordExpr} THEN 1 ELSE 2 END`
+  const prefixExpr = firstVars
+    .flatMap(v => [`po."nameAr" ILIKE ${addI(v + '%')}`, `po."nameEn" ILIKE ${addI(v + '%')}`])
+    .join(' OR ')
+  const rel = `CASE WHEN ${startExpr} THEN 0 WHEN ${wordExpr} THEN 1 WHEN ${prefixExpr} THEN 2 ELSE 3 END`
+
+  // Groceries before non-groceries — but only as a TIE-BREAK inside a
+  // relevance tier, never as a filter. "ماء" matched "ماء عطر جيفنشي"
+  // (eau de parfum) just as strongly as bottled water; both are tier 0, so the
+  // category decides. A search with no grocery matches at all (شامبو) is
+  // untouched, because then every row shares the same category rank.
+  const FOOD = ['dairy', 'meat-poultry', 'vegetables', 'fruits', 'bakery', 'beverages', 'snacks', 'canned-dry']
+  const foodRank = `CASE WHEN c.slug IN (${FOOD.map(f => addI(f)).join(', ')}) THEN 0 ELSE 1 END`
+
+  // A card with no picture looks broken and is harder to recognise, so among
+  // equally relevant items the ones shoppers can actually see come first.
+  const imgRank = `CASE WHEN po."imageUrl" IS NULL OR po."imageUrl" = '' THEN 1 ELSE 0 END`
+
   const limitP = addI(opts.limit)
   const offsetP = addI(opts.skip)
-  const idsSql = `SELECT po.id ${FROM} WHERE ${whereI} ORDER BY (${rel}) ASC, po."discountPercent" DESC NULLS LAST, po."viewCount" DESC LIMIT ${limitP} OFFSET ${offsetP}`
+  const idsSql = `SELECT po.id ${FROM} WHERE ${whereI} ORDER BY (${rel}) ASC, (${foodRank}) ASC, (${imgRank}) ASC, po."discountPercent" DESC NULLS LAST, po."viewCount" DESC LIMIT ${limitP} OFFSET ${offsetP}`
 
   const cParams: any[] = []
   const addC = (v: any) => {
