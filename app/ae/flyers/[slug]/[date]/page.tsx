@@ -5,7 +5,9 @@ import FlyerScreen from '@/components/FlyerScreen'
 import type { Metadata } from 'next'
 import { formatDateAr, formatRangeAr, getValidity } from '@/lib/flyer-utils'
 import { getFlyerBySlugDate } from '@/lib/flyer-query'
-import { resolveCountry, urlFor } from '@/lib/countries'
+import { COUNTRIES, urlFor } from '@/lib/countries'
+
+const COUNTRY = COUNTRIES.AE
 
 interface Props {
   params: Promise<{ slug: string; date: string }>
@@ -13,36 +15,40 @@ interface Props {
 
 export const revalidate = 300
 
+/**
+ * UAE weekly flyer, scoped to AE so "carrefour"/"lulu" resolve to the Emirati
+ * store rather than the Saudi one that shares the slug. Mirrors /flyers but
+ * pins the market to AE.
+ */
+async function getAeFlyer(slug: string, date: string) {
+  const flyer = await getFlyerBySlugDate(slug, date)
+  if (!flyer || flyer.supermarket.country !== COUNTRY.code) return null
+  return flyer
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, date } = await params
-  const flyer = await getFlyerBySlugDate(slug, date)
-  // Signal the 404 from metadata too. Returning a plain title here let the
-  // render complete with a 200, so a bad slug served a "not found" page that
-  // search engines read as a real page (a soft 404).
+  const flyer = await getAeFlyer(slug, date)
   if (!flyer) notFound()
 
-  const country = resolveCountry(flyer.supermarket.country)
   const store = flyer.supermarket.nameAr
   const dateAr = formatDateAr(flyer.startDate)
-  const title = `عروض ${store} ${dateAr} | نشرة الأسبوع`
+  const title = `عروض ${store} ${dateAr} في الإمارات | نشرة الأسبوع`
   const validity = getValidity(flyer.startDate, flyer.endDate)
-  // Canonical follows the store's own market — a UAE flyer reached via /flyers
-  // canonicalises to smartcopons.com/ae/flyers, so it never competes with or
-  // mislabels itself as a Saudi page.
-  const canonical = urlFor(country.code, `/flyers/${slug}/${date}`)
+  const canonical = urlFor('AE', `/flyers/${slug}/${date}`)
 
   return {
     title,
     description:
-      `تصفّح نشرة عروض ${store} الأسبوعية (${formatRangeAr(flyer.startDate, flyer.endDate)}) ` +
-      `صفحة بصفحة. ${flyer._count.productOffers} عرضاً على المنتجات الغذائية والمنزلية في ${country.nameAr}.`,
-    keywords: `عروض ${store}, نشرة ${store}, عروض ${store} الاسبوعية, ${flyer.supermarket.name} flyer, عروض ${country.nameAr}`,
+      `تصفّح نشرة عروض ${store} الأسبوعية في الإمارات (${formatRangeAr(flyer.startDate, flyer.endDate)}) ` +
+      `صفحة بصفحة. عروض بالدرهم على المنتجات الغذائية والمنزلية.`,
+    keywords: `عروض ${store}, نشرة ${store}, عروض ${store} الامارات, ${flyer.supermarket.name} flyer UAE`,
     alternates: { canonical },
     robots: validity.isExpired ? { index: false, follow: true } : undefined,
     openGraph: {
       title,
       description: `نشرة ${store} — ${formatRangeAr(flyer.startDate, flyer.endDate)}`,
-      locale: country.locale.replace('-', '_'),
+      locale: 'ar_AE',
       type: 'article',
       url: canonical,
       ...(flyer.coverImage && { images: [flyer.coverImage] }),
@@ -50,12 +56,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function WeeklyFlyerPage({ params }: Props) {
+export default async function AeWeeklyFlyerPage({ params }: Props) {
   const { slug, date } = await params
-  const flyer = await getFlyerBySlugDate(slug, date)
+  const flyer = await getAeFlyer(slug, date)
   if (!flyer) notFound()
 
-  const country = resolveCountry(flyer.supermarket.country)
   const store = flyer.supermarket.nameAr
   const dateAr = formatDateAr(flyer.startDate)
 
@@ -63,15 +68,15 @@ export default async function WeeklyFlyerPage({ params }: Props) {
     '@context': 'https://schema.org',
     '@type': 'SpecialAnnouncement',
     name: `عروض ${store} ${dateAr}`,
-    text: `نشرة عروض ${store} الأسبوعية — ${formatRangeAr(flyer.startDate, flyer.endDate)}`,
+    text: `نشرة عروض ${store} الأسبوعية في الإمارات — ${formatRangeAr(flyer.startDate, flyer.endDate)}`,
     datePosted: new Date(flyer.startDate).toISOString(),
     expires: new Date(flyer.endDate).toISOString(),
     category: 'https://www.wikidata.org/wiki/Q2135',
-    url: urlFor(country.code, `/flyers/${slug}/${date}`),
+    url: urlFor('AE', `/flyers/${slug}/${date}`),
     announcementLocation: {
       '@type': 'LocalBusiness',
       name: store,
-      address: { '@type': 'PostalAddress', addressCountry: country.code },
+      address: { '@type': 'PostalAddress', addressCountry: 'AE' },
     },
   }
 
@@ -79,7 +84,7 @@ export default async function WeeklyFlyerPage({ params }: Props) {
     <div className="min-h-screen bg-gray-50" dir="rtl">
       <Header />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <FlyerScreen flyer={flyer} country={country.code} />
+      <FlyerScreen flyer={flyer} country="AE" />
       <Footer />
     </div>
   )

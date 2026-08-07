@@ -31,6 +31,13 @@ export interface ScraperConfig {
 export interface ScrapedFlyerAsset {
   /** Must be a CORS-enabled URL — pdf.js fetches it from the browser. */
   pdfUrl?: string
+  /**
+   * Full-page image URLs, for retailers that publish their flyer as page
+   * images instead of a PDF (LuLu UAE). Rendered with plain <img>, so unlike
+   * pdfUrl these do not need CORS. When present, totalPages/coverImage are
+   * derived from this if not given.
+   */
+  pageImages?: string[]
   coverImage?: string
   totalPages?: number
   titleAr?: string

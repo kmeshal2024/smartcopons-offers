@@ -157,15 +157,20 @@ export class OfferIngestService {
     }
 
     // Update flyer log, and attach the brochure assets when the scraper found
-    // one so FlyerViewer has a PDF to render.
+    // one so the viewer has something to render — a PDF (FlyerViewer) or a set
+    // of page images (ImageFlyerViewer).
+    const pageImages = (flyerAsset?.pageImages || []).filter(Boolean)
+    const coverImage = flyerAsset?.coverImage || pageImages[0]
+    const totalPages = flyerAsset?.totalPages || (pageImages.length || undefined)
     await prisma.flyer.update({
       where: { id: flyer.id },
       data: {
         extractedAt: new Date(),
         extractionLog: logs.join('\n'),
         ...(flyerAsset?.pdfUrl ? { pdfUrl: flyerAsset.pdfUrl } : {}),
-        ...(flyerAsset?.coverImage ? { coverImage: flyerAsset.coverImage } : {}),
-        ...(flyerAsset?.totalPages ? { totalPages: flyerAsset.totalPages } : {}),
+        ...(pageImages.length ? { pageImages: JSON.stringify(pageImages) } : {}),
+        ...(coverImage ? { coverImage } : {}),
+        ...(totalPages ? { totalPages } : {}),
         ...(flyerAsset?.titleAr ? { titleAr: flyerAsset.titleAr } : {}),
       },
     })

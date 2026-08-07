@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { OfferIngestService } from '@/lib/services/offer-ingest'
 import { prisma } from '@/lib/db'
-import type { ScrapedOffer } from '@/lib/scrapers/types'
+import type { ScrapedOffer, ScrapedFlyerAsset } from '@/lib/scrapers/types'
 import { resolveCountry } from '@/lib/countries'
 
 /**
@@ -33,11 +33,15 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json().catch(() => ({}))
-    const { key, supermarket, offers, logs, meta, replace } = body as {
+    const { key, supermarket, offers = [], logs, meta, replace, flyerAsset } = body as {
       key?: string
       supermarket?: string
       offers?: ScrapedOffer[]
       logs?: string[]
+      // Weekly flyer brochure/pages, attached to this week's flyer. May arrive
+      // on its own (offers omitted) to refresh only the flyer, or alongside a
+      // full product scrape.
+      flyerAsset?: ScrapedFlyerAsset
       // Supplied only when onboarding a new retailer (e.g. a pharmacy that has
       // no supermarket row yet). Present → create the row; absent → a missing
       // slug stays a 404, so a typo never silently spawns a store. On an
@@ -61,8 +65,11 @@ export async function POST(request: Request) {
       )
     }
 
-    if (offers.length === 0) {
-      return NextResponse.json({ error: 'offers[] is empty' }, { status: 400 })
+    // A flyer-only import (attach/refresh the weekly flyer without re-scraping
+    // the whole catalogue) is valid: offers may be empty when flyerAsset is set.
+    const hasFlyerAsset = !!(flyerAsset && (flyerAsset.pdfUrl || (flyerAsset.pageImages && flyerAsset.pageImages.length)))
+    if (offers.length === 0 && !hasFlyerAsset) {
+      return NextResponse.json({ error: 'offers[] is empty (and no flyerAsset)' }, { status: 400 })
     }
 
     if (offers.length > MAX_OFFERS) {
@@ -124,7 +131,7 @@ export async function POST(request: Request) {
       }))
       .filter(o => o.nameAr.length >= 8 && Number.isFinite(o.price) && o.price > 0)
 
-    if (clean.length === 0) {
+    if (clean.length === 0 && !hasFlyerAsset) {
       return NextResponse.json(
         { error: 'No usable offers after validation (need nameAr >= 8 chars and price > 0)' },
         { status: 400 }
@@ -140,11 +147,17 @@ export async function POST(request: Request) {
     }
 
     const ingestService = new OfferIngestService()
-    const result = await ingestService.ingest(supermarket, clean, [
-      `[import] Received ${offers.length} offers from an external scraper`,
-      `[import] ${clean.length} passed validation`,
-      ...(logs || []).slice(0, 50),
-    ])
+    const result = await ingestService.ingest(
+      supermarket,
+      clean,
+      [
+        `[import] Received ${offers.length} offers from an external scraper`,
+        `[import] ${clean.length} passed validation`,
+        ...(hasFlyerAsset ? [`[import] Attaching flyer asset (${flyerAsset!.pageImages?.length || 0} page images${flyerAsset!.pdfUrl ? ', +pdf' : ''})`] : []),
+        ...(logs || []).slice(0, 50),
+      ],
+      hasFlyerAsset ? flyerAsset : undefined
+    )
 
     await prisma.scrapeLog
       .create({
@@ -170,6 +183,7 @@ export async function POST(request: Request) {
       refreshedOffers: result.refreshedOffers,
       duplicatesSkipped: result.duplicatesSkipped,
       flyerId: result.flyerId,
+      flyerAttached: hasFlyerAsset ? { pageImages: flyerAsset!.pageImages?.length || 0, pdf: !!flyerAsset!.pdfUrl } : null,
       durationMs: Date.now() - startedAt,
     })
   } catch (error) {

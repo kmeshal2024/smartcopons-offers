@@ -123,6 +123,10 @@ model Flyer {
   pdfUrl        String? // Cloud storage URL
   pdfPath       String? // Local file path
   coverImage    String? // First page thumbnail
+  // JSON array of full-page image URLs, for retailers that publish their flyer
+  // as page images rather than a PDF (e.g. LuLu UAE's in-store promotions).
+  // When present the viewer renders these directly — no pdf.js, no CORS needed.
+  pageImages    String?     @db.Text
   totalPages    Int         @default(0)
   status        FlyerStatus @default(DRAFT)
   viewCount     Int         @default(0)
