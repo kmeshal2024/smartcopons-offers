@@ -40,6 +40,13 @@ const SCRAPERS = [
   // LuLu's weekly flyer is page images on its own CDN, not a PDF — captured
   // separately (seconds) and attached to lulu-ae's current flyer.
   { name: 'lulu-ae-flyer', script: 'scrape-lulu-flyer.mjs', args: ['--country=AE'] },
+  // Flyer-only stores (no public prices / no clean first-party flyer): their
+  // full weekly leaflet is captured from ClicFlyer as page images and attached
+  // to the store. Third-party hosted images — Khalid's accepted trade-off.
+  { name: 'farm-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/farm-4', '--supermarket=farm', '--country=SA', '--nameAr=أسواق المزرعة', '--nameEn=Farm Superstores', '--website=https://www.farm.com.sa/'] },
+  { name: 'unioncoop-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/united-arab-emirates/dubai/retailers/union-coop-1071', '--supermarket=union-coop', '--country=AE', '--nameAr=يونيون كوب', '--nameEn=Union Coop', '--website=https://www.unioncoop.ae/'] },
   // Carrefour last: it's the slowest (~25-30 min), so the others land first.
   { name: 'carrefour', script: 'scrape-carrefour-playwright.mjs', args: [] },
   { name: 'carrefour-ae', script: 'scrape-carrefour-playwright.mjs', args: ['--country=AE'] },

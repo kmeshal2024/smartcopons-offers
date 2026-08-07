@@ -4,6 +4,8 @@ import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
 import Footer from '@/components/Footer'
 import FlyerViewer from '@/components/FlyerViewer'
+import ImageFlyerViewer from '@/components/ImageFlyerViewer'
+import { parsePageImages } from '@/lib/flyer-query'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import RetailerFilters from './RetailerFilters'
@@ -149,7 +151,7 @@ async function getRetailerData(slug: string, sort: string, categorySlug: string,
         status: 'ACTIVE',
         endDate: { gte: new Date() },
       },
-      select: { id: true, title: true, titleAr: true, startDate: true, endDate: true, pdfUrl: true, coverImage: true, _count: { select: { productOffers: true } } },
+      select: { id: true, title: true, titleAr: true, startDate: true, endDate: true, pdfUrl: true, pageImages: true, coverImage: true, _count: { select: { productOffers: true } } },
       orderBy: { startDate: 'desc' },
     }),
   ])
@@ -307,28 +309,40 @@ export default async function RetailerPage({ params, searchParams }: Props) {
           )}
         </div>
 
-        {/* Weekly Flyer PDF Viewer */}
-        {activeFlyers.filter((f: any) => f.pdfUrl).length > 0 ? (
+        {/* Weekly Flyer — PDF (FlyerViewer) or page images (ImageFlyerViewer) */}
+        {activeFlyers.filter((f: any) => f.pdfUrl || parsePageImages(f.pageImages).length).length > 0 ? (
           <div className="mb-5 space-y-4">
             {activeFlyers
-              .filter((f: any) => f.pdfUrl)
-              .map((flyer: any) => (
-                <div key={flyer.id}>
-                  <FlyerViewer
-                    pdfUrl={flyer.pdfUrl}
-                    title={flyer.titleAr || flyer.title}
-                    startDate={flyer.startDate}
-                    endDate={flyer.endDate}
-                  />
-                  {/* Permalink to the dated weekly flyer page */}
-                  <Link
-                    href={`/flyers/${supermarket.slug}/${new Date(flyer.startDate).toISOString().split('T')[0]}`}
-                    className="mt-2 inline-block text-sm font-semibold text-pink-600 hover:text-pink-700"
-                  >
-                    {t('retailer.flyerPage')}
-                  </Link>
-                </div>
-              ))}
+              .filter((f: any) => f.pdfUrl || parsePageImages(f.pageImages).length)
+              .map((flyer: any) => {
+                const pageImages = parsePageImages(flyer.pageImages)
+                return (
+                  <div key={flyer.id}>
+                    {pageImages.length > 0 ? (
+                      <ImageFlyerViewer
+                        pages={pageImages}
+                        title={flyer.titleAr || flyer.title}
+                        startDate={flyer.startDate}
+                        endDate={flyer.endDate}
+                      />
+                    ) : (
+                      <FlyerViewer
+                        pdfUrl={flyer.pdfUrl}
+                        title={flyer.titleAr || flyer.title}
+                        startDate={flyer.startDate}
+                        endDate={flyer.endDate}
+                      />
+                    )}
+                    {/* Permalink to the dated weekly flyer page */}
+                    <Link
+                      href={`/flyers/${supermarket.slug}/${new Date(flyer.startDate).toISOString().split('T')[0]}`}
+                      className="mt-2 inline-block text-sm font-semibold text-pink-600 hover:text-pink-700"
+                    >
+                      {t('retailer.flyerPage')}
+                    </Link>
+                  </div>
+                )
+              })}
           </div>
         ) : (
           <div className="mb-5 rounded-xl border border-gray-200 bg-white px-4 py-8 text-center">
