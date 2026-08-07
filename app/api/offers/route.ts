@@ -90,15 +90,17 @@ async function relevanceSearch(opts: {
       // The marker must sit within two words BEFORE the query term (Arabic puts
       // the head noun first, so "سكر بني" — sugar first — is never negated).
       if (dropNegated) {
+        // COALESCE to '' — nameEn is NULL for ~99% of rows, and `NULL ~* x` is
+        // NULL, which poisons `AND NOT (...)` and would drop every such row.
         const negOrs: string[] = []
         for (const v of variants) {
           negOrs.push(
-            `po."nameAr" ~* ${add('(' + NEG_ALT_AR + ')([[:space:]]+[^[:space:]]+){0,2}[[:space:]]+(ال)?' + v + '([^[:alpha:]]|$)')}`
+            `COALESCE(po."nameAr",'') ~* ${add('(' + NEG_ALT_AR + ')([[:space:]]+[^[:space:]]+){0,2}[[:space:]]+(ال)?' + v + '([^[:alpha:]]|$)')}`
           )
           // English: "sugar free" / "sugar-free" (marker after) and
           // "no|zero|diet ... sugar" (marker before).
-          negOrs.push(`po."nameEn" ~* ${add('\\y' + v + '[- ]?free\\y')}`)
-          negOrs.push(`po."nameEn" ~* ${add('(' + NEG_EN_STANDALONE + ')[^[:alpha:]]+' + v + '\\y')}`)
+          negOrs.push(`COALESCE(po."nameEn",'') ~* ${add('\\y' + v + '[- ]?free\\y')}`)
+          negOrs.push(`COALESCE(po."nameEn",'') ~* ${add('(' + NEG_EN_STANDALONE + ')[^[:alpha:]]+' + v + '\\y')}`)
         }
         clause = `(${clause} AND NOT (${negOrs.join(' OR ')}))`
       }
