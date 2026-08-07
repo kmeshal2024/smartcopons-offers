@@ -77,6 +77,46 @@ export function arabicVariants(query: string, maxVariants = 12): string[] {
   return Array.from(new Set([term, ...variants]))
 }
 
+// ----------------------------------------------------------------------------
+// Negation / attribute context — "شوكولاتة بدون سكر" is chocolate, not sugar.
+// Used to drop matches where the query word appears only as a negated or
+// flavour attribute of the product (see /api/offers for the SQL twin, and the
+// autocomplete which post-filters in JS because Prisma can't express it).
+// ----------------------------------------------------------------------------
+const NEG_MARKERS = [
+  'بدون', 'بلا', 'خالي', 'خالية', 'خال', 'زيرو', 'دايت', 'لايت', 'منزوع',
+  'قليل', 'قليلة', 'منخفض', 'منخفضة', 'عديم', 'بنكهة', 'نكهة', 'بطعم', 'برائحة',
+].map(normalizeArabic)
+
+const NOT_LETTER = '[^\\u0600-\\u06FFa-zA-Z0-9]'
+
+/** Did the shopper themselves type a negation ("بدون سكر", "sugar free")? */
+export function queryHasNegation(q: string): boolean {
+  const norm = normalizeArabic(q)
+  if (NEG_MARKERS.some(m => norm.includes(m))) return true
+  return /\b(free|zero|diet|light|unsweetened|no[- ]?added|without|low|less)\b/i.test(q)
+}
+
+/**
+ * True when `name` matches `query` ONLY as a negated/flavour attribute, so it
+ * should be dropped — e.g. name "شوكولاتة بدون سكر" for query "سكر". Returns
+ * false when the query's head word starts the name (it IS the product), or when
+ * the shopper's own query carries a negation (they want the sugar-free item).
+ */
+export function isNegatedMatch(name: string, query: string): boolean {
+  if (queryHasNegation(query)) return false
+  const first = normalizeArabic((query.trim().split(/\s+/)[0] || ''))
+  if (first.length < 2) return false
+  const nn = normalizeArabic(name)
+  if (nn.startsWith(first)) return false // head noun — genuinely the product
+  const esc = first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  // A negation marker within two words BEFORE the query term.
+  const re = new RegExp(
+    `(?:^|${NOT_LETTER})(?:${NEG_MARKERS.join('|')})(?:\\s+\\S+){0,2}\\s+(?:ال)?${esc}(?:${NOT_LETTER}|$)`
+  )
+  return re.test(nn)
+}
+
 /**
  * Build a Prisma OR filter that matches any of the given text fields against
  * any spelling variant of the query.

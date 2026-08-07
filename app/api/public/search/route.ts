@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { countryFromRequest } from '@/lib/countries'
-import { arabicContainsFilter } from '@/lib/arabic-search'
+import { arabicContainsFilter, isNegatedMatch } from '@/lib/arabic-search'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 
 /**
@@ -40,7 +40,9 @@ export async function GET(request: Request) {
               // Arabic-variant aware over the indexed columns only.
               OR: arabicContainsFilter(query, ['nameAr', 'nameEn', 'brand']),
             },
-            take: 10,
+            // Over-fetch: the negation post-filter below drops attribute-only
+            // matches ("بدون سكر" for a سكر search), so grab extra to still fill 10.
+            take: 24,
             orderBy: { viewCount: 'desc' },
             // Lean select: exactly what the autocomplete row shows (thumbnail,
             // price, store), nothing more — smaller payload, faster response.
@@ -105,6 +107,12 @@ export async function GET(request: Request) {
         : Promise.resolve([]),
     ])
 
+    // Drop products that match only as a negated/flavour attribute
+    // ("المراعي عصير بدون سكر" for a سكر query), then trim to the 10 shown.
+    const cleanProducts = (products as any[])
+      .filter(p => !isNegatedMatch(p.nameAr || p.nameEn || '', query))
+      .slice(0, 10)
+
     // Don't suggest retailers whose page has nothing on it.
     const visibleStores = (stores as any[])
       .filter(s => hasEnoughContent(s._count))
@@ -112,11 +120,11 @@ export async function GET(request: Request) {
       .map(({ _count, ...store }) => store)
 
     const results = {
-      products,
+      products: cleanProducts,
       coupons,
       stores: visibleStores,
       categories,
-      total: products.length + coupons.length + visibleStores.length + categories.length,
+      total: cleanProducts.length + coupons.length + visibleStores.length + categories.length,
     }
 
     return NextResponse.json(results, {
