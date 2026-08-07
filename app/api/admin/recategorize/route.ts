@@ -29,10 +29,24 @@ async function run(dry: boolean, limit: number) {
   const cats = await prisma.category.findMany({ select: { id: true, slug: true } })
   const slugById = new Map(cats.map(c => [c.id, c.slug]))
 
-  const offers = await prisma.productOffer.findMany({
-    select: { id: true, nameAr: true, nameEn: true, categoryId: true },
-    take: limit,
-  })
+  // Cursor-paginate the whole table. A plain `take: 50000` silently truncated:
+  // the offers API reports ~38k because it counts only visible, unexpired rows,
+  // while product_offers itself holds more — so everything past the cut kept its
+  // old category and the run still reported "0 to change".
+  const offers: Array<{ id: string; nameAr: string | null; nameEn: string | null; categoryId: string | null }> = []
+  let cursor: string | undefined
+  while (offers.length < limit) {
+    const page = await prisma.productOffer.findMany({
+      select: { id: true, nameAr: true, nameEn: true, categoryId: true },
+      take: 5000,
+      orderBy: { id: 'asc' },
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+    })
+    if (!page.length) break
+    offers.push(...page)
+    cursor = page[page.length - 1].id
+    if (page.length < 5000) break
+  }
 
   const changes: Array<{ id: string; name: string; from: string; to: string }> = []
   for (const o of offers) {
@@ -94,12 +108,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   // GET is preview-only so a leaked URL can never rewrite the catalogue.
-  return NextResponse.json(await run(true, Number(url.searchParams.get('limit')) || 50000))
+  return NextResponse.json(await run(true, Number(url.searchParams.get('limit')) || 200000))
 }
 
 export async function POST(request: Request) {
   const body: any = await request.json().catch(() => ({}))
   const key = body?.key ?? new URL(request.url).searchParams.get('key')
   if (!authed(key)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  return NextResponse.json(await run(body?.dry === true, Number(body?.limit) || 50000))
+  return NextResponse.json(await run(body?.dry === true, Number(body?.limit) || 200000))
 }
