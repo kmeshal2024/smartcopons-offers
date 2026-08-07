@@ -22,6 +22,27 @@ function tokenize(q: string): string[] {
   return t.length ? t : [q.trim()]
 }
 
+// Words that turn the query term into an ATTRIBUTE the product lacks (or a
+// flavour), not the product itself: "شوكولاتة بدون سكر" is chocolate, not sugar;
+// "زبادي بنكهة السكر" is yogurt. A shopper searching سكر wants sugar. When one of
+// these precedes the query word in the name, the match is the OPPOSITE of intent
+// and must be dropped — unless the shopper themselves typed a negation (then they
+// really do want "sugar-free X"). See relevanceSearch below.
+const NEG_MARKERS_AR = [
+  'بدون', 'بلا', 'خالي', 'خاليه', 'خالية', 'خال', 'زيرو', 'دايت', 'لايت',
+  'منزوع', 'قليل', 'قليله', 'قليلة', 'منخفض', 'منخفضه', 'منخفضة', 'عديم',
+  'بنكهه', 'بنكهة', 'نكهه', 'نكهة', 'بطعم', 'برائحه', 'برائحة',
+]
+const NEG_ALT_AR = NEG_MARKERS_AR.join('|')
+// English equivalents, for the ~1% English-named rows and English queries.
+const NEG_EN_STANDALONE = 'zero|diet|light|unsweetened|no|low|less|without|sugarfree'
+
+function queryHasNegation(q: string): boolean {
+  const norm = normalizeArabic(q)
+  if (NEG_MARKERS_AR.some(m => norm.includes(normalizeArabic(m)))) return true
+  return /\b(free|zero|diet|light|unsweetened|no[- ]?added|without|low|less)\b/i.test(q)
+}
+
 /**
  * Relevance-ranked product search (raw SQL — Prisma can't ORDER BY a computed
  * score). A product must contain EVERY query word (so "ماء 200 مل" needs water
@@ -43,6 +64,9 @@ async function relevanceSearch(opts: {
   limit: number
 }): Promise<{ ids: string[]; total: number }> {
   const tokens = tokenize(opts.search)
+  // If the shopper typed "بدون"/"free"/etc. themselves, keep those matches —
+  // they want the sugar-free product. Otherwise strip attribute-only matches.
+  const dropNegated = !queryHasNegation(opts.search)
 
   // Emitted twice (ids + count) with independent param numbering.
   const buildWhere = (add: (v: any) => string) => {
@@ -58,7 +82,27 @@ async function relevanceSearch(opts: {
         ors.push(`po.brand ILIKE ${sub}`)
         ors.push(`po.tags ILIKE ${sub}`)
       }
-      return `(${ors.join(' OR ')})`
+      let clause = `(${ors.join(' OR ')})`
+
+      // Drop matches where THIS token appears only as a negated/flavour
+      // attribute of the product, not as the product itself:
+      //   بدون سكر / بدون إضافة سكر / خالية من السكر / زيرو سكر / بنكهة السكر
+      // The marker must sit within two words BEFORE the query term (Arabic puts
+      // the head noun first, so "سكر بني" — sugar first — is never negated).
+      if (dropNegated) {
+        const negOrs: string[] = []
+        for (const v of variants) {
+          negOrs.push(
+            `po."nameAr" ~* ${add('(' + NEG_ALT_AR + ')([[:space:]]+[^[:space:]]+){0,2}[[:space:]]+(ال)?' + v + '([^[:alpha:]]|$)')}`
+          )
+          // English: "sugar free" / "sugar-free" (marker after) and
+          // "no|zero|diet ... sugar" (marker before).
+          negOrs.push(`po."nameEn" ~* ${add('\\y' + v + '[- ]?free\\y')}`)
+          negOrs.push(`po."nameEn" ~* ${add('(' + NEG_EN_STANDALONE + ')[^[:alpha:]]+' + v + '\\y')}`)
+        }
+        clause = `(${clause} AND NOT (${negOrs.join(' OR ')}))`
+      }
+      return clause
     })
     const catOrs = arabicVariants(opts.search).map(v => `c."nameAr" ILIKE ${add('%' + v + '%')}`)
     const clauses = [
