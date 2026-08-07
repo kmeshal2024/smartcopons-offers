@@ -143,6 +143,9 @@ export class CategoryMapper {
         // Phrases first: they outscore the bare words they contain, which is
         // how "ماء عطر" stops being read as water.
         'ماء عطر', 'ماء تواليت', 'eau de parfum', 'eau de toilette', 'ماء كولونيا',
+        // "معجون" alone is ambiguous — tomato paste is معجون طماطم — and a
+        // mint toothpaste was scoring on "نعناع" from the vegetables list.
+        'معجون اسنان', 'معجون أسنان', 'غسول فم', 'فرشاة اسنان', 'فرشاة أسنان',
         'shampoo', 'شامبو', 'perfume', 'عطر', 'deodorant', 'مزيل عرق', 'toothpaste', 'معجون',
         'soap', 'صابون', 'body wash', 'غسول', 'lotion', 'مرطب', 'razor', 'شفرة',
         'pantene', 'dove', 'nivea', 'colgate', 'oral-b', 'head & shoulders', 'sunsilk',
