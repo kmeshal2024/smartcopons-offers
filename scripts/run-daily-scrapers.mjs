@@ -37,6 +37,9 @@ const SCRAPERS = [
   // once. Lulu gets fewer pages than Saudi — the UAE catalogue is smaller and
   // this keeps the nightly window from stretching.
   { name: 'lulu-ae', script: 'scrape-lulu-playwright.mjs', args: ['--country=AE', '--pages=8'] },
+  // LuLu's weekly flyer is page images on its own CDN, not a PDF — captured
+  // separately (seconds) and attached to lulu-ae's current flyer.
+  { name: 'lulu-ae-flyer', script: 'scrape-lulu-flyer.mjs', args: ['--country=AE'] },
   // Carrefour last: it's the slowest (~25-30 min), so the others land first.
   { name: 'carrefour', script: 'scrape-carrefour-playwright.mjs', args: [] },
   { name: 'carrefour-ae', script: 'scrape-carrefour-playwright.mjs', args: ['--country=AE'] },

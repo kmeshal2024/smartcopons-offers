@@ -149,6 +149,9 @@ async function main() {
   const text = await res.text()
   console.log(`HTTP ${res.status} — ${text.slice(0, 400)}`)
   if (!res.ok) process.exit(1)
+  // Summary line the daily runner counts as work done (it matches /حُفظت\s+(\d+)/);
+  // without it a good flyer capture would be logged as a failure.
+  console.log(`حُفظت ${pages.length} صفحة نشرة`)
 }
 
 main().catch(e => { console.error('Failed:', e); process.exit(1) })
