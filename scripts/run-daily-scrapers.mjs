@@ -47,6 +47,12 @@ const SCRAPERS = [
     args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/farm-4', '--supermarket=farm', '--country=SA', '--nameAr=أسواق المزرعة', '--nameEn=Farm Superstores', '--website=https://www.farm.com.sa/'] },
   { name: 'unioncoop-flyer', script: 'scrape-aggregator-flyer.mjs',
     args: ['--url=https://clicflyer.com/shoppers/en/united-arab-emirates/dubai/retailers/union-coop-1071', '--supermarket=union-coop', '--country=AE', '--nameAr=يونيون كوب', '--nameEn=Union Coop', '--website=https://www.unioncoop.ae/'] },
+  // Nesto publishes no public prices (login-gated store) but a full weekly
+  // leaflet on ClicFlyer, so it comes in as a flyer store too.
+  { name: 'nesto-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/nesto-17', '--supermarket=nesto', '--country=SA', '--nameAr=نستو', '--nameEn=Nesto Hypermarket', '--website=https://ksa.nesto.shop/'] },
+  { name: 'nesto-ae-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/united-arab-emirates/dubai/retailers/nesto-1100', '--supermarket=nesto-ae', '--country=AE', '--nameAr=نستو الإمارات', '--nameEn=Nesto Hypermarket UAE', '--website=https://uae.nesto.shop/'] },
   // Carrefour last: it's the slowest (~25-30 min), so the others land first.
   { name: 'carrefour', script: 'scrape-carrefour-playwright.mjs', args: [] },
   { name: 'carrefour-ae', script: 'scrape-carrefour-playwright.mjs', args: ['--country=AE'] },
