@@ -58,6 +58,10 @@ export default function SearchAutocomplete({
   const [isLoading, setIsLoading] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const [recent, setRecent] = useState<string[]>([])
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set())
+  const markImageBroken = useCallback((id: string) => {
+    setBrokenImages(prev => (prev.has(id) ? prev : new Set(prev).add(id)))
+  }, [])
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
@@ -332,9 +336,15 @@ export default function SearchAutocomplete({
                 return (
                   <button key={hit.id} type="button" {...optionProps(i)} onClick={() => selectOption({ kind: 'product', label: name, hit })} className={rowCls(i)}>
                     <span className="flex-shrink-0 w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden">
-                      {hit.imageUrl ? (
+                      {hit.imageUrl && !brokenImages.has(hit.id) ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={hit.imageUrl} alt="" className="w-full h-full object-contain p-0.5" loading="lazy" />
+                        <img
+                          src={hit.imageUrl}
+                          alt=""
+                          className="w-full h-full object-contain p-0.5"
+                          loading="lazy"
+                          onError={() => markImageBroken(hit.id)}
+                        />
                       ) : (
                         <span className="text-base">{hit.category?.icon || '🏷️'}</span>
                       )}
@@ -370,9 +380,14 @@ export default function SearchAutocomplete({
                 const i = idx
                 return (
                   <button key={hit.id} type="button" {...optionProps(i)} onClick={() => selectOption({ kind: 'store', label: hit.nameAr, hit })} className={rowCls(i)}>
-                    {hit.logo ? (
+                    {hit.logo && !brokenImages.has(hit.id) ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={hit.logo} alt="" className="w-6 h-6 rounded-full object-contain flex-shrink-0" />
+                      <img
+                        src={hit.logo}
+                        alt=""
+                        className="w-6 h-6 rounded-full object-contain flex-shrink-0"
+                        onError={() => markImageBroken(hit.id)}
+                      />
                     ) : (
                       <span className="w-6 h-6 rounded-full bg-pink-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{hit.nameAr.charAt(0)}</span>
                     )}

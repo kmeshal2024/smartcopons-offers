@@ -24,8 +24,11 @@ const STATEMENTS = [
   'CREATE INDEX IF NOT EXISTS idx_offer_namear_trgm ON product_offers USING gin ("nameAr" gin_trgm_ops)',
   'CREATE INDEX IF NOT EXISTS idx_offer_nameen_trgm ON product_offers USING gin ("nameEn" gin_trgm_ops)',
   'CREATE INDEX IF NOT EXISTS idx_offer_brand_trgm ON product_offers USING gin ("brand" gin_trgm_ops)',
-  // Coupons are far fewer, but the same ILIKE runs on their title.
+  // Coupons are far fewer, but the same ILIKE runs across these columns too.
   'CREATE INDEX IF NOT EXISTS idx_coupon_title_trgm ON coupons USING gin ("title" gin_trgm_ops)',
+  'CREATE INDEX IF NOT EXISTS idx_coupon_code_trgm ON coupons USING gin ("code" gin_trgm_ops)',
+  'CREATE INDEX IF NOT EXISTS idx_coupon_discounttext_trgm ON coupons USING gin ("discountText" gin_trgm_ops)',
+  'CREATE INDEX IF NOT EXISTS idx_store_name_trgm ON stores USING gin ("name" gin_trgm_ops)',
 ]
 
 export async function POST(request: Request) {
