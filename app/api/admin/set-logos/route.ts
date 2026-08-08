@@ -21,6 +21,17 @@ const DEFAULTS: Record<string, string> = {
   aldawaa: '/logos/aldawaa.png',
   tamimi: '/logos/tamimi.png',
   extra: '/logos/extra.png',
+  // UAE stores onboarded via ClicFlyer import — meta never carried a logo,
+  // so these were null until backfilled from ClicFlyer's retailer pages.
+  'nesto-ae': '/logos/nesto-ae.svg',
+  'union-coop': '/logos/union-coop.jpg',
+  adcoop: '/logos/adcoop.jpg',
+  'km-trading': '/logos/km-trading.jpg',
+  geant: '/logos/geant.jpg',
+  gala: '/logos/gala.jpg',
+  almaya: '/logos/almaya.jpg',
+  'ansar-gallery': '/logos/ansar-gallery.jpg',
+  aswaaq: '/logos/aswaaq.jpg',
 }
 
 export async function POST(request: Request) {
