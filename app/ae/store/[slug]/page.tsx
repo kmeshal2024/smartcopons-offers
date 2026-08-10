@@ -83,7 +83,12 @@ export default async function UaeStorePage({ params }: Props) {
         category: { select: { nameAr: true, icon: true } },
         flyer: { select: { startDate: true, endDate: true } },
       },
-      orderBy: [{ discountPercent: 'desc' }, { createdAt: 'desc' }],
+      // imageUrl asc puts non-null URLs first (Postgres default: NULLS LAST
+      // on ASC) — without this, `take: 48` sorted purely by discount could
+      // fill entirely with un-cropped hero/banner-page products (the deepest
+      // discounts skew toward those scattered layouts) and never show a
+      // single imaged product, even when hundreds exist for that store.
+      orderBy: [{ imageUrl: 'asc' }, { discountPercent: 'desc' }, { createdAt: 'desc' }],
       take: 48,
     }),
     prisma.productOffer.count({

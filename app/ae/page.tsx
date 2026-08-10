@@ -65,7 +65,11 @@ async function getData() {
         category: { select: { nameAr: true, icon: true } },
         flyer: { select: { startDate: true, endDate: true } },
       },
-      orderBy: { discountPercent: 'desc' },
+      // Same fix as the store page: imageUrl asc surfaces image-bearing
+      // offers first (Postgres NULLS LAST on ASC) so this carousel doesn't
+      // fill entirely with un-cropped hero-page deals from the highest-
+      // discount end.
+      orderBy: [{ imageUrl: 'asc' }, { discountPercent: 'desc' }],
       take: 24,
     }),
     prisma.productOffer.count({
