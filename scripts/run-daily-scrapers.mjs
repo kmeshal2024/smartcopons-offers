@@ -53,6 +53,26 @@ const SCRAPERS = [
     args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/nesto-17', '--supermarket=nesto', '--country=SA', '--nameAr=نستو', '--nameEn=Nesto Hypermarket', '--website=https://ksa.nesto.shop/'] },
   { name: 'nesto-ae-flyer', script: 'scrape-aggregator-flyer.mjs',
     args: ['--url=https://clicflyer.com/shoppers/en/united-arab-emirates/dubai/retailers/nesto-1100', '--supermarket=nesto-ae', '--country=AE', '--nameAr=نستو الإمارات', '--nameEn=Nesto Hypermarket UAE', '--website=https://uae.nesto.shop/'] },
+  // Same flyer-only path for the UAE stores onboarded by hand from ClicFlyer
+  // this round (Almaya, ADCOOP, Aswaaq, GALA, Ansar Gallery, Geant,
+  // K.M Trading). Their product catalogue (name/price/crop-matched image) was
+  // imported once and is kept alive by cron/refresh-imported — this only
+  // recaptures the CURRENT weekly leaflet page-images so ImageFlyerViewer
+  // shows this week's actual promotion, at zero cost (no product/price data).
+  { name: 'almaya-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/united-arab-emirates/dubai/retailers/almaya-1060', '--supermarket=almaya', '--country=AE', '--nameAr=الماية', '--nameEn=Almaya', '--website=https://www.almaya.ae/'] },
+  { name: 'adcoop-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/united-arab-emirates/abu-dhabi/retailers/adcoop-1059', '--supermarket=adcoop', '--country=AE', '--nameAr=تعاونية أبوظبي', '--nameEn=ADCOOP', '--website=https://corporate.adcoop.com/'] },
+  { name: 'aswaaq-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/united-arab-emirates/dubai/retailers/aswaaq-1643', '--supermarket=aswaaq', '--country=AE', '--nameAr=أسواق', '--nameEn=Aswaaq', '--website=https://aswaaq.ae/'] },
+  { name: 'gala-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/united-arab-emirates/sharjah/retailers/gala-2351', '--supermarket=gala', '--country=AE', '--nameAr=جالا', '--nameEn=GALA', '--website=https://galauae.com/'] },
+  { name: 'ansar-gallery-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/united-arab-emirates/sharjah/retailers/ansar-gallery-1137', '--supermarket=ansar-gallery', '--country=AE', '--nameAr=أنصار جاليري', '--nameEn=Ansar Gallery', '--website=https://www.ansargallery.ae/'] },
+  { name: 'geant-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/united-arab-emirates/dubai/retailers/geant-1048', '--supermarket=geant', '--country=AE', '--nameAr=جيان', '--nameEn=Geant', '--website=https://geantuae.com/'] },
+  { name: 'km-trading-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/united-arab-emirates/dubai/retailers/km-trading-1065', '--supermarket=km-trading', '--country=AE', '--nameAr=كي إم تريدنج', '--nameEn=K.M Trading', '--website=https://www.kmtrading.com/'] },
   // Carrefour last: it's the slowest (~25-30 min), so the others land first.
   { name: 'carrefour', script: 'scrape-carrefour-playwright.mjs', args: [] },
   { name: 'carrefour-ae', script: 'scrape-carrefour-playwright.mjs', args: ['--country=AE'] },
