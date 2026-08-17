@@ -57,7 +57,10 @@ const STATEMENTS = [
    EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 
   // No index: 24 rows, 3 distinct values. Postgres would seq-scan regardless, so
-  // an index would be pure write overhead.
+  // an index is pure write overhead. An earlier revision of this route created
+  // one and it reached production, so this drops it rather than merely omitting
+  // it — omitting would have left the index in place forever.
+  `DROP INDEX IF EXISTS "supermarkets_retailerType_idx"`,
 
   `UPDATE supermarkets SET "retailerType" = 'pharmacy'
      WHERE slug IN (${PHARMACY.map(s => `'${s}'`).join(', ')})`,
