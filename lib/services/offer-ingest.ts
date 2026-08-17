@@ -159,21 +159,38 @@ export class OfferIngestService {
     // Update flyer log, and attach the brochure assets when the scraper found
     // one so the viewer has something to render — a PDF (FlyerViewer) or a set
     // of page images (ImageFlyerViewer).
+    //
+    // AUTHORITATIVE MERGE. When the scraper returns a flyerAsset, the fields it
+    // provides fully describe the flyer — the ones it doesn't provide are
+    // cleared. The previous "spread only what's present" logic only ever ADDED
+    // fields, so a first-party scraper that supplied a new PDF stacked on top of
+    // stale pageImages left over from a previous scrape (in Farm's case, 64
+    // ClicFlyer image URLs), and the retailer page then rendered those instead
+    // of the new PDF. When no flyerAsset is provided at all, existing assets are
+    // left alone.
     const pageImages = (flyerAsset?.pageImages || []).filter(Boolean)
     const coverImage = flyerAsset?.coverImage || pageImages[0]
     const totalPages = flyerAsset?.totalPages || (pageImages.length || undefined)
-    await prisma.flyer.update({
-      where: { id: flyer.id },
-      data: {
-        extractedAt: new Date(),
-        extractionLog: logs.join('\n'),
-        ...(flyerAsset?.pdfUrl ? { pdfUrl: flyerAsset.pdfUrl } : {}),
-        ...(pageImages.length ? { pageImages: JSON.stringify(pageImages) } : {}),
-        ...(coverImage ? { coverImage } : {}),
-        ...(totalPages ? { totalPages } : {}),
-        ...(flyerAsset?.titleAr ? { titleAr: flyerAsset.titleAr } : {}),
-      },
-    })
+
+    if (flyerAsset) {
+      await prisma.flyer.update({
+        where: { id: flyer.id },
+        data: {
+          extractedAt: new Date(),
+          extractionLog: logs.join('\n'),
+          pdfUrl: flyerAsset.pdfUrl ?? null,
+          pageImages: pageImages.length ? JSON.stringify(pageImages) : null,
+          coverImage: coverImage ?? null,
+          ...(totalPages ? { totalPages } : { totalPages: 0 }),
+          ...(flyerAsset.titleAr ? { titleAr: flyerAsset.titleAr } : {}),
+        },
+      })
+    } else {
+      await prisma.flyer.update({
+        where: { id: flyer.id },
+        data: { extractedAt: new Date(), extractionLog: logs.join('\n') },
+      })
+    }
 
     return {
       supermarket: supermarketSlug,
