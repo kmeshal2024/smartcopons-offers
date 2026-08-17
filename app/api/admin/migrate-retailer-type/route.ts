@@ -38,14 +38,26 @@ export const maxDuration = 300
 const PHARMACY = ['nahdi', 'aldawaa']
 const ELECTRONICS = ['extra']
 
+const TYPES = ['grocery', 'pharmacy', 'electronics'] as const
+
 const STATEMENTS = [
   `ALTER TABLE supermarkets
      ADD COLUMN IF NOT EXISTS "retailerType" TEXT NOT NULL DEFAULT 'grocery'`,
 
-  // Featured-section queries filter/rank on this, so it needs an index next to
-  // the existing country+isActive one.
-  `CREATE INDEX IF NOT EXISTS "supermarkets_retailerType_idx"
-     ON supermarkets ("retailerType")`,
+  // Added BEFORE the seeding UPDATEs so the constraint validates them too, and
+  // so a future typo fails loudly instead of silently creating a fourth type
+  // that every ranking query then ignores.
+  //
+  // Postgres has no ADD CONSTRAINT IF NOT EXISTS, and this route is meant to be
+  // re-runnable, hence the DO block swallowing duplicate_object.
+  `DO $$ BEGIN
+     ALTER TABLE supermarkets
+       ADD CONSTRAINT supermarkets_retailerType_check
+       CHECK ("retailerType" IN (${TYPES.map(t => `'${t}'`).join(', ')}));
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+
+  // No index: 24 rows, 3 distinct values. Postgres would seq-scan regardless, so
+  // an index would be pure write overhead.
 
   `UPDATE supermarkets SET "retailerType" = 'pharmacy'
      WHERE slug IN (${PHARMACY.map(s => `'${s}'`).join(', ')})`,
@@ -53,9 +65,8 @@ const STATEMENTS = [
   `UPDATE supermarkets SET "retailerType" = 'electronics'
      WHERE slug IN (${ELECTRONICS.map(s => `'${s}'`).join(', ')})`,
 
-  // Belt and braces: DEFAULT only applies to rows inserted after the ALTER.
-  `UPDATE supermarkets SET "retailerType" = 'grocery'
-     WHERE "retailerType" IS NULL OR "retailerType" = ''`,
+  // No trailing "set NULL/'' back to grocery" pass: the column is NOT NULL with a
+  // DEFAULT, so that branch is unreachable.
 ]
 
 async function run() {
