@@ -14,7 +14,7 @@ import RetailerFilters from './RetailerFilters'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
 import { getLang } from '@/lib/i18n-server'
-import { t as translate, dirOf } from '@/lib/i18n'
+import { t as translate, dirOf, formatDateNumeric } from '@/lib/i18n'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -248,7 +248,6 @@ export default async function RetailerPage({ params, searchParams }: Props) {
   const { supermarket, products, total, categories, activeFlyers, totalPages, currentPage } = data
   const lang = getLang()
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
-  const dateLocale = lang === 'en' ? 'en-GB' : 'ar-SA'
 
   // Helper to build pagination URLs. Page 1 is the bare canonical URL — emitting
   // `?page=1` would create a second address for the same content.
@@ -369,7 +368,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
                 <div key={flyer.id} className="flex-shrink-0 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
                   <div className="font-medium text-gray-700 text-sm whitespace-nowrap">{flyer.titleAr || flyer.title}</div>
                   <div className="text-xs text-gray-500">
-                    {t('retailer.productsCount', { n: flyer._count.productOffers })} · {t('retailer.endsOn', { date: new Date(flyer.endDate).toLocaleDateString(dateLocale) })}
+                    {t('retailer.productsCount', { n: flyer._count.productOffers })} · {t('retailer.endsOn', { date: formatDateNumeric(lang, flyer.endDate) })}
                   </div>
                 </div>
               ))}

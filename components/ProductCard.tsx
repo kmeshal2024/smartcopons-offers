@@ -74,10 +74,15 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
 
-        {/* Discount Badge */}
+        {/* Discount Badge — `-39%`, not `39%-`. The old markup was literally
+            `{n}%-`: the minus was authored last and rendered last, so the badge
+            read backwards. It was never a font or bidi-reordering problem.
+            `dir="ltr"` on a <bdi> pins the sign to the left of the number inside
+            the surrounding RTL page and isolates the run so it cannot reorder
+            against neighbouring text. */}
         {hasDiscount && (
           <div className="absolute top-2 right-2 bg-pink-600 text-white px-2 py-0.5 rounded-md text-xs font-bold shadow-sm">
-            {product.discountPercent}%-
+            <bdi dir="ltr">-{product.discountPercent}%</bdi>
           </div>
         )}
 
@@ -155,16 +160,29 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
 
-        {/* Price */}
+        {/* Price.
+            Previously three bare spans that ran together as "30.00ر.س49.50" with
+            no separator and no markup distinction, so a screen reader read the
+            current and old price as one number. Now: the old price is a real
+            <del> (semantically "removed"), the pair is labelled, and each number
+            is a <bdi> so Latin digits can't reorder against the RTL context. */}
         <div className="mt-auto flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-base sm:text-lg font-bold text-pink-700">
-            {product.price.toFixed(2)}
+          <span
+            className="text-base sm:text-lg font-bold text-pink-700"
+            aria-label={`${t('card.price')} ${product.price.toFixed(2)} ${currencyOf(product.country)}`}
+          >
+            <bdi>{product.price.toFixed(2)}</bdi>
           </span>
-          <span className="text-[10px] sm:text-xs text-gray-400">{currencyOf(product.country)}</span>
+          <span className="text-[10px] sm:text-xs text-gray-400" aria-hidden="true">
+            {currencyOf(product.country)}
+          </span>
           {product.oldPrice && product.oldPrice > product.price && (
-            <span className="text-[10px] sm:text-xs text-gray-400 line-through mr-auto">
-              {product.oldPrice.toFixed(2)}
-            </span>
+            <del
+              className="text-[10px] sm:text-xs text-gray-400 mr-auto"
+              aria-label={`${t('card.was')} ${product.oldPrice.toFixed(2)} ${currencyOf(product.country)}`}
+            >
+              <bdi>{product.oldPrice.toFixed(2)}</bdi>
+            </del>
           )}
         </div>
 

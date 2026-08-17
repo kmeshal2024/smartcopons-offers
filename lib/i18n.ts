@@ -366,8 +366,10 @@ const DICT: Record<string, Entry> = {
   'card.favAdd': { ar: 'إضافة إلى المفضّلة', en: 'Add to favourites' },
   'card.favRemove': { ar: 'إزالة من المفضّلة', en: 'Remove from favourites' },
   'card.shareWhatsapp': { ar: 'مشاركة عبر واتساب', en: 'Share on WhatsApp' },
+  'card.price': { ar: 'السعر', en: 'Price' },
   'card.was': { ar: 'كان', en: 'was' },
   'card.product': { ar: 'منتج', en: 'Product' },
+  'home.divider': { ar: 'عروض السعودية', en: 'KSA offers' },
 }
 
 /** Translate a key. Interpolates {var} placeholders from `vars`. */
@@ -378,4 +380,35 @@ export function t(lang: Lang, key: string, vars?: Record<string, string | number
     for (const [k, v] of Object.entries(vars)) s = s.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v))
   }
   return s
+}
+
+/**
+ * A date as plain numerals, e.g. "22/8/2026".
+ *
+ * Two things are pinned deliberately:
+ *
+ *  - `calendar: 'gregory'`. Bare `toLocaleDateString('ar-SA')` returns a HIJRI
+ *    date on a full-ICU runtime (Node 24 locally gives ٩‏/٣‏/١٤٤٨ هـ) but a
+ *    Gregorian one on Vercel's build — the same code rendering a different
+ *    calendar depending on which ICU data is present. A flyer expiry silently
+ *    switching calendars is worse than either choice.
+ *  - `numberingSystem: 'latn'`. Prices across the site use Western digits, so
+ *    expiry dates rendering as ٢٢‏/٨‏/٢٠٢٦ next to "12.50" was inconsistent, and
+ *    the project standard is Western numerals everywhere.
+ */
+export function formatDateNumeric(lang: Lang, date: string | Date | null | undefined): string {
+  if (!date) return ''
+  const d = new Date(date)
+  if (Number.isNaN(d.getTime())) return ''
+  try {
+    return new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : 'ar-SA', {
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric',
+      calendar: 'gregory',
+      numberingSystem: 'latn',
+    }).format(d)
+  } catch {
+    return d.toISOString().slice(0, 10)
+  }
 }

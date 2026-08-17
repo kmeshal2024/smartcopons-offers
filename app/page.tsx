@@ -163,7 +163,7 @@ export default async function HomePage() {
             </div>
             <div className="flex justify-center gap-6 sm:gap-10">
               <div className="text-center">
-                <div className="text-xl sm:text-2xl font-bold">{totalProducts.toLocaleString()}+</div>
+                <div className="text-xl sm:text-2xl font-bold">{totalProducts.toLocaleString('en')}+</div>
                 <div className="text-[10px] sm:text-xs opacity-80">{t('home.stat.offers')}</div>
               </div>
               <div className="w-px bg-white/20" />
@@ -305,7 +305,7 @@ export default async function HomePage() {
         <div className="container mx-auto px-4 mt-8">
           <div className="flex items-center gap-4">
             <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs text-gray-400 font-medium">KSA OFFERS</span>
+            <span className="text-xs text-gray-400 font-medium">{t('home.divider')}</span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
         </div>

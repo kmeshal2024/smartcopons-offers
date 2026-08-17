@@ -141,6 +141,8 @@ export function formatDateAr(date: string | Date | null | undefined): string {
     return new Intl.DateTimeFormat('ar-SA-u-ca-gregory', {
       day: 'numeric',
       month: 'long',
+      // Western digits — this rendered "٢٢ أغسطس" beside prices written "12.50".
+      numberingSystem: 'latn',
     }).format(new Date(date))
   } catch {
     return ''
