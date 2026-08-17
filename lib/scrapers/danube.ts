@@ -27,6 +27,16 @@ export class DanubeScraper extends BaseScraper {
   private readonly algoliaIndex = 'spree_products'
 
   protected async extractOffers(): Promise<ScrapedOffer[]> {
+    // Danube publishes its weekly leaflet on its OWN site (/brochures, PDFs on
+    // its own CloudFront). Additive: the Algolia product scrape below is
+    // untouched and still supplies the ~630 offer rows. Failure here must never
+    // cost us those, hence the isolated try/catch.
+    try {
+      await this.captureFlyerAsset()
+    } catch (e) {
+      this.log(`Brochure capture skipped: ${e instanceof Error ? e.message : e}`)
+    }
+
     const allOffers: ScrapedOffer[] = []
     const hitsPerPage = 50
     const url = `https://${this.algoliaAppId.toLowerCase()}-dsn.algolia.net/1/indexes/${this.algoliaIndex}/query`
@@ -167,4 +177,62 @@ export class DanubeScraper extends BaseScraper {
       brand: hit.brand_en || hit.brand_ar || undefined,
     }
   }
+
+  /**
+   * Danube's own weekly brochure.
+   *
+   * /brochures lists ~11 leaflets at once — regional weeklies (العروض الاسبوعية),
+   * regional fortnightlies (عروض الاسبوعين) and campaign one-offs (back-to-school,
+   * أقوى العروض). We want the CENTRAL region weekly: Riyadh is the largest
+   * catchment and this site is Saudi-wide.
+   *
+   * Matched on the card TITLE rather than the numeric brochure id. The ids are
+   * stable but the PDF behind each one is replaced weekly, and a campaign leaflet
+   * can take over a low id — matching on "الوسطى" + "الأسبوعية" keeps pointing at
+   * the right leaflet after Danube reshuffles the list.
+   *
+   * The PDF has no Access-Control-Allow-Origin (verified), so pdf.js cannot render
+   * it in-browser; FlyerViewer falls back to a direct link. Same as Farm.
+   */
+  private async captureFlyerAsset(): Promise<void> {
+    const listUrl = `${this.config.baseUrl.replace('www.', '')}/brochures`
+    const res = await this.fetchWithRetry(listUrl)
+    const html = await res.text()
+    this.pagesScraped++
+
+    // Split the listing into per-card blobs so a title stays associated with the
+    // PDF that follows it.
+    const cards = Array.from(
+      html.matchAll(/href="\/brochures\/(\d+)"([\s\S]{0,900}?)(?=href="\/brochures\/|$)/g)
+    ).map(m => {
+      const blob = m[2] || ''
+      const alt = (blob.match(/alt="([^"]{3,80})"/) || [])[1] || ''
+      const pdf = (blob.match(/https?:\/\/[^\s"'<>]+\.pdf/) || [])[0] || ''
+      const img = (blob.match(/https?:\/\/[^\s"'<>]+\.(?:png|jpe?g|webp)/i) || [])[0] || ''
+      return { id: m[1], title: alt.replace(/\s+/g, ' ').trim(), pdf, img }
+    }).filter(c => c.pdf)
+
+    if (cards.length === 0) {
+      this.log('No Danube brochure PDFs found — listing layout may have changed')
+      return
+    }
+
+    const weekly = (t: string) => /الاسبوعية|الأسبوعية/.test(t)
+    const central = (t: string) => /الوسطى/.test(t)
+
+    const chosen =
+      cards.find(c => central(c.title) && weekly(c.title)) ||
+      cards.find(c => weekly(c.title)) ||
+      cards[0]
+
+    this.flyerAsset = {
+      pdfUrl: chosen.pdf,
+      coverImage: chosen.img || undefined,
+      titleAr: chosen.title || 'عروض الدانوب الأسبوعية',
+    }
+    this.log(
+      `Brochure: #${chosen.id} "${chosen.title}" (${cards.length} listed) ${chosen.pdf.slice(0, 70)}`
+    )
+  }
+
 }

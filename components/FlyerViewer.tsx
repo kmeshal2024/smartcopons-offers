@@ -176,10 +176,28 @@ export default function FlyerViewer({ pdfUrl, title, startDate, endDate }: Flyer
     else goPage(-1)
   }
 
+  // Degrade to a direct link rather than a red error box.
+  //
+  // pdf.js fetches the file from the BROWSER, so it needs the host to send
+  // Access-Control-Allow-Origin. Al Othaim's Contentful CDN does; Farm's own
+  // server does not (verified: 200 application/pdf, no ACAO header). Without
+  // this branch, sourcing a flyer from a retailer that omits the header showed
+  // shoppers a failure message even though the file is perfectly readable —
+  // and on mobile, opening an 11.7MB leaflet in the device's native viewer is
+  // a better experience than rendering it in a canvas anyway.
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center text-red-600 text-sm">
-        {error}
+      <div className="rounded-xl border border-gray-200 bg-white p-5 text-center">
+        {title && <p className="mb-1 font-semibold text-gray-800">{title}</p>}
+        <p className="mb-3 text-sm text-gray-500">{t('flyer.openExternally')}</p>
+        <a
+          href={pdfUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#E91E8C] px-6 font-bold text-white transition hover:brightness-110"
+        >
+          {t('flyer.openPdf')}
+        </a>
       </div>
     )
   }

@@ -6,6 +6,7 @@ import { LuluScraper } from './lulu'
 import { TamimiScraper } from './tamimi'
 import { BinDawoodScraper } from './bindawood'
 import { ExtraScraper } from './extra'
+import { FarmScraper } from './farm'
 import type { ISupermarketScraper } from './types'
 
 const scrapers: Record<string, () => ISupermarketScraper> = {
@@ -17,6 +18,8 @@ const scrapers: Record<string, () => ISupermarketScraper> = {
   tamimi: () => new TamimiScraper(),
   bindawood: () => new BinDawoodScraper(),
   extra: () => new ExtraScraper(),
+  // Flyer-only: captures Farm's own weekly PDF, no product rows. See farm.ts.
+  farm: () => new FarmScraper(),
 }
 
 export function getScraper(slug: string): ISupermarketScraper | null {

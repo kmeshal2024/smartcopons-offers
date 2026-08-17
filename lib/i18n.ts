@@ -263,6 +263,8 @@ const DICT: Record<string, Entry> = {
   'flyer.highlights': { ar: 'أبرز عروض هذه النشرة', en: 'Top offers in this flyer' },
   'flyer.allOffersOf': { ar: 'كل عروض {store}', en: 'All {store} offers' },
   'flyer.none': { ar: 'لا توجد نشرة متاحة حالياً', en: 'No flyer available right now' },
+  'flyer.openExternally': { ar: 'النشرة متاحة كملف PDF من موقع المتجر', en: 'This flyer is available as a PDF from the retailer' },
+  'flyer.openPdf': { ar: 'افتح النشرة', en: 'Open the flyer' },
   'flyer.browseBelow': { ar: 'تصفّح العروض أدناه', en: 'Browse the offers below' },
   'flyer.pages': { ar: '{n} صفحة', en: '{n} pages' },
   'flyer.prevPage': { ar: 'الصفحة السابقة', en: 'Previous page' },
