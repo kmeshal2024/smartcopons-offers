@@ -7,7 +7,7 @@ import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
 import { COUNTRIES, urlFor } from '@/lib/countries'
 import { getLang } from '@/lib/i18n-server'
-import { t as translate, dirOf } from '@/lib/i18n'
+import { t as translate, dirOf, formatNumber } from '@/lib/i18n'
 
 /**
  * UAE landing page.
@@ -98,7 +98,7 @@ export default async function UaeHome() {
           </p>
           <div className="mt-5 flex gap-8">
             <div>
-              <div className="text-2xl font-extrabold">+{total.toLocaleString('en')}</div>
+              <div className="text-2xl font-extrabold">+{formatNumber(total)}</div>
               <div className="text-xs text-white/80">{t('home.stat.offers')}</div>
             </div>
             <div>
@@ -130,7 +130,7 @@ export default async function UaeHome() {
                 )}
                 <span className="text-sm font-semibold text-gray-800">{s.nameAr}</span>
                 <span className="text-xs text-pink-600">
-                  {s._count.productOffers.toLocaleString('en')} {t('common.offer')}
+                  {formatNumber(s._count.productOffers)} {t('common.offer')}
                 </span>
               </Link>
             ))}

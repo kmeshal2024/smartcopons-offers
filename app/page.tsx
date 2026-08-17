@@ -5,7 +5,7 @@ import {
   listVisibleRetailers,
   countAllActiveOffers,
   capPerRetailer,
-  foodFirst,
+  groceryFirst,
 } from '@/lib/offer-queries'
 import Link from 'next/link'
 import Header from '@/components/Header'
@@ -14,7 +14,7 @@ import Footer from '@/components/Footer'
 import type { Metadata } from 'next'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
 import { getLang } from '@/lib/i18n-server'
-import { t as translate, dirOf } from '@/lib/i18n'
+import { t as translate, dirOf, formatNumber } from '@/lib/i18n'
 
 export const metadata: Metadata = {
   // `absolute` bypasses the layout's `%s | SmartCopons` template so the brand
@@ -65,7 +65,7 @@ const getHomeData = unstable_cache(async function getHomeData() {
     prisma.productOffer.findMany({
       where: { isHidden: false, country: DEFAULT_COUNTRY, discountPercent: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
       include: {
-        supermarket: { select: { nameAr: true, slug: true, logo: true } },
+        supermarket: { select: { nameAr: true, slug: true, logo: true, retailerType: true } },
         category: { select: { nameAr: true, slug: true, icon: true } },
       },
       orderBy: { discountPercent: 'desc' },
@@ -111,9 +111,12 @@ const getHomeData = unstable_cache(async function getHomeData() {
   // viewCount; the homepage just takes the first 8 slots.
   const visibleSupermarkets = supermarkets.slice(0, 8)
 
-  // Groceries first, then at most 2 per retailer. Without this the section was 4
-  // Nahdi pharmacy items — the 9 steepest discounts on the site are all Nahdi.
-  const featuredDiscounts = capPerRetailer(foodFirst(topDiscounts), 2, 4)
+  // Grocery retailers first, then at most 2 per retailer. Ranking keys off
+  // supermarket.retailerType rather than product category: the category data is
+  // wrong for exactly the rows that need demoting (a Nahdi nursing wrap is filed
+  // as `canned-dry`), so the earlier category-only pass was near-inert and the
+  // retailer cap was doing all the work.
+  const featuredDiscounts = capPerRetailer(groceryFirst(topDiscounts), 2, 4)
 
   return {
     supermarkets: visibleSupermarkets,
@@ -163,7 +166,7 @@ export default async function HomePage() {
             </div>
             <div className="flex justify-center gap-6 sm:gap-10">
               <div className="text-center">
-                <div className="text-xl sm:text-2xl font-bold">{totalProducts.toLocaleString('en')}+</div>
+                <div className="text-xl sm:text-2xl font-bold">{formatNumber(totalProducts, lang)}+</div>
                 <div className="text-[10px] sm:text-xs opacity-80">{t('home.stat.offers')}</div>
               </div>
               <div className="w-px bg-white/20" />

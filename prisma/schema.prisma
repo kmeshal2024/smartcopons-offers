@@ -96,6 +96,16 @@ model Supermarket {
   cityId    String?
   /// ISO country code — see lib/countries.ts. Everything predating the UAE launch is SA.
   country   String   @default("SA")
+  /// grocery | pharmacy | electronics. Guarded by a CHECK constraint in the DB
+  /// (see app/api/admin/migrate-retailer-type).
+  ///
+  /// Ranking keys off the RETAILER, not the product category, because category
+  /// data is re-derived nightly as products arrive and rots continuously — a
+  /// Nahdi nursing wrap is filed as `canned-dry` and gummy vitamins as `snacks`,
+  /// so a food-category filter cannot see them. Retailer identity does not drift.
+  /// Not only a pharmacy problem: eXtra is an electronics chain listing ACER at
+  /// 7,599 SAR next to groceries.
+  retailerType String @default("grocery")
   isActive  Boolean  @default(true)
   viewCount Int      @default(0)
   createdAt DateTime @default(now())

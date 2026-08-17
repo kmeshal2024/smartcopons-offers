@@ -124,6 +124,7 @@ export const listVisibleRetailers = unstable_cache(
         slug: true,
         logo: true,
         updatedAt: true,
+        retailerType: true,
         _count: {
           select: {
             flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
@@ -205,24 +206,58 @@ export function capPerRetailer<T extends { supermarket?: { slug: string } | null
 }
 
 /**
- * Category slugs that are actually groceries. Used to prefer food in featured
- * sections on a supermarket site — a pharmacy clearance item is a worse lead than
- * a cheaper litre of milk even when its discount percentage is larger.
+ * Category slugs that are actually groceries. Kept as a SECONDARY signal only.
+ *
+ * On its own this does not work, which is why groceryFirst() exists: the category
+ * data is itself wrong. Nahdi's pharmacy stock is filed INTO food categories — a
+ * nursing wrap as `canned-dry`, gummy vitamins as `snacks` — so a category filter
+ * cannot see the very rows it needs to demote. Categories are re-derived as
+ * products arrive nightly, so this rots continuously.
  */
 const FOOD_CATEGORY_SLUGS = new Set([
   'dairy', 'meat-poultry', 'vegetables', 'fruits', 'bakery',
   'beverages', 'snacks', 'canned-dry',
 ])
 
-/** Stable partition: food-category rows first, everything else after. */
+const isFoodCategory = (slug?: string | null) => !!slug && FOOD_CATEGORY_SLUGS.has(slug)
+
+/** Stable partition on category. Secondary signal — see groceryFirst(). */
 export function foodFirst<T extends { category?: { slug?: string | null } | null }>(rows: T[]): T[] {
   const food: T[] = []
   const rest: T[] = []
-  for (const r of rows) {
-    const slug = r.category?.slug
-    ;(slug && FOOD_CATEGORY_SLUGS.has(slug) ? food : rest).push(r)
-  }
+  for (const r of rows) (isFoodCategory(r.category?.slug) ? food : rest).push(r)
   return [...food, ...rest]
+}
+
+type RankableRow = {
+  supermarket?: { retailerType?: string | null } | null
+  category?: { slug?: string | null } | null
+}
+
+/**
+ * Rank rows for a featured section on a SUPERMARKET site: grocery retailers
+ * first, then food-categorised rows within each tier, original order preserved
+ * otherwise.
+ *
+ * Keyed on `supermarket.retailerType` because retailer identity is stable while
+ * product categorisation is not. Without it the homepage's biggest-discount
+ * section was four Nahdi rows (a nursing wrap, two gummy-vitamin packs, an
+ * anti-dandruff shampoo) purely because a pharmacy runs the steepest percentage
+ * discounts on the site — and eXtra would do the same with laptops.
+ *
+ * A demotion, not a filter: a genuinely good pharmacy deal can still surface once
+ * grocery rows are exhausted.
+ */
+export function groceryFirst<T extends RankableRow>(rows: T[]): T[] {
+  const tier = (r: T) => {
+    const grocery = (r.supermarket?.retailerType ?? 'grocery') === 'grocery'
+    if (grocery) return isFoodCategory(r.category?.slug) ? 0 : 1
+    return isFoodCategory(r.category?.slug) ? 2 : 3
+  }
+  return rows
+    .map((row, i) => ({ row, i, t: tier(row) }))
+    .sort((a, b) => a.t - b.t || a.i - b.i)
+    .map(x => x.row)
 }
 
 export interface StaleRetailer {

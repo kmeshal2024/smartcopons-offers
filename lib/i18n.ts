@@ -412,3 +412,51 @@ export function formatDateNumeric(lang: Lang, date: string | Date | null | undef
     return d.toISOString().slice(0, 10)
   }
 }
+
+/**
+ * A number with grouping separators, always in Western digits: "23,939".
+ *
+ * Pinned for the same reason as formatDateNumeric: `n.toLocaleString()` with no
+ * locale uses the RUNTIME's default, so the same code can emit Arabic-Indic
+ * digits on one host and Western on another. Every price on the site is Western,
+ * so the counts beside them must be too.
+ */
+export function formatNumber(n: number, lang: Lang = 'ar'): string {
+  try {
+    return new Intl.NumberFormat(lang === 'en' ? 'en-GB' : 'ar-SA', {
+      numberingSystem: 'latn',
+    }).format(n)
+  } catch {
+    return String(n)
+  }
+}
+
+/**
+ * A date + time for internal/admin screens: "22/8/2026, 14:05".
+ *
+ * `en-SA` looks safe but is not — the SA region's preferred calendar is
+ * islamic-umalqura, so `toLocaleString('en-SA')` can render a Hijri date on a
+ * full-ICU runtime while showing Gregorian in development. Admin screens read
+ * these against scrape logs and flyer windows, so a silently switching calendar
+ * is worse here than on the public site.
+ */
+export function formatDateTimeAdmin(date: string | Date | null | undefined): string {
+  if (!date) return ''
+  const d = new Date(date)
+  if (Number.isNaN(d.getTime())) return ''
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      calendar: 'gregory',
+      numberingSystem: 'latn',
+      timeZone: 'Asia/Riyadh',
+    }).format(d)
+  } catch {
+    return d.toISOString().slice(0, 16).replace('T', ' ')
+  }
+}

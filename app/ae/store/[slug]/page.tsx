@@ -8,7 +8,7 @@ import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
 import { COUNTRIES, urlFor } from '@/lib/countries'
 import { getLang } from '@/lib/i18n-server'
-import { t as translate, dirOf } from '@/lib/i18n'
+import { t as translate, dirOf, formatNumber } from '@/lib/i18n'
 
 const COUNTRY = COUNTRIES.AE
 
@@ -122,7 +122,7 @@ export default async function UaeStorePage({ params }: Props) {
           )}
           <div>
             <h1 className="text-lg font-extrabold text-gray-900">{t('common.offersOf', { name: store.nameAr })}</h1>
-            <p className="text-sm text-gray-500">{t('offers.available', { n: total.toLocaleString('en') })}</p>
+            <p className="text-sm text-gray-500">{t('offers.available', { n: formatNumber(total) })}</p>
           </div>
         </header>
 

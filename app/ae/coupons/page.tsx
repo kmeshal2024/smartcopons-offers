@@ -5,7 +5,7 @@ import CouponCard from '@/components/CouponCard'
 import { getCouponsData } from '@/lib/coupons'
 import { COUNTRIES, urlFor } from '@/lib/countries'
 import { getLang } from '@/lib/i18n-server'
-import { t as translate, dirOf } from '@/lib/i18n'
+import { t as translate, dirOf, formatNumber } from '@/lib/i18n'
 
 /**
  * UAE coupons.
@@ -45,7 +45,7 @@ export default async function UaeCouponsPage() {
         <header className="mb-6">
           <h1 className="text-xl font-extrabold text-gray-900">{t('coupons.aeTitle')}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {t('coupons.aeSubtitle', { n: coupons.length.toLocaleString('en') })}
+            {t('coupons.aeSubtitle', { n: formatNumber(coupons.length) })}
           </p>
         </header>
 

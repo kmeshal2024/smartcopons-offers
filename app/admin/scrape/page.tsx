@@ -1,5 +1,7 @@
 'use client'
 
+import { formatDateTimeAdmin } from '@/lib/i18n'
+
 import { useEffect, useState } from 'react'
 import AdminNav from '@/components/AdminNav'
 
@@ -624,7 +626,7 @@ export default function AdminScrapePage() {
                 <tbody>
                   {scrapeLogs.map((log: any) => (
                     <tr key={log.id} className="border-b">
-                      <td className="p-2 whitespace-nowrap">{new Date(log.scrapedAt).toLocaleString()}</td>
+                      <td className="p-2 whitespace-nowrap">{formatDateTimeAdmin(log.scrapedAt)}</td>
                       <td className="p-2">{log.supermarketSlug}</td>
                       <td className="p-2">{log.offersFound}</td>
                       <td className="p-2 text-green-600">{log.offersCreated}</td>

@@ -73,7 +73,7 @@ export async function GET(request: Request) {
         const dayMap = histByStore.get(o.supermarketId)
         const history = dayMap
           ? Array.from(dayMap.entries())
-              .sort(([a], [b]) => a.localeCompare(b))
+              .sort(([a], [b]) => a.localeCompare(b, 'ar'))
               .map(([date, price]) => ({ date, price }))
           : []
         // Ensure the current price is the last point.

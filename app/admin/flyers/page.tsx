@@ -1,5 +1,7 @@
 'use client'
 
+import { formatDateTimeAdmin } from '@/lib/i18n'
+
 import { useEffect, useState } from 'react'
 import { upload } from '@vercel/blob/client'
 import AdminNav from '@/components/AdminNav'
@@ -266,7 +268,9 @@ export default function AdminFlyersPage() {
     }
   }
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-SA')
+  // en-SA looks safe but the SA region prefers islamic-umalqura, so this could
+  // render Hijri on a full-ICU runtime. formatDateTimeAdmin pins the calendar.
+  const formatDate = (d: string) => formatDateTimeAdmin(d).split(',')[0]
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -565,7 +569,7 @@ export default function AdminFlyersPage() {
                       <span className="text-xs text-gray-500 font-mono">EXTRACTION LOG</span>
                       {flyer.extractedAt && (
                         <span className="text-xs text-gray-500">
-                          {new Date(flyer.extractedAt).toLocaleString('en-SA')}
+                          {formatDateTimeAdmin(flyer.extractedAt)}
                         </span>
                       )}
                     </div>

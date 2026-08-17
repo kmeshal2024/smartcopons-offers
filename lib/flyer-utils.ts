@@ -138,10 +138,15 @@ export function getValidity(
 export function formatDateAr(date: string | Date | null | undefined): string {
   if (!date) return ''
   try {
-    return new Intl.DateTimeFormat('ar-SA-u-ca-gregory', {
+    return new Intl.DateTimeFormat('ar-SA', {
       day: 'numeric',
       month: 'long',
-      // Western digits — this rendered "٢٢ أغسطس" beside prices written "12.50".
+      // Both pinned as explicit options rather than relying on the
+      // `-u-ca-gregory` locale extension, so calendar and digits are stated in
+      // one place and cannot be lost by an innocent-looking locale edit.
+      // Without them this rendered "٢٢ أغسطس" beside prices written "12.50",
+      // and on a full-ICU runtime ar-SA defaults to the Hijri calendar.
+      calendar: 'gregory',
       numberingSystem: 'latn',
     }).format(new Date(date))
   } catch {
