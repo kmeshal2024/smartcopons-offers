@@ -52,14 +52,31 @@ model Coupon {
   title        String
   code         String
   discountText String
+  /// LEGACY. Every one of the 106 rows carries '#', which is why the
+  /// click-through half of the funnel never worked. Superseded by affiliateUrl;
+  /// nothing reads this any more.
   url          String
+  /// Where the code actually sends the shopper. A DB CHECK enforces NULL or
+  /// http-prefixed, so the '#' failure cannot recur. Surfaces render NOTHING
+  /// when this is null — no URL, no coupon.
+  affiliateUrl String?
+  /// Nullable on purpose: an owned code may be evergreen, and a forced fake
+  /// expiry is the opposite of the guarantee wanted here.
+  validUntil   DateTime?
+  /// Only render a "حصري" badge when this is genuinely true.
+  isExclusive  Boolean  @default(false)
+  /// Coupon.storeId points at `stores` (Namshi/Noon); THIS points at the
+  /// retailer whose page the code belongs on. Without it the retailer strip has
+  /// nothing to join on.
+  supermarketId String?
   description  String?  @db.Text
   storeId      String
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store       Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supermarket Supermarket? @relation(fields: [supermarketId], references: [id], onDelete: SetNull)
 
   @@index([storeId])
   @@index([isActive])
@@ -114,6 +131,7 @@ model Supermarket {
   city          City?          @relation(fields: [cityId], references: [id], onDelete: SetNull)
   flyers        Flyer[]
   productOffers ProductOffer[]
+  coupons       Coupon[]
 
   @@index([slug])
   @@index([isActive])

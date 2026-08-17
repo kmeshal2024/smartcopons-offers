@@ -197,6 +197,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               price: product.price,
               oldPrice: product.oldPrice,
               storeName: product.supermarket.nameAr,
+              storeSlug: product.supermarket.slug,
               image: product.imageUrl,
             })
           }}

@@ -369,6 +369,11 @@ const DICT: Record<string, Entry> = {
   'card.price': { ar: 'السعر', en: 'Price' },
   'card.was': { ar: 'كان', en: 'was' },
   'card.product': { ar: 'منتج', en: 'Product' },
+  'listCoupon.heading': { ar: 'كود خصم يوفّر لك أكثر', en: 'A code to save even more' },
+  'listCoupon.headingStore': { ar: 'كود خصم {store}', en: '{store} discount code' },
+  'listCoupon.exclusive': { ar: 'حصري', en: 'Exclusive' },
+  'listCoupon.copyAndGo': { ar: 'انسخ وتسوّق', en: 'Copy & shop' },
+  'listCoupon.copied': { ar: '✓ تم النسخ', en: '✓ Copied' },
   'home.divider': { ar: 'عروض السعودية', en: 'KSA offers' },
 }
 

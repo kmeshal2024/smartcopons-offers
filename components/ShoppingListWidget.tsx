@@ -5,6 +5,7 @@ import { useShoppingList } from '@/hooks/useShoppingList'
 import { useCartPanel } from '@/hooks/useCartPanel'
 import { currencyOf } from '@/lib/countries'
 import { useI18n } from '@/components/I18nProvider'
+import ListCoupon from '@/components/ListCoupon'
 
 // A price list is always within one country, so the currency is resolved once
 // here rather than per row. See lib/countries.ts.
@@ -16,6 +17,13 @@ export default function ShoppingListWidget() {
   const { items, totals, remove, toggleBought, setQty, clearPurchased, clearAll } = useShoppingList()
   // Shared store, because the mobile trigger now lives in MobileBottomNav.
   const { isOpen: open, open: openPanel, close: setClosed } = useCartPanel()
+
+  // Retailers represented in the basket, for matching an owned code. Lists saved
+  // before storeSlug existed simply contribute nothing here, and ListCoupon
+  // falls back to a generic live code.
+  const storeSlugs = Array.from(
+    new Set(items.map((i) => i.storeSlug).filter((s): s is string => !!s))
+  )
 
   // Close on ESC
   useEffect(() => {
@@ -183,6 +191,11 @@ export default function ShoppingListWidget() {
                     </div>
                   )}
                 </div>
+
+                {/* Owned coupon code — placed here deliberately: this is the
+                    highest purchase-intent moment in the product. Renders
+                    nothing when no live code with a real affiliate URL exists. */}
+                <ListCoupon storeSlugs={storeSlugs} />
 
                 <button
                   onClick={shareWhatsApp}
