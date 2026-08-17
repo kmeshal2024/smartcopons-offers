@@ -471,8 +471,17 @@ function toRenderable(c: any): RenderableCoupon {
  * moment in the product is never empty just because the basket happens to be
  * from a retailer without a code.
  */
-export const couponsForRetailers = unstable_cache(
-  async (slugs: string[], country: string = DEFAULT_COUNTRY, take = 1) => {
+/**
+ * Two POOLS, cached as arrays. The per-request pick happens OUTSIDE the cache
+ * (see couponsForRetailers below) so the fallback actually rotates instead of
+ * freezing on whichever code the DB happened to sort first — otherwise the
+ * newest-created code wins forever, and the two older ones become dead weight.
+ *
+ * The pools themselves are cheap to cache: there are only a handful of owned
+ * codes at a time, and the DB reads are what we want to avoid repeating.
+ */
+const couponPoolsForRetailers = unstable_cache(
+  async (slugs: string[], country: string = DEFAULT_COUNTRY) => {
     const base = renderableCouponWhere(country)
     const include = {
       store: { select: { name: true, website: true } },
@@ -484,23 +493,55 @@ export const couponsForRetailers = unstable_cache(
           where: { ...base, supermarket: { slug: { in: slugs } } },
           include,
           orderBy: [{ isExclusive: 'desc' }, { createdAt: 'desc' }],
-          take,
+          take: 12,
         })
       : []
 
-    if (matched.length >= take) return matched.map(toRenderable)
-
-    const filler = await prisma.coupon.findMany({
+    const fallback = await prisma.coupon.findMany({
       where: { ...base, id: { notIn: matched.map(m => m.id) } },
       include,
       orderBy: [{ isExclusive: 'desc' }, { createdAt: 'desc' }],
-      take: take - matched.length,
+      take: 12,
     })
-    return [...matched, ...filler].map(toRenderable)
+
+    return { matched: matched.map(toRenderable), fallback: fallback.map(toRenderable) }
   },
-  ['coupons-for-retailers'],
+  ['coupon-pools-for-retailers'],
   { revalidate: TTL_LISTING, tags: ['coupons'] }
 )
+
+/**
+ * One owned code relevant to a basket, best first.
+ *
+ * `matched` codes (whose supermarketId is actually in the basket) come out in
+ * their DB-defined priority — exclusive first, newest next — because those are
+ * genuine matches and the answer for a Nahdi basket should be the Nahdi code.
+ *
+ * `fallback` codes ROTATE by day. With three codes and one Riyadh-day pick, each
+ * gets ~33% of the fallback exposure across a week instead of the newest one
+ * taking 100% of it. Deterministic (same code all day, so a shopper opening the
+ * panel twice sees the same thing), and no RNG in the cache path.
+ */
+export async function couponsForRetailers(
+  slugs: string[],
+  country: string = DEFAULT_COUNTRY,
+  take = 1
+): Promise<RenderableCoupon[]> {
+  const pools = await couponPoolsForRetailers(slugs, country)
+  const out: RenderableCoupon[] = pools.matched.slice(0, take)
+
+  if (out.length >= take || pools.fallback.length === 0) return out
+
+  // Days since a fixed epoch, in Riyadh time. UTC and offsets don't drift the
+  // day boundary for anyone in the market, and there's no timezone library dep.
+  const RIYADH_OFFSET_MS = 3 * 3600_000
+  const dayIndex = Math.floor((Date.now() + RIYADH_OFFSET_MS) / 86_400_000)
+  const start = dayIndex % pools.fallback.length
+  for (let i = 0; i < pools.fallback.length && out.length < take; i++) {
+    out.push(pools.fallback[(start + i) % pools.fallback.length])
+  }
+  return out
+}
 
 /** Codes tied to ONE retailer. The retailer strip shows nothing without a match. */
 export const couponsForRetailer = unstable_cache(
