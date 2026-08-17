@@ -3,10 +3,14 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useI18n } from '@/components/I18nProvider'
+import { useShoppingList } from '@/hooks/useShoppingList'
+import { useCartPanel } from '@/hooks/useCartPanel'
 
 export default function MobileBottomNav() {
   const pathname = usePathname()
   const { t } = useI18n()
+  const { totals } = useShoppingList()
+  const { isOpen, toggle } = useCartPanel()
 
   // Don't show on admin pages
   if (pathname?.startsWith('/admin')) return null
@@ -54,7 +58,12 @@ export default function MobileBottomNav() {
     },
   ]
 
+  // While the shopping-list panel is open, no ROUTE item is current — the panel is
+  // what the user is looking at. Previously the nav kept highlighting whatever page
+  // sat behind the overlay (المتاجر, typically), which read as if the user were on
+  // the store directory.
   const isActive = (href: string) => {
+    if (isOpen) return false
     if (href === '/') return pathname === '/'
     return pathname?.startsWith(href) || false
   }
@@ -69,9 +78,7 @@ export default function MobileBottomNav() {
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                active
-                  ? 'text-pink-600'
-                  : 'text-gray-400 hover:text-gray-600'
+                active ? 'text-pink-600' : 'text-gray-400 hover:text-gray-600'
               }`}
             >
               {item.icon(active)}
@@ -81,6 +88,41 @@ export default function MobileBottomNav() {
             </Link>
           )
         })}
+
+        {/* Shopping list — a real nav item with a live count, replacing the floating
+            button that rendered behind this very bar (z-40 under the nav's z-50). */}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={isOpen}
+          aria-label={
+            totals.units > 0
+              ? `${t('cart.title')} (${totals.units})`
+              : t('cart.title')
+          }
+          className={`relative flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+            isOpen ? 'text-pink-600' : 'text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          <span className="relative">
+            <svg className="w-5 h-5" fill={isOpen ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={isOpen ? 0 : 1.8}
+                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            {totals.units > 0 && (
+              // Count is already in the button's aria-label, so don't read it twice.
+              <span
+                aria-hidden="true"
+                className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#E91E8C] px-1 text-[10px] font-bold leading-none text-white"
+              >
+                {totals.units}
+              </span>
+            )}
+          </span>
+          <span className={`text-[10px] mt-0.5 ${isOpen ? 'font-bold' : 'font-medium'}`}>
+            {t('nav.list')}
+          </span>
+        </button>
       </div>
       {/* Safe area padding for notched phones */}
       <div className="h-[env(safe-area-inset-bottom)]" />

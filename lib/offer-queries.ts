@@ -89,19 +89,29 @@ export const countAllActiveOffers = unstable_cache(
 /**
  * Retailers eligible to be listed or submitted to a sitemap, for one market.
  *
- * Two filters that were missing and caused real index bloat:
+ * ONE JOB: decide what gets indexed. The rule is deliberately minimal —
+ * enough live offers, OR a live flyer exists. Nothing more.
  *
- * 1. `country` on the supermarket. sitemap-pages.xml scoped the offer *counts*
- *    to SA but not the store, so eleven UAE retailers (lulu-ae, carrefour-ae,
- *    km-trading, aswaaq, …) were being submitted under sa.smartcopons.com.
+ * It does NOT try to detect broken scrapers. An earlier version qualified the
+ * flyer clause (a flyer only counted if it had offers or was a "real" brochure)
+ * so that a store with a dead scraper would fall out of the sitemap and thereby
+ * become noticeable. That conflated two jobs and made indexing depend on a proxy
+ * for content value — flyer page count and the like. Detection now lives in
+ * /api/health `staleRetailers`, which is the right place for it, so this gate can
+ * stay simple and stable.
  *
- * 2. The flyer sub-count required only `status: ACTIVE`, and the nightly
- *    ClicFlyer import leaves behind duplicate ACTIVE flyers carrying zero
- *    offers — 60 of 79 flyers site-wide. Any store with one passed the
- *    "has enough content" gate on `flyers > 0` while rendering an empty product
- *    grid; alothaim, nesto and farm all reached the sitemap that way with 0 live
- *    offers. A flyer now only counts as content if it actually has offers, or is
- *    a real browsable brochure (a PDF or page images).
+ * The filter that DOES matter here is `country` on the supermarket.
+ * sitemap-pages.xml scoped the offer *counts* to SA but not the store, so eleven
+ * UAE retailers (lulu-ae, carrefour-ae, km-trading, aswaaq, almaya, adcoop, gala,
+ * geant, union-coop, ansar-gallery, nesto-ae) were being submitted under
+ * sa.smartcopons.com. That was the real index bloat, and it is unaffected by the
+ * simplification above — the 60-odd empty duplicate ClicFlyer flyers all belong to
+ * UAE stores, which this filter already excludes.
+ *
+ * Caveat worth keeping in mind, not enforced here: an image or PDF flyer carries
+ * no text a crawler can read, so a flyer-only store (nesto: 36 pages, farm: 64)
+ * is indexable but will not rank for its own brand query. Making those rank needs
+ * indexable text — product names, a summary, or OCR — which is separate work.
  */
 export const listVisibleRetailers = unstable_cache(
   async (country: string = DEFAULT_COUNTRY) => {
@@ -114,12 +124,9 @@ export const listVisibleRetailers = unstable_cache(
         slug: true,
         logo: true,
         updatedAt: true,
-        flyers: {
-          where: { status: 'ACTIVE', endDate: { gte: new Date() } },
+        _count: {
           select: {
-            pdfUrl: true,
-            pageImages: true,
-            _count: { select: { productOffers: true } },
+            flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
           },
         },
       },
@@ -136,22 +143,15 @@ export const listVisibleRetailers = unstable_cache(
     )
 
     return withCounts
-      .map(sm => {
-        const realFlyers = sm.flyers.filter(
-          f => f._count.productOffers > 0 || f.pdfUrl || (f.pageImages || '').trim()
-        ).length
-        const { flyers, ...rest } = sm
-        return { ...rest, realFlyers }
-      })
-      .filter(sm => sm.activeOffers >= MIN_VISIBLE_OFFERS || sm.realFlyers > 0)
+      .map(({ _count, ...rest }) => ({ ...rest, activeFlyers: _count.flyers }))
+      .filter(sm => sm.activeOffers >= MIN_VISIBLE_OFFERS || sm.activeFlyers > 0)
   },
   ['visible-retailers'],
   { revalidate: TTL_COUNTS, tags: ['offers', 'retailers'] }
 )
 
 /**
- * Content counts for one retailer, using the same definition of "real content"
- * as listVisibleRetailers.
+ * Content counts for one retailer, matching listVisibleRetailers exactly.
  *
  * Shared so a store's own page and the sitemap can never disagree about whether
  * it is thin — otherwise the sitemap could drop a store that its page still
@@ -159,27 +159,190 @@ export const listVisibleRetailers = unstable_cache(
  */
 export const retailerContentCounts = unstable_cache(
   async (supermarketId: string, country: string = DEFAULT_COUNTRY) => {
-    const [productOffers, flyerRows] = await Promise.all([
+    const [productOffers, flyers] = await Promise.all([
       prisma.productOffer.count({
         where: { ...activeOfferWhere(country), supermarketId },
       }),
-      prisma.flyer.findMany({
+      prisma.flyer.count({
         where: { supermarketId, status: 'ACTIVE', endDate: { gte: new Date() } },
-        select: {
-          pdfUrl: true,
-          pageImages: true,
-          _count: { select: { productOffers: true } },
-        },
       }),
     ])
-    const flyers = flyerRows.filter(
-      f => f._count.productOffers > 0 || f.pdfUrl || (f.pageImages || '').trim()
-    ).length
     return { productOffers, flyers }
   },
   ['retailer-content-counts'],
   { revalidate: TTL_COUNTS, tags: ['offers', 'retailers'] }
 )
+
+/**
+ * Cap how many rows any one retailer contributes to a featured section, keeping
+ * the original order otherwise.
+ *
+ * `أكبر الخصومات` is `orderBy: discountPercent desc, take: 4` with no cap, and
+ * site-wide there are exactly 12 offers above 80% off — 9 of them Nahdi, a
+ * pharmacy. So a supermarket-deals homepage led with nursing wraps, gummy
+ * vitamins and anti-dandruff shampoo, and no food at all. Verified against
+ * sourceUrl: the prices are real clearance, not a multipack extraction bug, so
+ * this is a presentation fix and there is nothing to correct in the data.
+ *
+ * Over-fetch before calling this — capping a list of 4 can only shrink it.
+ */
+export function capPerRetailer<T extends { supermarket?: { slug: string } | null }>(
+  rows: T[],
+  maxPerRetailer: number,
+  limit: number
+): T[] {
+  const seen = new Map<string, number>()
+  const out: T[] = []
+  for (const row of rows) {
+    if (out.length >= limit) break
+    const slug = row.supermarket?.slug ?? '∅'
+    const n = seen.get(slug) ?? 0
+    if (n >= maxPerRetailer) continue
+    seen.set(slug, n + 1)
+    out.push(row)
+  }
+  return out
+}
+
+/**
+ * Category slugs that are actually groceries. Used to prefer food in featured
+ * sections on a supermarket site — a pharmacy clearance item is a worse lead than
+ * a cheaper litre of milk even when its discount percentage is larger.
+ */
+const FOOD_CATEGORY_SLUGS = new Set([
+  'dairy', 'meat-poultry', 'vegetables', 'fruits', 'bakery',
+  'beverages', 'snacks', 'canned-dry',
+])
+
+/** Stable partition: food-category rows first, everything else after. */
+export function foodFirst<T extends { category?: { slug?: string | null } | null }>(rows: T[]): T[] {
+  const food: T[] = []
+  const rest: T[] = []
+  for (const r of rows) {
+    const slug = r.category?.slug
+    ;(slug && FOOD_CATEGORY_SLUGS.has(slug) ? food : rest).push(r)
+  }
+  return [...food, ...rest]
+}
+
+export interface StaleRetailer {
+  slug: string
+  /** Which detector fired. A retailer can trip both. */
+  reasons: Array<'active-flyer-zero-offers' | 'scraper-wrote-zero-rows'>
+  activeOffers: number
+  activeFlyers: number
+  lastScrapeAt: string | null
+  lastScrapeFound: number | null
+  lastScrapeCreated: number | null
+  lastScrapeSkipped: number | null
+  lastScrapeSucceeded: boolean | null
+}
+
+/**
+ * Retailers whose data pipeline looks broken.
+ *
+ * THIS is where a dead scraper gets noticed — not the sitemap gate. Al Othaim had
+ * been extracting zero offers behind an ACTIVE PDF flyer for an unknown period,
+ * and nothing anywhere surfaced it: the flyer kept the page alive, the page kept
+ * the store in the sitemap, and the scrape cron reported success.
+ *
+ * Two independent detectors:
+ *
+ *  1. `active-flyer-zero-offers` — a live flyer but no live offers. Either the
+ *     extraction is broken, or the retailer is intentionally flyer-only. Both are
+ *     worth seeing; the caller decides. nesto (36-page leaflet) and farm (64-page)
+ *     are the known-intentional cases, so they are reported rather than filtered —
+ *     hiding known cases is how the unknown ones stay hidden.
+ *  2. `scraper-wrote-zero-rows` — the scrape ran (a ScrapeLog row exists in the
+ *     window) and created nothing. Catches silent extraction failures that report
+ *     `success: true`, which is exactly what Al Othaim was doing.
+ *
+ * Not cached: this is an operational read behind a diagnostics endpoint, and a
+ * stale answer defeats the purpose.
+ */
+export async function findStaleRetailers(
+  country: string = DEFAULT_COUNTRY,
+  windowHours = 48
+): Promise<StaleRetailer[]> {
+  const since = new Date(Date.now() - windowHours * 3600_000)
+
+  const stores = await prisma.supermarket.findMany({
+    where: { isActive: true, country },
+    select: {
+      slug: true,
+      _count: {
+        select: {
+          flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
+        },
+      },
+    },
+  })
+
+  const out: StaleRetailer[] = []
+
+  for (const s of stores) {
+    const [activeOffers, log] = await Promise.all([
+      prisma.productOffer.count({
+        where: { ...activeOfferWhere(country), supermarket: { slug: s.slug } },
+      }),
+      prisma.scrapeLog.findFirst({
+        where: { supermarketSlug: s.slug, scrapedAt: { gte: since } },
+        orderBy: { scrapedAt: 'desc' },
+        select: {
+          scrapedAt: true,
+          offersFound: true,
+          offersCreated: true,
+          offersSkipped: true,
+          success: true,
+        },
+      }),
+    ])
+
+    const reasons: StaleRetailer['reasons'] = []
+    if (s._count.flyers > 0 && activeOffers === 0) reasons.push('active-flyer-zero-offers')
+
+    // "Ran but wrote zero rows" has to key off what LANDED, not what was found.
+    // Al Othaim is the reason: its scraper finds plenty of catalog entries
+    // (`offersFound` > 0) but emits every one with `price: 0`, and
+    // offer-ingest.ts rejects those as non-products — so `offersCreated` is 0
+    // every night while the run reports `success: true`. A rule keyed on
+    // `offersFound === 0` would have missed exactly the case it was built for.
+    //
+    // `offersSkipped` is the guard against false positives: a healthy retailer
+    // whose offers simply haven't changed writes 0 new rows but skips many as
+    // duplicates. Created-nothing AND skipped-nothing means it genuinely
+    // produced nothing.
+    if (log && log.offersCreated === 0 && log.offersSkipped === 0) {
+      reasons.push('scraper-wrote-zero-rows')
+    }
+
+    if (reasons.length) {
+      out.push({
+        slug: s.slug,
+        reasons,
+        activeOffers,
+        activeFlyers: s._count.flyers,
+        lastScrapeAt: log?.scrapedAt.toISOString() ?? null,
+        lastScrapeFound: log?.offersFound ?? null,
+        lastScrapeCreated: log?.offersCreated ?? null,
+        lastScrapeSkipped: log?.offersSkipped ?? null,
+        lastScrapeSucceeded: log?.success ?? null,
+      })
+    }
+  }
+
+  return out
+}
+
+/** Most recent successful scrape across all retailers, for /api/health. */
+export async function getLastScrapeAt(): Promise<string | null> {
+  const row = await prisma.scrapeLog.findFirst({
+    where: { success: true },
+    orderBy: { scrapedAt: 'desc' },
+    select: { scrapedAt: true },
+  })
+  return row?.scrapedAt.toISOString() ?? null
+}
 
 /** Product ids + lastmod for sitemap-products.xml. Was an uncached 45k-row scan. */
 export const listSitemapProducts = unstable_cache(

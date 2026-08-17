@@ -54,6 +54,7 @@ const DICT: Record<string, Entry> = {
   'nav.coupons': { ar: 'كوبونات', en: 'Coupons' },
   'nav.stores': { ar: 'المتاجر', en: 'Stores' },
   'nav.favorites': { ar: 'المفضّلة', en: 'Favourites' },
+  'nav.list': { ar: 'قائمتي', en: 'My list' },
   'search.placeholder': { ar: 'ابحث عن منتج، متجر أو تصنيف...', en: 'Search products, stores or categories…' },
   'a11y.menu': { ar: 'القائمة', en: 'Menu' },
   'a11y.changeCountry': { ar: 'تغيير الدولة', en: 'Change country' },

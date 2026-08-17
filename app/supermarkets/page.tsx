@@ -32,7 +32,7 @@ async function getSupermarkets() {
   const rows = await listVisibleRetailers(DEFAULT_COUNTRY)
   return rows.map(sm => ({
     ...sm,
-    _count: { productOffers: sm.activeOffers, flyers: sm.realFlyers },
+    _count: { productOffers: sm.activeOffers, flyers: sm.activeFlyers },
   }))
 }
 

@@ -1,11 +1,16 @@
 import { prisma } from '@/lib/db'
 import { unstable_cache } from 'next/cache'
-import { TTL_LISTING } from '@/lib/offer-queries'
+import {
+  TTL_LISTING,
+  listVisibleRetailers,
+  countAllActiveOffers,
+  capPerRetailer,
+  foodFirst,
+} from '@/lib/offer-queries'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
 import Footer from '@/components/Footer'
-import { hasEnoughContent } from '@/lib/retailer-visibility'
 import type { Metadata } from 'next'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
 import { getLang } from '@/lib/i18n-server'
@@ -38,22 +43,14 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 const getHomeData = unstable_cache(async function getHomeData() {
-  const [supermarkets, latestProducts, topDiscounts, categories, totalProducts, totalStores, endingSoon] = await Promise.all([
-    prisma.supermarket.findMany({
-      where: { isActive: true, country: DEFAULT_COUNTRY },
-      include: {
-        _count: {
-          select: {
-            productOffers: { where: { isHidden: false, country: DEFAULT_COUNTRY } },
-            flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
-          },
-        },
-      },
-      orderBy: { viewCount: 'desc' },
-      // Over-fetch: empty retailers are filtered out below, and we still want
-      // to fill the 8 slots on the homepage.
-      take: 24,
-    }),
+  const [supermarkets, latestProducts, topDiscounts, categories, totalProducts, endingSoon] = await Promise.all([
+    // Shared helper — ONE definition of a live offer, and the same visibility
+    // rule as /supermarkets, each retailer page's noindex decision and the
+    // sitemap. The inline query this replaces omitted `price > 0` and the flyer
+    // end-date bound, so these cards advertised expired stock and scraper
+    // placeholder rows: Tamimi read 24,100 against its page's 9,510, Carrefour
+    // 18,471 against 7,416, Panda 3,363 against 1,242.
+    listVisibleRetailers(DEFAULT_COUNTRY),
     prisma.productOffer.findMany({
       where: { isHidden: false, country: DEFAULT_COUNTRY, price: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
       include: {
@@ -63,14 +60,16 @@ const getHomeData = unstable_cache(async function getHomeData() {
       orderBy: { createdAt: 'desc' },
       take: 10,
     }),
+    // Over-fetch 60: capPerRetailer + foodFirst below can only shrink the list,
+    // and 4 rows of headroom is not enough to survive a cap of 2 per retailer.
     prisma.productOffer.findMany({
       where: { isHidden: false, country: DEFAULT_COUNTRY, discountPercent: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
       include: {
         supermarket: { select: { nameAr: true, slug: true, logo: true } },
-        category: { select: { nameAr: true, icon: true } },
+        category: { select: { nameAr: true, slug: true, icon: true } },
       },
       orderBy: { discountPercent: 'desc' },
-      take: 4,
+      take: 60,
     }),
     prisma.category.findMany({
       where: { isActive: true, parentId: null },
@@ -84,12 +83,9 @@ const getHomeData = unstable_cache(async function getHomeData() {
       orderBy: { order: 'asc' },
       take: 8,
     }),
-    // The banner stat must count only live offers — otherwise it advertises
-    // thousands of expired prices.
-    prisma.productOffer.count({
-      where: { isHidden: false, country: DEFAULT_COUNTRY, price: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
-    }),
-    prisma.supermarket.count({ where: { isActive: true } }),
+    // Same live-offer definition as everything else. (This one already matched;
+    // it goes through the helper so there is no second place to drift.)
+    countAllActiveOffers(DEFAULT_COUNTRY),
     // Offers whose flyer ends within three days — a "grab it before it's gone"
     // strip. Soonest-to-expire first.
     prisma.productOffer.findMany({
@@ -111,16 +107,24 @@ const getHomeData = unstable_cache(async function getHomeData() {
     }),
   ])
 
-  // Only surface retailers that actually have offers or a live flyer.
-  const visibleSupermarkets = supermarkets.filter(sm => hasEnoughContent(sm._count)).slice(0, 8)
+  // listVisibleRetailers already applies the visibility rule and orders by
+  // viewCount; the homepage just takes the first 8 slots.
+  const visibleSupermarkets = supermarkets.slice(0, 8)
+
+  // Groceries first, then at most 2 per retailer. Without this the section was 4
+  // Nahdi pharmacy items — the 9 steepest discounts on the site are all Nahdi.
+  const featuredDiscounts = capPerRetailer(foodFirst(topDiscounts), 2, 4)
 
   return {
     supermarkets: visibleSupermarkets,
     latestProducts,
-    topDiscounts,
+    topDiscounts: featuredDiscounts,
     categories,
     totalProducts,
-    totalStores,
+    // The stat bar used to read `supermarket.count({ isActive: true })` = 25,
+    // counting BOTH countries and every empty store, while the grid beneath it
+    // showed 8. Report what the site actually surfaces for this market.
+    totalStores: supermarkets.length,
     endingSoon,
   }
 }, ['home-data'], { revalidate: TTL_LISTING, tags: ['offers'] })
@@ -199,8 +203,8 @@ export default async function HomePage() {
                         )}
                       </div>
                       <span className="text-xs font-semibold text-gray-700 line-clamp-1 block">{sm.nameAr}</span>
-                      {sm._count.productOffers > 0 && (
-                        <span className="text-[10px] text-pink-600 font-medium">{sm._count.productOffers} {t('common.offer')}</span>
+                      {sm.activeOffers > 0 && (
+                        <span className="text-[10px] text-pink-600 font-medium">{sm.activeOffers} {t('common.offer')}</span>
                       )}
                     </Link>
                   ))}

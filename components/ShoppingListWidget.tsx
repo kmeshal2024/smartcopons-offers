@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useShoppingList } from '@/hooks/useShoppingList'
+import { useCartPanel } from '@/hooks/useCartPanel'
 import { currencyOf } from '@/lib/countries'
 import { useI18n } from '@/components/I18nProvider'
 
@@ -13,15 +14,16 @@ const CUR = currencyOf()
 export default function ShoppingListWidget() {
   const { t, dir } = useI18n()
   const { items, totals, remove, toggleBought, setQty, clearPurchased, clearAll } = useShoppingList()
-  const [open, setOpen] = useState(false)
+  // Shared store, because the mobile trigger now lives in MobileBottomNav.
+  const { isOpen: open, open: openPanel, close: setClosed } = useCartPanel()
 
   // Close on ESC
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setClosed()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open])
+  }, [open, setClosed])
 
   const shareWhatsApp = () => {
     const lines: string[] = [t('cart.share.title'), '']
@@ -41,11 +43,18 @@ export default function ShoppingListWidget() {
 
   return (
     <>
-      {/* Floating button */}
+      {/* Floating button — md+ ONLY.
+          On mobile this sat at `bottom-5 z-40` while the fixed bottom nav sits at
+          `bottom-0 z-50` and is 56px tall, so z-40 lost and the lower ~36px of the
+          button (icon included) rendered behind the nav: the single entry point to
+          the shopping list was half-hidden and iconless. Mobile now gets a real
+          nav item (MobileBottomNav); this survives only at breakpoints where there
+          is no bottom nav to collide with. z-50 anyway, so a future nav change
+          can't re-create the same bug. */}
       <button
-        onClick={() => setOpen(true)}
+        onClick={openPanel}
         aria-label={t('cart.title')}
-        className="fixed bottom-5 left-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#E91E8C] text-white shadow-xl shadow-pink-500/30 transition hover:scale-105 hover:brightness-110"
+        className="hidden md:flex fixed bottom-5 left-5 z-50 h-14 w-14 items-center justify-center rounded-full bg-[#E91E8C] text-white shadow-xl shadow-pink-500/30 transition hover:scale-105 hover:brightness-110"
       >
         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -64,7 +73,7 @@ export default function ShoppingListWidget() {
 
       {/* Overlay + slide-in panel */}
       {open && (
-        <div className="fixed inset-0 z-50 animate-fade-in bg-black/40" onClick={() => setOpen(false)} dir={dir}>
+        <div className="fixed inset-0 z-[60] animate-fade-in bg-black/40" onClick={setClosed} dir={dir}>
           <aside
             className="animate-slide-in-right absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
@@ -79,7 +88,7 @@ export default function ShoppingListWidget() {
                 <h2 className="text-lg font-bold">{t('cart.title')}</h2>
                 <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">{totals.units}</span>
               </div>
-              <button onClick={() => setOpen(false)} aria-label={t('common.close')} className="text-2xl leading-none">
+              <button onClick={setClosed} aria-label={t('common.close')} className="text-2xl leading-none">
                 ×
               </button>
             </header>
@@ -115,7 +124,7 @@ export default function ShoppingListWidget() {
                         <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-pink-50 text-xl">🏷️</div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className={`truncate text-sm font-semibold ${i.bought ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                        <p className={`line-clamp-2 text-sm font-semibold ${i.bought ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
                           {i.name}
                         </p>
                         {i.storeName && <p className="truncate text-xs text-gray-400">{i.storeName}</p>}
