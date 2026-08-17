@@ -14,6 +14,12 @@ export interface ListItem {
   price: number
   oldPrice?: number | null
   storeName?: string | null
+  /**
+   * Retailer slug, for matching owned coupon codes to the basket.
+   * Optional: lists saved before this existed have no slug, and the coupon
+   * surface falls back to a generic code rather than breaking.
+   */
+  storeSlug?: string | null
   image?: string | null
   qty: number
   bought: boolean

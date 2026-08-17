@@ -391,3 +391,131 @@ export const listSitemapProducts = unstable_cache(
   ['sitemap-products'],
   { revalidate: TTL_SITEMAP, tags: ['offers'] }
 )
+
+// ============================================================================
+// Owned coupon codes — a REVENUE surface, not a catalogue.
+//
+// The standalone /coupons page is gone: it produced 8,743 impressions and 4
+// clicks in three months. These helpers instead place a code at the moment of
+// purchase intent. Five owned codes shown in context beat 106 on a dead page.
+//
+// THE GATE: a code renders only when it is active, has a real affiliateUrl, and
+// has not expired. A dead code carrying the owner's name is worse than no code,
+// so every surface fails closed — no URL means nothing renders at all.
+// ============================================================================
+
+export interface RenderableCoupon {
+  id: string
+  code: string
+  title: string
+  discountText: string
+  /** Null when neither an affiliate URL nor a retailer site is known. */
+  destinationUrl: string | null
+  isExclusive: boolean
+  validUntil: Date | null
+  storeName: string
+}
+
+/**
+ * The one definition of "safe to show". Used by every coupon surface.
+ *
+ * Deliberately does NOT require an affiliateUrl. These are owned partner codes,
+ * and in the GCC programmes they run through, the CODE ITSELF is the
+ * attribution — the merchant credits the sale when it is entered at checkout,
+ * with no tracking link involved. Requiring a URL would have hidden every real
+ * code while showing none.
+ *
+ * A URL, when present, is an enhancement rather than a precondition: it lets the
+ * shopper be sent straight to the merchant. See destinationFor().
+ *
+ * Expiry is still enforced, because that is the guarantee that matters: a dead
+ * code carrying the owner's name is worse than no code.
+ */
+function renderableCouponWhere(country: string = DEFAULT_COUNTRY) {
+  return {
+    isActive: true,
+    OR: [{ validUntil: null }, { validUntil: { gt: new Date() } }],
+    store: { countries: { contains: country } },
+  }
+}
+
+/**
+ * Where "copy & shop" sends the shopper, best available first:
+ *   1. the affiliate URL, when one exists
+ *   2. the retailer's own site (we already store it on Supermarket/Store)
+ *   3. nothing — the button becomes copy-only rather than a dead link
+ */
+function destinationFor(c: any): string | null {
+  const url = c.affiliateUrl || c.supermarket?.website || c.store?.website || null
+  return typeof url === 'string' && /^https?:\/\//.test(url) ? url : null
+}
+
+function toRenderable(c: any): RenderableCoupon {
+  return {
+    id: c.id,
+    code: c.code,
+    title: c.title,
+    discountText: c.discountText,
+    destinationUrl: destinationFor(c),
+    isExclusive: c.isExclusive,
+    validUntil: c.validUntil,
+    storeName: c.supermarket?.nameAr || c.store?.name || '',
+  }
+}
+
+/**
+ * Codes for specific retailers, best first — used by the shopping-list panel,
+ * which knows which stores the shopper's basket came from.
+ *
+ * Falls back to any live owned code when none matches, so the highest-intent
+ * moment in the product is never empty just because the basket happens to be
+ * from a retailer without a code.
+ */
+export const couponsForRetailers = unstable_cache(
+  async (slugs: string[], country: string = DEFAULT_COUNTRY, take = 1) => {
+    const base = renderableCouponWhere(country)
+    const include = {
+      store: { select: { name: true, website: true } },
+      supermarket: { select: { nameAr: true, slug: true, website: true } },
+    }
+
+    const matched = slugs.length
+      ? await prisma.coupon.findMany({
+          where: { ...base, supermarket: { slug: { in: slugs } } },
+          include,
+          orderBy: [{ isExclusive: 'desc' }, { createdAt: 'desc' }],
+          take,
+        })
+      : []
+
+    if (matched.length >= take) return matched.map(toRenderable)
+
+    const filler = await prisma.coupon.findMany({
+      where: { ...base, id: { notIn: matched.map(m => m.id) } },
+      include,
+      orderBy: [{ isExclusive: 'desc' }, { createdAt: 'desc' }],
+      take: take - matched.length,
+    })
+    return [...matched, ...filler].map(toRenderable)
+  },
+  ['coupons-for-retailers'],
+  { revalidate: TTL_LISTING, tags: ['coupons'] }
+)
+
+/** Codes tied to ONE retailer. The retailer strip shows nothing without a match. */
+export const couponsForRetailer = unstable_cache(
+  async (slug: string, country: string = DEFAULT_COUNTRY, take = 2) => {
+    const rows = await prisma.coupon.findMany({
+      where: { ...renderableCouponWhere(country), supermarket: { slug } },
+      include: {
+        store: { select: { name: true, website: true } },
+        supermarket: { select: { nameAr: true, slug: true, website: true } },
+      },
+      orderBy: [{ isExclusive: 'desc' }, { createdAt: 'desc' }],
+      take,
+    })
+    return rows.map(toRenderable)
+  },
+  ['coupons-for-retailer'],
+  { revalidate: TTL_LISTING, tags: ['coupons'] }
+)

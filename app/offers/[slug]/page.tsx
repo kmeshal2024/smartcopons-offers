@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { unstable_cache } from 'next/cache'
-import { TTL_LISTING, retailerContentCounts } from '@/lib/offer-queries'
+import { TTL_LISTING, retailerContentCounts, couponsForRetailer } from '@/lib/offer-queries'
 import { notFound } from 'next/navigation'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
@@ -11,6 +11,7 @@ import { parsePageImages } from '@/lib/flyer-query'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import RetailerFilters from './RetailerFilters'
+import RetailerCouponStrip from '@/components/RetailerCouponStrip'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
 import { getLang } from '@/lib/i18n-server'
@@ -245,6 +246,11 @@ export default async function RetailerPage({ params, searchParams }: Props) {
 
   if (!data) return notFound()
 
+  // Surface (b). Only codes tied to THIS retailer — a shopper on Nahdi's page is
+  // never shown a noon code. Cached hourly; renders nothing when there is no
+  // match, which is most retailer pages until more codes are added.
+  const coupons = await couponsForRetailer(slug, DEFAULT_COUNTRY)
+
   const { supermarket, products, total, categories, activeFlyers, totalPages, currentPage } = data
   const lang = getLang()
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
@@ -421,6 +427,8 @@ export default async function RetailerPage({ params, searchParams }: Props) {
             <p className="mt-1 text-xs text-gray-400">{t('retailer.flyerSoon')}</p>
           </div>
         )}
+
+        <RetailerCouponStrip coupons={coupons} />
 
         {/* Filters + Search */}
         <RetailerFilters
