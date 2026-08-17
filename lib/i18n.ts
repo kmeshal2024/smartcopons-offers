@@ -371,14 +371,22 @@ const DICT: Record<string, Entry> = {
   'card.price': { ar: 'السعر', en: 'Price' },
   'card.was': { ar: 'كان', en: 'was' },
   'card.product': { ar: 'منتج', en: 'Product' },
+  // Coupon surfaces (a) / (b) / (c)
   'listCoupon.heading': { ar: 'كود خصم يوفّر لك أكثر', en: 'A code to save even more' },
   'listCoupon.headingStore': { ar: 'كود خصم {store}', en: '{store} discount code' },
   'listCoupon.exclusive': { ar: 'حصري', en: 'Exclusive' },
   'listCoupon.copyAndGo': { ar: 'انسخ وتسوّق', en: 'Copy & shop' },
   'listCoupon.copyOnly': { ar: 'انسخ الكود', en: 'Copy code' },
+  'listCoupon.copied': { ar: '✓ تم النسخ', en: '✓ Copied' },
   'cart.share.coupon': { ar: 'كود خصم {store}: {code}', en: '{store} discount code: {code}' },
   'retailerCoupon.heading': { ar: 'أكواد خصم لهذا المتجر', en: 'Discount codes for this store' },
-  'listCoupon.copied': { ar: '✓ تم النسخ', en: '✓ Copied' },
+  // Shareable list (D-lite)
+  'cart.share.open': { ar: 'افتح القائمة:', en: 'Open the list:' },
+  'sharedList.title': { ar: 'قائمة تسوق مشتركة', en: 'Shared shopping list' },
+  'sharedList.subtitle': { ar: '{n} منتج في هذه القائمة', en: '{n} items in this list' },
+  'sharedList.adopt': { ar: 'أضف القائمة إلى قائمتي', en: 'Add this list to mine' },
+  'sharedList.adopted': { ar: 'تمت الإضافة إلى قائمتك ✓', en: 'Added to your list ✓' },
+  'sharedList.browse': { ar: 'تصفّح عروض السوبرماركت', en: 'Browse supermarket offers' },
   'home.divider': { ar: 'عروض السعودية', en: 'KSA offers' },
 }
 

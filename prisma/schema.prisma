@@ -381,3 +381,31 @@ model AppSetting {
 
   @@map("app_settings")
 }
+
+/// A shopping list shared via WhatsApp.
+///
+/// A SNAPSHOT, not a live view. Items are denormalised into `itemsJson` rather
+/// than joined to ProductOffer, for two reasons: a shared link must not break
+/// when the weekly flyer rolls over and the offer rows are replaced, and opening
+/// a link should cost exactly one single-row read. Because a snapshot is
+/// immutable it also caches indefinitely — a link forwarded to thirty people in a
+/// family group is one database read, not thirty.
+///
+/// `id` is a 16-char CSPRNG token generated client-side, never sequential:
+/// sequential ids would let anyone enumerate other households' lists.
+model SharedList {
+  id        String   @id
+  /// JSON array of { name, price, oldPrice, qty, storeName }.
+  itemsJson String   @db.Text
+  itemCount Int      @default(0)
+  total     Float    @default(0)
+  savings   Float    @default(0)
+  /// Market the list was built in, so the reader renders the right currency.
+  country   String   @default("SA")
+  createdAt DateTime @default(now())
+  /// Swept by the cleanup-expired cron rather than adding another schedule.
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@map("shared_lists")
+}

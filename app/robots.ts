@@ -17,6 +17,10 @@ export default function robots(): MetadataRoute.Robots {
           // generateMetadata forces dynamic streaming, and the response then
           // commits a 200 before notFound() can set a 404 for unknown slugs.
           '/*?*search=',
+          // Shared shopping lists. A list can name a household's weekly shop, so
+          // it is kept out of the index entirely — belt and braces alongside the
+          // noindex tag on /list/[id] and its absence from every sitemap.
+          '/list/',
         ],
       },
     ],

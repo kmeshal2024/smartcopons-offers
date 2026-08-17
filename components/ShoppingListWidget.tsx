@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useShoppingList } from '@/hooks/useShoppingList'
 import { useCartPanel } from '@/hooks/useCartPanel'
+import { newListId, listUrl } from '@/lib/shared-list'
 import { currencyOf } from '@/lib/countries'
 import { useI18n } from '@/components/I18nProvider'
 import ListCoupon from '@/components/ListCoupon'
@@ -39,7 +40,22 @@ export default function ShoppingListWidget() {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, setClosed])
 
+  /**
+   * Share to WhatsApp, with a link that reconstitutes the list.
+   *
+   * ORDER MATTERS. window.open() must run synchronously inside the click handler
+   * — after any `await` the popup blocker kills it. So the id is minted HERE with
+   * crypto.randomUUID() (CSPRNG, never sequential), the URL is built from it
+   * immediately, WhatsApp opens, and only then is the snapshot POSTed in the
+   * background with `keepalive` so it survives navigating away.
+   *
+   * The message format is unchanged — items, store, quantities, total, savings —
+   * with one line added. That link is the point: it turns a text blob into
+   * something the recipient can open, adopt and re-share, which makes this a
+   * distribution channel rather than only a persistence mechanism.
+   */
   const shareWhatsApp = () => {
+    const id = newListId()
     const lines: string[] = [t('cart.share.title'), '']
     items.forEach((i) => {
       const mark = i.bought ? '✅' : '▫️'
@@ -50,17 +66,39 @@ export default function ShoppingListWidget() {
     lines.push(`${t('cart.share.total')} ${totals.total.toFixed(2)} ${CUR}`)
     if (totals.savings > 0) lines.push(`${t('cart.share.saved')} ${totals.savings.toFixed(2)} ${CUR}`)
     lines.push('')
-    // Surface (c) — one line, only when a live code exists. This message travels
-    // into a family group, so an irrelevant or dead code here costs more than one
-    // on a page the shopper chose to open. Same code as the panel, by construction.
+    // Coupon line — surface (c). Only when a live code exists. This message
+    // travels into a family group, so an irrelevant or dead code here costs
+    // more than one on a page the shopper chose to open. By construction, the
+    // same code as the panel above (both read useListCoupon).
     if (coupon) {
-      lines.push('')
       lines.push(`🏷️ ${t('cart.share.coupon', { store: coupon.storeName, code: coupon.code })}`)
     }
+    // Reconstitution link — D-lite. Comes AFTER the coupon so the last thing
+    // above the "via" footer is the URL the recipient will actually tap.
+    lines.push(`${t('cart.share.open')} ${listUrl(id)}`)
     lines.push('')
     lines.push(t('cart.share.via'))
+
     const url = `https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`
     window.open(url, '_blank', 'noopener,noreferrer')
+
+    // Fire-and-forget, AFTER the window is open. If it fails the link 404s but the
+    // message still carries the full list as text, so nothing is lost.
+    void fetch('/api/list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        id,
+        items: items.map((i) => ({
+          name: i.name,
+          price: i.price,
+          oldPrice: i.oldPrice ?? null,
+          qty: i.qty,
+          storeName: i.storeName ?? null,
+        })),
+      }),
+    }).catch(() => {})
   }
 
   return (
