@@ -1,58 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useI18n } from '@/components/I18nProvider'
+import type { ListCouponData } from '@/hooks/useListCoupon'
 
-interface Coupon {
-  id: string
-  code: string
-  title: string
-  discountText: string
-  destinationUrl: string | null
-  isExclusive: boolean
-  storeName: string
-}
-
-/**
- * An owned coupon code, shown directly above the WhatsApp share button.
- *
- * This is the highest purchase-intent moment in the product: the shopper has
- * assembled a real basket with a real total and is about to act on it. That is
- * why the code goes HERE rather than on a standalone page — the old /coupons
- * page produced 8,743 impressions and 4 clicks in three months, while five owned
- * codes placed in context are worth more than a hundred in a catalogue.
- *
- * Fetched only when the panel opens, never on page load, so it costs nothing on
- * views that never open the list.
- *
- * RENDERS NOTHING when there is no live code with a real affiliate URL. That is
- * the whole safety property: a dead code carrying the owner's name is worse than
- * no code at all, so every failure path here is silence.
- */
-export default function ListCoupon({ storeSlugs }: { storeSlugs: string[] }) {
+export default function ListCoupon({ coupon }: { coupon: ListCouponData | null }) {
   const { t } = useI18n()
-  const [coupon, setCoupon] = useState<Coupon | null>(null)
   const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    fetch('/api/coupons/for-list', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slugs: storeSlugs }),
-    })
-      .then(r => r.json())
-      .then(d => {
-        if (!cancelled) setCoupon(d?.coupons?.[0] ?? null)
-      })
-      .catch(() => {
-        /* silence — no coupon is the correct failure state */
-      })
-    return () => {
-      cancelled = true
-    }
-    // Re-run when the basket's retailers change, not on every quantity tweak.
-  }, [storeSlugs.join(',')])
 
   if (!coupon) return null
 

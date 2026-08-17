@@ -6,6 +6,7 @@ import { useCartPanel } from '@/hooks/useCartPanel'
 import { currencyOf } from '@/lib/countries'
 import { useI18n } from '@/components/I18nProvider'
 import ListCoupon from '@/components/ListCoupon'
+import { useListCoupon } from '@/hooks/useListCoupon'
 
 // A price list is always within one country, so the currency is resolved once
 // here rather than per row. See lib/countries.ts.
@@ -25,6 +26,11 @@ export default function ShoppingListWidget() {
     new Set(items.map((i) => i.storeSlug).filter((s): s is string => !!s))
   )
 
+  // Fetched ONCE and shared by both surfaces — the panel strip and the WhatsApp
+  // line — so the two can never offer different codes. Only runs while the panel
+  // is open, so it costs nothing on views that never open the list.
+  const coupon = useListCoupon(storeSlugs, open)
+
   // Close on ESC
   useEffect(() => {
     if (!open) return
@@ -43,6 +49,14 @@ export default function ShoppingListWidget() {
     lines.push('')
     lines.push(`${t('cart.share.total')} ${totals.total.toFixed(2)} ${CUR}`)
     if (totals.savings > 0) lines.push(`${t('cart.share.saved')} ${totals.savings.toFixed(2)} ${CUR}`)
+    lines.push('')
+    // Surface (c) — one line, only when a live code exists. This message travels
+    // into a family group, so an irrelevant or dead code here costs more than one
+    // on a page the shopper chose to open. Same code as the panel, by construction.
+    if (coupon) {
+      lines.push('')
+      lines.push(`🏷️ ${t('cart.share.coupon', { store: coupon.storeName, code: coupon.code })}`)
+    }
     lines.push('')
     lines.push(t('cart.share.via'))
     const url = `https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`
@@ -195,7 +209,7 @@ export default function ShoppingListWidget() {
                 {/* Owned coupon code — placed here deliberately: this is the
                     highest purchase-intent moment in the product. Renders
                     nothing when no live code with a real affiliate URL exists. */}
-                <ListCoupon storeSlugs={storeSlugs} />
+                <ListCoupon coupon={coupon} />
 
                 <button
                   onClick={shareWhatsApp}
