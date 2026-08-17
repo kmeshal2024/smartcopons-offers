@@ -117,7 +117,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <button
           onClick={(e) => {
             e.stopPropagation()
-            const text = `${displayName} - ${product.price.toFixed(2)} ${currencyOf(product.country)}${product.oldPrice ? ` (${t('card.was')} ${product.oldPrice.toFixed(2)})` : ''} - ${product.supermarket.nameAr}\nhttps://sa.smartcopons.com/offers/retailer/${product.supermarket.slug}`
+            const text = `${displayName} - ${product.price.toFixed(2)} ${currencyOf(product.country)}${product.oldPrice ? ` (${t('card.was')} ${product.oldPrice.toFixed(2)})` : ''} - ${product.supermarket.nameAr}\nhttps://sa.smartcopons.com/offers/${product.supermarket.slug}`
             window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
           }}
           className="absolute top-2 left-11 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-green-50"
@@ -133,7 +133,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       <div className="p-3 sm:p-3.5 flex flex-col flex-1">
         {/* Retailer name */}
         <Link
-          href={`/offers/retailer/${product.supermarket.slug}`}
+          href={`/offers/${product.supermarket.slug}`}
           className="text-[10px] sm:text-[11px] text-gray-400 hover:text-pink-600 transition-colors font-medium truncate"
         >
           {product.supermarket.nameAr}

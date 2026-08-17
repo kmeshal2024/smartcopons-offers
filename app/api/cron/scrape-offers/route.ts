@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { invalidateOffers } from '@/lib/cache-invalidation'
 import { getScraper, getAllScraperSlugs } from '@/lib/scrapers/registry'
 import { OfferIngestService } from '@/lib/services/offer-ingest'
 import { prisma } from '@/lib/db'
@@ -85,6 +86,10 @@ export async function GET(request: Request) {
     })
 
     console.log(`[Cron] ${supermarketSlug}: ${result.offers.length} found, ${ingestResult?.newOffers || 0} new`)
+
+    // Drop the public read caches so tonight's prices are live immediately
+    // rather than after the 1-6h TTL lapses. See lib/cache-invalidation.ts.
+    invalidateOffers()
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/db'
 import { buildUrlSet, XML_HEADERS, SITE_URL, type SitemapEntry } from '@/lib/sitemap-xml'
+import { listSitemapProducts } from '@/lib/offer-queries'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
 
 export const dynamic = 'force-dynamic'
@@ -16,19 +16,9 @@ export async function GET() {
   const entries: SitemapEntry[] = []
 
   try {
-    const products = await prisma.productOffer.findMany({
-      where: {
-        isHidden: false,
-        // sa.smartcopons.com only indexes the Saudi catalogue.
-        country: DEFAULT_COUNTRY,
-        price: { gt: 0 },
-        flyer: { endDate: { gte: new Date() } },
-      },
-      select: { id: true, nameAr: true, nameEn: true, updatedAt: true },
-      orderBy: { updatedAt: 'desc' },
-      // Google caps a sitemap at 50k URLs; stay well inside it.
-      take: 45000,
-    })
+    // Cached (6h) — this is a ~24k-row scan and it ran uncached on every crawler
+    // request. Capped at 45k to stay inside Google's 50k-URL sitemap limit.
+    const products = await listSitemapProducts(DEFAULT_COUNTRY)
 
     for (const p of products) {
       const name = (p.nameAr || p.nameEn || '').trim()

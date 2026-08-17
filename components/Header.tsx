@@ -33,7 +33,9 @@ export default function Header() {
   const navLinks = [
     { href: href('/'), label: t('nav.home') },
     { href: href('/offers'), label: t('nav.offers') },
-    { href: href('/coupons'), label: t('nav.coupons') },
+    // Coupons are a UAE-only surface now — the Saudi routes were retired.
+    // See next.config.js for why.
+    ...(country === 'AE' ? [{ href: href('/coupons'), label: t('nav.coupons') }] : []),
     // The retailer directory is Saudi-only for now, so it is hidden rather
     // than 404ing under /ae.
     ...(country === 'SA' ? [{ href: '/supermarkets', label: t('nav.stores') }] : []),

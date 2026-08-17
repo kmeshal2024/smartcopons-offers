@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/db'
+import { unstable_cache } from 'next/cache'
+import { TTL_PRODUCT } from '@/lib/offer-queries'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -17,9 +19,13 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-export const revalidate = 300
+// `revalidate` was inert here — the root layout reads the UI-language cookie,
+// which forces every route dynamic (next build reported this page as `ƒ`). The
+// three queries below are cached individually instead; see lib/offer-queries.ts.
+// Product pages are the crawler's deepest and most numerous target (~24k URLs in
+// sitemap-products.xml), so this is the single biggest reduction in DB wake time.
 
-async function getProduct(id: string) {
+const getProduct = unstable_cache(async function getProduct(id: string) {
   return prisma.productOffer.findFirst({
     // price 0 rows are flyer placeholders, not products — no page for them.
     // No country filter: the id is explicit, and pinning it to Saudi made
@@ -32,14 +38,14 @@ async function getProduct(id: string) {
       flyer: { select: { startDate: true, endDate: true, supermarketId: true } },
     },
   })
-}
+}, ['product'], { revalidate: TTL_PRODUCT, tags: ['offers'] })
 
 /**
  * The same item is usually sold by several retailers. Listing those side by
  * side is what makes a product page worth indexing — without it each page
  * would just restate one price.
  */
-async function getPriceComparison(name: string, excludeId: string, country: string) {
+const getPriceComparison = unstable_cache(async function getPriceComparison(name: string, excludeId: string, country: string) {
   const term = name.trim().slice(0, 40)
   if (term.length < 4) return []
 
@@ -70,9 +76,9 @@ async function getPriceComparison(name: string, excludeId: string, country: stri
     if (!perStore.has(key)) perStore.set(key, r)
   }
   return Array.from(perStore.values()).slice(0, 6)
-}
+}, ['price-comparison'], { revalidate: TTL_PRODUCT, tags: ['offers'] })
 
-async function getRelated(categoryId: string | null, excludeId: string, country: string) {
+const getRelated = unstable_cache(async function getRelated(categoryId: string | null, excludeId: string, country: string) {
   if (!categoryId) return []
   return prisma.productOffer.findMany({
     where: {
@@ -90,7 +96,7 @@ async function getRelated(categoryId: string | null, excludeId: string, country:
     orderBy: { discountPercent: 'desc' },
     take: 8,
   })
-}
+}, ['product-related'], { revalidate: TTL_PRODUCT, tags: ['offers'] })
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params

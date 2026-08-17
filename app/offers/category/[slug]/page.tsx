@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/db'
+import { unstable_cache } from 'next/cache'
+import { TTL_LISTING } from '@/lib/offer-queries'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -25,7 +27,7 @@ const SORTS: Record<string, any> = {
   ending: { flyer: { endDate: 'asc' } }, // soonest-to-expire first
 }
 
-async function getCategoryData(slug: string, sort: string) {
+const getCategoryData = unstable_cache(async function getCategoryData(slug: string, sort: string) {
   const category = await prisma.category.findUnique({
     where: { slug },
     select: { id: true, nameAr: true, nameEn: true, icon: true },
@@ -54,7 +56,7 @@ async function getCategoryData(slug: string, sort: string) {
   ])
 
   return { category, products, total }
-}
+}, ['category-page'], { revalidate: TTL_LISTING, tags: ['offers'] })
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params

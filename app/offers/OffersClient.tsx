@@ -431,7 +431,6 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
               <option value="price-low">{t('sort.priceLow')}</option>
               <option value="price-high">{t('sort.priceHigh')}</option>
               <option value="newest">{t('sort.newest')}</option>
-              <option value="popular">{t('sort.popular')}</option>
             </select>
             <button
               onClick={() => setShowMobileFilters(!showMobileFilters)}

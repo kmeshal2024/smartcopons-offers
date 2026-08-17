@@ -1,5 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "//regions": "Neon lives in eu-central-1 (Frankfurt). Without this, functions default to iad1 (Washington) and every query crosses the Atlantic — ~180ms RTT, which was most of the homepage TTFB. Five source comments already claimed this was configured; it was not.",
+  "regions": ["fra1"],
   "crons": [
     {
       "path": "/api/cron/scrape-offers?supermarket=panda",

@@ -15,11 +15,16 @@ export const metadata: Metadata = {
   title: 'عروض السوبرماركت اليوم في السعودية',
   description: 'تصفح أحدث عروض السوبرماركت في السعودية. عروض الدانوب، بنده، كارفور، لولو، التميمي. أسعار مخفضة يومياً على المنتجات الغذائية والمنزلية.',
   keywords: 'عروض اليوم, عروض السوبرماركت, خصومات, عروض بنده اليوم, عروض كارفور اليوم, عروض الدانوب, عروض التميمي, عروض لولو',
+  // This page's filters and sorts all live in query strings (?category=, ?sort=,
+  // ?city=, ?minPrice=), so without a canonical every combination was a separate
+  // indexable URL for the same listing.
+  alternates: { canonical: 'https://sa.smartcopons.com/offers' },
   openGraph: {
     title: 'عروض السوبرماركت اليوم في السعودية',
     description: 'أفضل العروض والخصومات من السوبرماركت في السعودية',
     locale: 'ar_SA',
     type: 'website',
+    url: 'https://sa.smartcopons.com/offers',
   },
 }
 

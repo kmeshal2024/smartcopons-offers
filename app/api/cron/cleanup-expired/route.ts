@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { invalidateOffers } from '@/lib/cache-invalidation'
 import { prisma } from '@/lib/db'
 import { isAuthorizedCron } from '@/lib/cron-auth'
 
@@ -64,6 +65,9 @@ export async function GET(request: Request) {
     const result = await prisma.flyer.deleteMany({
       where: { id: { in: candidates.map(c => c.id) } },
     })
+
+    // Cascaded deletes remove offers that cached listings may still reference.
+    if (result.count > 0) invalidateOffers()
 
     return NextResponse.json({
       success: true,

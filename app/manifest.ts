@@ -28,7 +28,6 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       { name: 'العروض', url: '/offers', description: 'أحدث عروض السوبرماركت' },
-      { name: 'الكوبونات', url: '/coupons', description: 'كوبونات وأكواد الخصم' },
       { name: 'ينتهي قريباً', url: '/offers?sort=ending', description: 'عروض على وشك الانتهاء' },
     ],
   }

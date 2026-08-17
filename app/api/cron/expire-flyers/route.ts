@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { invalidateOffers } from '@/lib/cache-invalidation'
 import { prisma } from '@/lib/db'
 import { isAuthorizedCron } from '@/lib/cron-auth'
 
@@ -26,6 +27,9 @@ export async function GET(request: Request) {
       },
       data: { status: 'EXPIRED' },
     })
+
+    // Expiring a flyer removes its offers from every listing — publish that now.
+    if (result.count > 0) invalidateOffers()
 
     return NextResponse.json({
       success: true,

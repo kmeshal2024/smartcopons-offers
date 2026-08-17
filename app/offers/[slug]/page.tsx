@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/db'
+import { unstable_cache } from 'next/cache'
+import { TTL_LISTING, retailerContentCounts } from '@/lib/offer-queries'
 import { notFound } from 'next/navigation'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
@@ -19,11 +21,44 @@ interface Props {
   searchParams: Promise<{ sort?: string; category?: string; page?: string; search?: string }>
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+/**
+ * Path segments that are siblings of this dynamic route. A retailer whose slug
+ * were one of these would shadow a real page, so the store lookup is skipped and
+ * the route 404s instead.
+ *
+ * `Supermarket.slug` and `Category.slug` are `@unique` only within their own
+ * tables, so nothing at the DB level prevents a retailer slug from matching a
+ * category slug. That case is harmless here — categories live one segment deeper
+ * at /offers/category/{slug} — but a retailer literally slugged "category" or
+ * "retailer" is not, hence this guard. The old rewrite used a
+ * `(?!retailer|category)` lookahead, which over-matched: it also rejected any
+ * slug merely *starting* with those words, so a store slugged "category-king"
+ * would have 404'd on its own canonical URL.
+ */
+const RESERVED_SLUGS = new Set(['category', 'retailer'])
+
+/**
+ * Canonical URL for this route. Retailer pages are served from /offers/{slug};
+ * /offers/retailer/{slug} 301s here (see next.config.js).
+ *
+ * Paginated views self-canonicalise. They previously all collapsed onto page 1 —
+ * `generateMetadata` never read searchParams — which de-indexed 51 of Panda's 52
+ * pages, ~395 of Tamimi's and ~308 of Carrefour's, taking their product text out
+ * of the index with them.
+ */
+function retailerUrl(slug: string, page = 1) {
+  const base = `https://sa.smartcopons.com/offers/${slug}`
+  return page > 1 ? `${base}?page=${page}` : base
+}
+
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params
-  const supermarket = await prisma.supermarket.findUnique({
-    where: { slug },
-  })
+  const sp = await searchParams
+  const page = Math.max(1, parseInt(sp.page || '1') || 1)
+
+  const supermarket = RESERVED_SLUGS.has(slug)
+    ? null
+    : await prisma.supermarket.findUnique({ where: { slug } })
 
   // The page component calls notFound() and the correct "not found" body is
   // rendered, but this route commits a 200 before the status can be set — the
@@ -43,50 +78,59 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   // A near-empty retailer page is thin content — keep it out of the index until
   // the scraper fills it (or a flyer is uploaded), so it can't drag down
-  // site-wide quality. Same rule as the public listings.
-  const [offerCount, flyerCount] = await Promise.all([
-    prisma.productOffer.count({
-      where: { supermarketId: supermarket.id, isHidden: false, country: DEFAULT_COUNTRY },
-    }),
-    prisma.flyer.count({
-      where: { supermarketId: supermarket.id, status: 'ACTIVE', endDate: { gte: new Date() } },
-    }),
-  ])
-  const isEmpty = !hasEnoughContent({ productOffers: offerCount, flyers: flyerCount })
+  // site-wide quality. Same rule as the public listings and the sitemap, via the
+  // shared cached helper: the offer count now excludes expired flyers and
+  // price-0 placeholder rows, and an ACTIVE flyer only counts as content if it
+  // has offers or is a real browsable brochure. Previously three SA stores
+  // (alothaim, nesto, farm) declared themselves indexable on the strength of an
+  // empty ACTIVE flyer while rendering zero products.
+  const counts = await retailerContentCounts(supermarket.id, DEFAULT_COUNTRY)
+  const isEmpty = !hasEnoughContent(counts)
+
+  const canonical = retailerUrl(supermarket.slug, page)
+  const pageSuffix = page > 1 ? ` — صفحة ${page}` : ''
 
   return {
     // The root layout appends `| SmartCopons` — don't repeat the brand here.
-    title: `عروض ${supermarket.nameAr} اليوم ${new Date().getFullYear()} | خصومات ${supermarket.nameAr} الأسبوعية`,
+    title: `عروض ${supermarket.nameAr} اليوم ${new Date().getFullYear()}${pageSuffix} | خصومات ${supermarket.nameAr} الأسبوعية`,
+    // Deep pages stay indexable AND followable. They are not thin — each carries
+    // 24 real products with names and prices — and the point of crawling them is
+    // discovery of the ~24k product pages they link to. A long-lived `noindex`
+    // gets crawled progressively less over time, which would work against exactly
+    // that. `nofollow` is never correct here.
     robots: isEmpty ? { index: false, follow: true } : undefined,
     description: `تصفح أحدث عروض وخصومات ${supermarket.nameAr} في السعودية. عروض يومية وأسبوعية على المنتجات الغذائية والمنزلية. قارن الأسعار ووفّر أكثر.`,
     keywords: `عروض ${supermarket.nameAr}, عروض ${supermarket.nameAr} اليوم, خصومات ${supermarket.nameAr}, عروض ${supermarket.nameAr} الاسبوعية, ${supermarket.name} offers, ${supermarket.name} deals KSA, عروض السوبرماركت`,
-    alternates: {
-      canonical: `https://sa.smartcopons.com/offers/${supermarket.slug}`,
-    },
+    alternates: { canonical },
     openGraph: {
       title: `عروض ${supermarket.nameAr} اليوم - أفضل الخصومات الأسبوعية`,
       description: `أحدث العروض والخصومات من ${supermarket.nameAr} في السعودية`,
       locale: 'ar_SA',
       type: 'website',
-      url: `https://sa.smartcopons.com/offers/${supermarket.slug}`,
+      url: canonical,
     },
   }
 }
 
-export const revalidate = 60
+// The `revalidate` export that used to sit here was inert: the root layout reads
+// the UI-language cookie, which opts every route out of static rendering, so
+// `next build` reported this page as `ƒ Dynamic` and responses went out
+// `no-store`. Caching now happens at the query layer instead — see
+// lib/offer-queries.ts for why that was chosen over an /[lang] restructure.
 
-async function getRetailerData(slug: string, sort: string, categorySlug: string, page: number, search: string) {
+async function loadRetailerData(slug: string, sort: string, categorySlug: string, page: number, search: string) {
+  if (RESERVED_SLUGS.has(slug)) return null
+
   const supermarket = await prisma.supermarket.findUnique({
     where: { slug },
   })
 
   if (!supermarket) return null
 
-  // Increment view count (fire-and-forget)
-  prisma.supermarket.update({
-    where: { id: supermarket.id },
-    data: { viewCount: { increment: 1 } },
-  }).catch(() => {})
+  // The fire-and-forget `supermarket.viewCount` increment that used to sit here
+  // is gone. It was a write on every render of a page with no CDN caching, so it
+  // pinned the Neon compute awake — and it only fed the retailer ordering on the
+  // homepage and store directory, which is fine frozen.
 
   const limit = 24
   const skip = (page - 1) * limit
@@ -120,7 +164,12 @@ async function getRetailerData(slug: string, sort: string, categorySlug: string,
     case 'price-low': orderBy = { price: 'asc' }; break
     case 'price-high': orderBy = { price: 'desc' }; break
     case 'discount': orderBy = { discountPercent: 'desc' }; break
-    case 'popular': orderBy = { viewCount: 'desc' }; break
+    // `popular` is retired: viewCount never measured views (see app/page.tsx) and
+    // is now frozen. The control is gone from the UI, but the param is still
+    // accepted and silently resolves to the default sort — ?sort=popular URLs may
+    // be indexed or bookmarked, and a shopper following one should get a normal
+    // page of offers, not an error and not a ranking built on a discredited
+    // column. Deliberately no `case 'popular'`; it falls through to the default.
   }
 
   const [products, total, categories, activeFlyers] = await Promise.all([
@@ -167,6 +216,23 @@ async function getRetailerData(slug: string, sort: string, categorySlug: string,
   }
 }
 
+const loadRetailerDataCached = unstable_cache(loadRetailerData, ['retailer-page'], {
+  revalidate: TTL_LISTING,
+  tags: ['offers'],
+})
+
+/**
+ * Search results deliberately bypass the cache: `search` is unbounded user input,
+ * so caching on it would let anyone mint cache entries. robots.txt already
+ * excludes `?*search=` from crawling, so the crawler and default-browse paths —
+ * the traffic that was keeping Postgres awake — are the cached ones.
+ */
+function getRetailerData(slug: string, sort: string, categorySlug: string, page: number, search: string) {
+  return search
+    ? loadRetailerData(slug, sort, categorySlug, page, search)
+    : loadRetailerDataCached(slug, sort, categorySlug, page, '')
+}
+
 export default async function RetailerPage({ params, searchParams }: Props) {
   const { slug } = await params
   const sp = await searchParams
@@ -184,14 +250,16 @@ export default async function RetailerPage({ params, searchParams }: Props) {
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
   const dateLocale = lang === 'en' ? 'en-GB' : 'ar-SA'
 
-  // Helper to build pagination URLs
+  // Helper to build pagination URLs. Page 1 is the bare canonical URL — emitting
+  // `?page=1` would create a second address for the same content.
   function buildPageUrl(pageNum: number) {
     const params = new URLSearchParams()
     if (sort !== 'newest') params.set('sort', sort)
     if (category) params.set('category', category)
     if (search) params.set('search', search)
-    params.set('page', String(pageNum))
-    return `/offers/retailer/${slug}?${params.toString()}`
+    if (pageNum > 1) params.set('page', String(pageNum))
+    const qs = params.toString()
+    return `/offers/${slug}${qs ? `?${qs}` : ''}`
   }
 
   // Structured data for SEO — Store + ItemList for rich results
@@ -380,7 +448,7 @@ export default async function RetailerPage({ params, searchParams }: Props) {
             </p>
             {(search || category) && (
               <Link
-                href={`/offers/retailer/${slug}`}
+                href={`/offers/${slug}`}
                 className="inline-block mt-4 text-pink-600 hover:text-pink-700 text-sm font-medium transition"
               >
                 {t('retailer.clearFiltersSearch')}
@@ -413,32 +481,46 @@ export default async function RetailerPage({ params, searchParams }: Props) {
                 {currentPage > 1 && (
                   <Link
                     href={buildPageUrl(currentPage - 1)}
-                    className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition"
+                    className="h-11 px-4 inline-flex items-center rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition"
                   >
                     {t('common.prev')}
                   </Link>
                 )}
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const p = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i
-                  if (p < 1 || p > totalPages) return null
-                  return (
-                    <Link
-                      key={p}
-                      href={buildPageUrl(p)}
-                      className={`w-9 h-9 rounded-lg text-sm font-medium flex items-center justify-center transition ${
-                        p === currentPage
-                          ? 'bg-pink-600 text-white'
-                          : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {p}
-                    </Link>
-                  )
-                })}
+                {/* A 5-wide sliding window meant page 52 was ~10 hops from page 1,
+                    so the deepest product listings were effectively undiscoverable.
+                    Milestones (first, last, and decade steps) put every page within
+                    two hops without turning this into a hundred links. */}
+                {(() => {
+                  const window = [currentPage - 1, currentPage, currentPage + 1]
+                  const milestones = [1, totalPages]
+                  for (let p = 10; p < totalPages; p += 10) milestones.push(p)
+                  const pages = Array.from(new Set([...window, ...milestones]))
+                    .filter(p => p >= 1 && p <= totalPages)
+                    .sort((a, b) => a - b)
+
+                  return pages.map((p, i) => (
+                    <span key={p} className="flex items-center gap-1.5">
+                      {i > 0 && p - pages[i - 1] > 1 && (
+                        <span className="text-gray-300 text-sm select-none">…</span>
+                      )}
+                      <Link
+                        href={buildPageUrl(p)}
+                        aria-current={p === currentPage ? 'page' : undefined}
+                        className={`min-w-11 h-11 px-2 rounded-lg text-sm font-medium flex items-center justify-center transition ${
+                          p === currentPage
+                            ? 'bg-pink-600 text-white'
+                            : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {p}
+                      </Link>
+                    </span>
+                  ))
+                })()}
                 {currentPage < totalPages && (
                   <Link
                     href={buildPageUrl(currentPage + 1)}
-                    className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition"
+                    className="h-11 px-4 inline-flex items-center rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition"
                   >
                     {t('common.next')}
                   </Link>

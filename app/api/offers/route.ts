@@ -288,9 +288,10 @@ export async function GET(request: Request) {
       case 'discount':
         orderBy = DISCOUNT_FIRST
         break
-      case 'popular':
-        orderBy = { viewCount: 'desc' }
-        break
+      // `popular` is retired — viewCount never measured views and is now frozen
+      // (see app/page.tsx). The param is still accepted so indexed and bookmarked
+      // URLs keep working; it falls through to the default discount-first order
+      // rather than erroring or ranking on a discredited column.
       case 'ending':
         // Soonest-to-expire first. The where clause already excludes offers
         // whose flyer has ended, so every row here has a future endDate.
@@ -333,14 +334,19 @@ export async function GET(request: Request) {
       ])
     }
 
-    // Increment view counts (async, don't wait)
-    if (products.length > 0) {
-      const productIds = products.map(p => p.id)
-      prisma.productOffer.updateMany({
-        where: { id: { in: productIds } },
-        data: { viewCount: { increment: 1 } },
-      }).catch(() => {})
-    }
+    // NOTE: this route used to fire `updateMany({ viewCount: increment 1 })` over
+    // every row it returned. That made "الأكثر مشاهدة" measure how often a row
+    // appeared in a listing response — a function of sort order and pagination,
+    // not of anyone looking at anything. It was self-reinforcing: high-ranked
+    // rows got returned more, so they incremented more, so they ranked higher.
+    // Meanwhile /product/[id] — the only page where a real view happens — never
+    // incremented at all.
+    //
+    // It was also a write on every read, which cannot be served from cache and
+    // kept the Neon compute from suspending. Removed. `viewCount` now holds
+    // frozen historical values; see the note on the homepage "most viewed"
+    // section. A real view signal needs a client-side beacon, which is pending a
+    // decision, NOT a server-side write here.
 
     const response = NextResponse.json({
       products,

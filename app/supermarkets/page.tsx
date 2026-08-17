@@ -1,8 +1,7 @@
-import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { hasEnoughContent } from '@/lib/retailer-visibility'
+import { listVisibleRetailers } from '@/lib/offer-queries'
 import type { Metadata } from 'next'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
 import { getLang } from '@/lib/i18n-server'
@@ -12,32 +11,29 @@ export const metadata: Metadata = {
   title: 'عروض السوبرماركت في السعودية',
   description: 'تصفح عروض وخصومات جميع السوبرماركت في السعودية - بنده، كارفور، لولو، الدانوب وغيرها. عروض يومية وأسبوعية محدثة.',
   keywords: 'عروض بنده, عروض كارفور, عروض لولو, عروض الدانوب, عروض السوبرماركت السعودية, خصومات',
+  alternates: { canonical: 'https://sa.smartcopons.com/supermarkets' },
+  openGraph: {
+    title: 'عروض السوبرماركت في السعودية',
+    description: 'تصفح عروض وخصومات جميع السوبرماركت في السعودية',
+    locale: 'ar_SA',
+    type: 'website',
+    url: 'https://sa.smartcopons.com/supermarkets',
+  },
 }
 
 // Dynamic, not build-prerendered: the Neon DB auto-suspends and a build during
 // a suspend can't reach it. Functions sit next to the DB in Frankfurt.
 export const dynamic = 'force-dynamic'
 
+// Uses the shared cached helper, so this directory, each retailer page's own
+// noindex decision and sitemap-pages.xml all apply one definition of "has real
+// content" — and none of them re-queries Postgres per view.
 async function getSupermarkets() {
-  const all = await prisma.supermarket.findMany({
-    where: { isActive: true, country: DEFAULT_COUNTRY },
-    include: {
-      _count: {
-        select: {
-          flyers: {
-            where: { status: 'ACTIVE', endDate: { gte: new Date() } },
-          },
-          productOffers: {
-            where: { isHidden: false, country: DEFAULT_COUNTRY },
-          },
-        },
-      },
-    },
-    orderBy: { viewCount: 'desc' },
-  })
-
-  // Hide retailers without real content — see lib/retailer-visibility.ts.
-  return all.filter(sm => hasEnoughContent(sm._count))
+  const rows = await listVisibleRetailers(DEFAULT_COUNTRY)
+  return rows.map(sm => ({
+    ...sm,
+    _count: { productOffers: sm.activeOffers, flyers: sm.realFlyers },
+  }))
 }
 
 export default async function SupermarketsPage() {
@@ -65,7 +61,7 @@ export default async function SupermarketsPage() {
           {supermarkets.map(sm => (
             <Link
               key={sm.id}
-              href={`/offers/retailer/${sm.slug}`}
+              href={`/offers/${sm.slug}`}
               className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-pink-200 transition-all duration-200 p-5 text-center group"
             >
               {/* Logo */}

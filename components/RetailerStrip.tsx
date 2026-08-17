@@ -39,7 +39,7 @@ export default function RetailerStrip() {
         {supermarkets.map(supermarket => (
           <Link
             key={supermarket.id}
-            href={`/offers/retailer/${supermarket.slug}`}
+            href={`/offers/${supermarket.slug}`}
             className="flex-shrink-0 group"
           >
             <div className="relative w-20 h-20 bg-gray-50 rounded-lg border-2 border-gray-200 group-hover:border-pink-500 transition-all overflow-hidden">

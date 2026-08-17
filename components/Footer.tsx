@@ -66,9 +66,6 @@ export default async function Footer() {
               <Link href="/supermarkets" className="block text-gray-400 hover:text-white transition">
                 {t(lang, 'nav.stores')}
               </Link>
-              <Link href="/coupons" className="block text-gray-400 hover:text-white transition">
-                {t(lang, 'footer.couponsFull')}
-              </Link>
               {/* App stores require a reachable privacy policy link. */}
               <Link href="/privacy" className="block text-gray-400 hover:text-white transition">
                 {t(lang, 'footer.privacy')}
@@ -83,7 +80,7 @@ export default async function Footer() {
               {supermarkets.map(sm => (
                 <Link
                   key={sm.slug}
-                  href={`/offers/retailer/${sm.slug}`}
+                  href={`/offers/${sm.slug}`}
                   className="block text-gray-400 hover:text-white transition"
                 >
                   {t(lang, 'common.offersOf', { name: sm.nameAr })}

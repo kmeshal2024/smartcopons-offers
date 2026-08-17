@@ -35,7 +35,7 @@ export default function RetailerFilters({
     if (category) params.set('category', category)
     if (search) params.set('search', search)
     const qs = params.toString()
-    return `/offers/retailer/${slug}${qs ? `?${qs}` : ''}`
+    return `/offers/${slug}${qs ? `?${qs}` : ''}`
   }
 
   const handleSearch = (e?: React.FormEvent) => {
@@ -94,7 +94,6 @@ export default function RetailerFilters({
             <option value="price-low">{t('sort.priceLow')}</option>
             <option value="price-high">{t('sort.priceHigh')}</option>
             <option value="discount">{t('sort.discount')}</option>
-            <option value="popular">{t('sort.popular')}</option>
           </select>
         </div>
       </div>
@@ -156,7 +155,7 @@ export default function RetailerFilters({
             </span>
           )}
           <button
-            onClick={() => { setSearchValue(''); router.push(`/offers/retailer/${slug}`) }}
+            onClick={() => { setSearchValue(''); router.push(`/offers/${slug}`) }}
             className="text-[11px] text-gray-400 hover:text-red-500 transition mr-1"
           >
             {t('common.clearAll')}
