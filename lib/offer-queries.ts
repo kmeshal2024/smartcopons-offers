@@ -409,20 +409,45 @@ export interface RenderableCoupon {
   code: string
   title: string
   discountText: string
-  affiliateUrl: string
+  /** Null when neither an affiliate URL nor a retailer site is known. */
+  destinationUrl: string | null
   isExclusive: boolean
   validUntil: Date | null
   storeName: string
 }
 
-/** The one definition of "safe to show". Used by every coupon surface. */
+/**
+ * The one definition of "safe to show". Used by every coupon surface.
+ *
+ * Deliberately does NOT require an affiliateUrl. These are owned partner codes,
+ * and in the GCC programmes they run through, the CODE ITSELF is the
+ * attribution — the merchant credits the sale when it is entered at checkout,
+ * with no tracking link involved. Requiring a URL would have hidden every real
+ * code while showing none.
+ *
+ * A URL, when present, is an enhancement rather than a precondition: it lets the
+ * shopper be sent straight to the merchant. See destinationFor().
+ *
+ * Expiry is still enforced, because that is the guarantee that matters: a dead
+ * code carrying the owner's name is worse than no code.
+ */
 function renderableCouponWhere(country: string = DEFAULT_COUNTRY) {
   return {
     isActive: true,
-    affiliateUrl: { not: null },
     OR: [{ validUntil: null }, { validUntil: { gt: new Date() } }],
     store: { countries: { contains: country } },
   }
+}
+
+/**
+ * Where "copy & shop" sends the shopper, best available first:
+ *   1. the affiliate URL, when one exists
+ *   2. the retailer's own site (we already store it on Supermarket/Store)
+ *   3. nothing — the button becomes copy-only rather than a dead link
+ */
+function destinationFor(c: any): string | null {
+  const url = c.affiliateUrl || c.supermarket?.website || c.store?.website || null
+  return typeof url === 'string' && /^https?:\/\//.test(url) ? url : null
 }
 
 function toRenderable(c: any): RenderableCoupon {
@@ -431,7 +456,7 @@ function toRenderable(c: any): RenderableCoupon {
     code: c.code,
     title: c.title,
     discountText: c.discountText,
-    affiliateUrl: c.affiliateUrl as string,
+    destinationUrl: destinationFor(c),
     isExclusive: c.isExclusive,
     validUntil: c.validUntil,
     storeName: c.supermarket?.nameAr || c.store?.name || '',
@@ -450,8 +475,8 @@ export const couponsForRetailers = unstable_cache(
   async (slugs: string[], country: string = DEFAULT_COUNTRY, take = 1) => {
     const base = renderableCouponWhere(country)
     const include = {
-      store: { select: { name: true } },
-      supermarket: { select: { nameAr: true, slug: true } },
+      store: { select: { name: true, website: true } },
+      supermarket: { select: { nameAr: true, slug: true, website: true } },
     }
 
     const matched = slugs.length
@@ -483,8 +508,8 @@ export const couponsForRetailer = unstable_cache(
     const rows = await prisma.coupon.findMany({
       where: { ...renderableCouponWhere(country), supermarket: { slug } },
       include: {
-        store: { select: { name: true } },
-        supermarket: { select: { nameAr: true, slug: true } },
+        store: { select: { name: true, website: true } },
+        supermarket: { select: { nameAr: true, slug: true, website: true } },
       },
       orderBy: [{ isExclusive: 'desc' }, { createdAt: 'desc' }],
       take,

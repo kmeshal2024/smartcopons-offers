@@ -373,6 +373,7 @@ const DICT: Record<string, Entry> = {
   'listCoupon.headingStore': { ar: 'كود خصم {store}', en: '{store} discount code' },
   'listCoupon.exclusive': { ar: 'حصري', en: 'Exclusive' },
   'listCoupon.copyAndGo': { ar: 'انسخ وتسوّق', en: 'Copy & shop' },
+  'listCoupon.copyOnly': { ar: 'انسخ الكود', en: 'Copy code' },
   'listCoupon.copied': { ar: '✓ تم النسخ', en: '✓ Copied' },
   'home.divider': { ar: 'عروض السعودية', en: 'KSA offers' },
 }

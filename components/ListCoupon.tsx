@@ -8,7 +8,7 @@ interface Coupon {
   code: string
   title: string
   discountText: string
-  affiliateUrl: string
+  destinationUrl: string | null
   isExclusive: boolean
   storeName: string
 }
@@ -57,16 +57,21 @@ export default function ListCoupon({ storeSlugs }: { storeSlugs: string[] }) {
   if (!coupon) return null
 
   /**
-   * Copy the code AND open the merchant, in that order.
+   * Copy the code, and open the merchant when we know where that is.
+   *
+   * These are owned partner codes: the CODE is the attribution, so copying alone
+   * is a complete action and the button stays useful with no URL at all. When a
+   * destination IS known it opens too, saving the shopper a search.
    *
    * window.open must run synchronously inside the click handler — after any
    * `await` the popup blocker kills it. The previous coupon UI copied the code
-   * and left the shopper holding it with nowhere to go, so the affiliate click
-   * never happened at all. Clipboard write is fired after, and its failure is
-   * irrelevant to the navigation.
+   * and left the shopper holding it with nowhere to go; the clipboard write is
+   * fired after, and its failure is irrelevant to the navigation.
    */
   const copyAndGo = () => {
-    window.open(coupon.affiliateUrl, '_blank', 'noopener,noreferrer')
+    if (coupon.destinationUrl) {
+      window.open(coupon.destinationUrl, '_blank', 'noopener,noreferrer')
+    }
     navigator.clipboard?.writeText(coupon.code).catch(() => {})
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -99,7 +104,11 @@ export default function ListCoupon({ storeSlugs }: { storeSlugs: string[] }) {
             copied ? 'bg-green-600 text-white' : 'bg-[#E91E8C] text-white hover:brightness-110'
           }`}
         >
-          {copied ? t('listCoupon.copied') : t('listCoupon.copyAndGo')}
+          {copied
+            ? t('listCoupon.copied')
+            : coupon.destinationUrl
+              ? t('listCoupon.copyAndGo')
+              : t('listCoupon.copyOnly')}
         </button>
       </div>
 
