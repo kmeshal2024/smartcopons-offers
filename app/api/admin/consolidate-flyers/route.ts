@@ -69,7 +69,10 @@ async function run(apply: boolean) {
     demote: Array<{ id: string; offers: number; startDate: string }>
   }> = []
 
-  for (const [, arr] of byRetailer) {
+  // Array.from rather than `for..of` on the Map iterator — tsconfig targets a
+  // pre-ES2015 iteration mode, so iterating a Map directly needs
+  // --downlevelIteration. Same lesson as the shared-list id generator.
+  for (const arr of Array.from(byRetailer.values())) {
     if (arr.length < 2) continue
 
     // Winner: most offers, then newest startDate, then newest createdAt.
