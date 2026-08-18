@@ -1,0 +1,104 @@
+# Weekly pg_dump of the production database.
+#
+# WHY THIS EXISTS
+# ---------------
+# There has been no backup of the Neon database until now. The compute-exhaustion
+# incident earlier this year showed the operational path could go from healthy to
+# 96 percent 500s in one day; recovery worked because the data itself was intact,
+# but a schema mistake or an accidental delete would have had nothing to fall
+# back on. This is that fallback.
+#
+# WHAT THIS DOESN'T DO
+# --------------------
+# GitHub Actions artifacts, not off-site cold storage. If GitHub itself is
+# unavailable the dumps go with it. Fine as a first line, but if this ever needs
+# to protect against catastrophic loss the artifact should also be copied to
+# S3 / R2 / Vercel Blob.
+#
+# COST
+# ----
+# One pg_dump per week. Neon suspends after 5 minutes idle; a dump keeps the
+# compute awake for ~30-60 seconds against a ~80MB database. Well within free
+# tier and does not affect the daily cron scrape budget (this runs at 02:00 UTC,
+# an hour before the earliest daily scraper).
+
+name: DB backup
+
+on:
+  schedule:
+    # 02:00 UTC Sunday = 05:00 Riyadh. Runs BEFORE the daily scrape window
+    # (03:00-08:00 UTC) so the two never contend for the same connection,
+    # and picks a low-traffic hour for the shopper side.
+    - cron: '0 2 * * 0'
+  # Also allow manual runs from the Actions tab, so a dump can be taken on
+  # demand ahead of a risky change.
+  workflow_dispatch: {}
+
+# Only one at a time. Prevents overlap if a run is triggered manually while a
+# scheduled one is already in flight.
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install PostgreSQL 16 client
+        # ubuntu-latest ships with an older pg_dump; Neon runs Postgres 16, and
+        # pg_dump must be equal or newer than the server or it aborts. Pinning
+        # 16 explicitly so an image update on GitHub cannot silently regress.
+        run: |
+          set -euo pipefail
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/pgdg.gpg
+          echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client-16
+          pg_dump --version
+
+      - name: Dump database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::DATABASE_URL repository secret is not set. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+          STAMP=$(date -u +%Y-%m-%dT%H%MZ)
+          FILE="smartcopons-${STAMP}.sql.gz"
+
+          # --no-owner / --no-acl: makes the dump restorable to any target
+          #   without needing the exact same roles that exist in Neon.
+          # --no-tablespaces: Neon manages its own; the concept doesn't restore.
+          # --format=plain then gzip: a text dump can be inspected and partially
+          #   restored, and gzip -9 typically hits ~5x on this shape of data.
+          pg_dump "${DATABASE_URL}" \
+            --no-owner --no-acl --no-tablespaces \
+            --format=plain \
+          | gzip -9 > "${FILE}"
+
+          # Refuse to publish a suspiciously small dump. An empty or 1KB file is
+          # far more likely to be a silent failure than a real backup.
+          BYTES=$(stat -c %s "${FILE}")
+          if [ "${BYTES}" -lt 100000 ]; then
+            echo "::error::Dump is only ${BYTES} bytes — likely a silent failure. Refusing to publish."
+            exit 2
+          fi
+
+          echo "FILE=${FILE}" >> "$GITHUB_ENV"
+          echo "Dump size: $(du -h "${FILE}" | cut -f1) (${BYTES} bytes)"
+
+      - name: Upload as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILE }}
+          path: ${{ env.FILE }}
+          # 90 days matches SharedList retention and gives roughly three months
+          # of restore points in the free-tier storage window.
+          retention-days: 90
+          if-no-files-found: error
