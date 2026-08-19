@@ -1,17 +1,40 @@
 import { NextResponse } from 'next/server'
+import { unstable_cache } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { countryFromRequest } from '@/lib/countries'
-import { arabicContainsFilter, isNegatedMatch } from '@/lib/arabic-search'
-import { hasEnoughContent } from '@/lib/retailer-visibility'
+import { arabicContainsFilter, isNegatedMatch, normalizeArabic } from '@/lib/arabic-search'
+import { listVisibleRetailers, TTL_COUNTS } from '@/lib/offer-queries'
 
 /**
  * Autocomplete search. Optimised for latency:
  *  - only the trigram-indexed columns are searched (nameAr/nameEn/brand); tags
  *    was a big unindexed text field that forced a scan.
- *  - the four result kinds run in one Promise.all instead of one after another.
+ *  - stores and categories no longer hit the DB per keystroke at all. The old
+ *    store query ran TWO count subqueries per candidate row (offers + flyers,
+ *    for the thin-store filter) on every request; both lists are small and
+ *    hourly-fresh, so they now come from the cached read layer and are matched
+ *    in memory with the same normalisation the DB path used.
  *  - responses are edge-cached: popular terms come back instantly on repeat.
- * See /api/admin/optimize-search for the indexes this relies on.
+ * See /api/admin/optimize-search for the indexes the product query relies on.
  */
+
+/** All active categories — a ~10 row table read once an hour, not per keystroke. */
+const listActiveCategories = unstable_cache(
+  async () =>
+    prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { order: 'asc' },
+      select: { id: true, nameAr: true, nameEn: true, slug: true, icon: true },
+    }),
+  ['autocomplete-categories'],
+  { revalidate: TTL_COUNTS }
+)
+
+/** Variant-insensitive "contains", mirroring what arabicContainsFilter asks the DB. */
+const matches = (q: string, ...fields: Array<string | null | undefined>) => {
+  const nq = normalizeArabic(q).toLowerCase()
+  return fields.some(f => !!f && normalizeArabic(f).toLowerCase().includes(nq))
+}
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -43,7 +66,9 @@ export async function GET(request: Request) {
             // Over-fetch: the negation post-filter below drops attribute-only
             // matches ("بدون سكر" for a سكر search), so grab extra to still fill 10.
             take: 24,
-            orderBy: { viewCount: 'desc' },
+            // Best deals first — viewCount is a frozen, discredited metric
+            // (see the note in /api/offers).
+            orderBy: { discountPercent: { sort: 'desc', nulls: 'last' } },
             // Lean select: exactly what the autocomplete row shows (thumbnail,
             // price, store), nothing more — smaller payload, faster response.
             select: {
@@ -77,34 +102,11 @@ export async function GET(request: Request) {
           })
         : Promise.resolve([]),
 
-      wantGroups
-        ? prisma.supermarket.findMany({
-            where: { isActive: true, OR: arabicContainsFilter(query, ['nameAr', 'name']) },
-            take: 12,
-            orderBy: { viewCount: 'desc' },
-            select: {
-              id: true,
-              nameAr: true,
-              slug: true,
-              logo: true,
-              _count: {
-                select: {
-                  productOffers: { where: { isHidden: false, country } },
-                  flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
-                },
-              },
-            },
-          })
-        : Promise.resolve([]),
+      // Cached, already filtered to visible (enough offers OR a live flyer) and
+      // ordered by viewCount inside the read layer — just name-match here.
+      wantGroups ? listVisibleRetailers(country) : Promise.resolve([]),
 
-      wantGroups
-        ? prisma.category.findMany({
-            where: { isActive: true, OR: arabicContainsFilter(query, ['nameAr', 'nameEn']) },
-            take: 5,
-            orderBy: { order: 'asc' },
-            select: { id: true, nameAr: true, slug: true, icon: true },
-          })
-        : Promise.resolve([]),
+      wantGroups ? listActiveCategories() : Promise.resolve([]),
     ])
 
     // Drop products that match only as a negated/flavour attribute
@@ -113,18 +115,23 @@ export async function GET(request: Request) {
       .filter(p => !isNegatedMatch(p.nameAr || p.nameEn || '', query))
       .slice(0, 10)
 
-    // Don't suggest retailers whose page has nothing on it.
+    // In-memory name match over the cached lists (both are tiny).
     const visibleStores = (stores as any[])
-      .filter(s => hasEnoughContent(s._count))
+      .filter(s => matches(query, s.nameAr, s.name))
       .slice(0, 5)
-      .map(({ _count, ...store }) => store)
+      .map(s => ({ id: s.id, nameAr: s.nameAr, slug: s.slug, logo: s.logo }))
+
+    const matchedCategories = (categories as any[])
+      .filter(c => matches(query, c.nameAr, c.nameEn))
+      .slice(0, 5)
+      .map(({ nameEn, ...c }) => c)
 
     const results = {
       products: cleanProducts,
       coupons,
       stores: visibleStores,
-      categories,
-      total: cleanProducts.length + coupons.length + visibleStores.length + categories.length,
+      categories: matchedCategories,
+      total: cleanProducts.length + coupons.length + visibleStores.length + matchedCategories.length,
     }
 
     return NextResponse.json(results, {

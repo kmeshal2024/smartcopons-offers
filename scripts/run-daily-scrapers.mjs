@@ -276,6 +276,31 @@ async function main() {
   // starve each other, and a slow scroll is what makes the images load.
   for (const s of targets) results.push(await runOne(s, key))
 
+  // Self-hosted PDF copies for any active image flyer that lacks one (new
+  // leaflets landed by the flyer scrapers above). One flyer per call — the
+  // endpoint's time budget — so loop until it reports nothing pending. The
+  // iteration cap keeps a permanently failing flyer from looping forever.
+  if (!args.dry) {
+    for (let i = 0; i < 12; i++) {
+      try {
+        const res = await fetch(`${SITE}/api/admin/build-flyer-pdfs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+          body: JSON.stringify({}),
+          signal: AbortSignal.timeout(180000),
+        })
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) { log(`flyer-pdf: HTTP ${res.status} ${body.error || ''}`); break }
+        for (const b of body.built || []) log(`flyer-pdf: ${b.slug} ${b.date} — ${b.pages} صفحة، ${b.sizeKB}KB`)
+        for (const f of body.failed || []) log(`flyer-pdf: ${f.slug} فشل — ${f.error}`)
+        if (!body.remaining || !(body.built || []).length) break
+      } catch (err) {
+        log(`flyer-pdf: ${err.message}`)
+        break
+      }
+    }
+  }
+
   const ok = results.filter(r => r.ok)
   const total = results.reduce((a, r) => a + r.uploaded, 0)
   log(`=== انتهى — ${ok.length}/${results.length} نجح، ${total} عرضاً إجمالاً ===`)

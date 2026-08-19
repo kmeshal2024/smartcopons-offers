@@ -47,6 +47,20 @@ export default function FlyerScreen({ flyer, country }: { flyer: FlyerWithStore;
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${validity.badgeClass}`}>
           {validity.label}
         </span>
+        {flyer.pdfUrl && (
+          <a
+            href={flyer.pdfUrl}
+            target="_blank"
+            rel="noopener"
+            download={`${flyer.supermarket.slug}-${dateAr}.pdf`}
+            className="ms-auto inline-flex items-center gap-1.5 rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-pink-700"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+            </svg>
+            {t('flyer.downloadPdf')}
+          </a>
+        )}
       </div>
 
       {pageImages.length > 0 ? (

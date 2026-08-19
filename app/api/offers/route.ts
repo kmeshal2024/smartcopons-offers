@@ -8,10 +8,17 @@ import { arabicVariants, normalizeArabic } from '@/lib/arabic-search'
 const SEARCH_SYNONYMS: Record<string, string[]> = {
   ماء: ['ماء', 'مياه'],
   مياه: ['مياه', 'ماء'],
+  // Saudi colloquial for water — the label never says مويه, the shopper often does.
+  مويه: ['مويه', 'ماء', 'مياه'],
   رز: ['رز', 'ارز', 'أرز'],
   ارز: ['ارز', 'رز'],
   شيبس: ['شيبس', 'رقائق', 'شبس'],
   عصير: ['عصير', 'عصائر'],
+  طحين: ['طحين', 'دقيق'],
+  دقيق: ['دقيق', 'طحين'],
+  تمر: ['تمر', 'تمور'],
+  تمور: ['تمور', 'تمر'],
+  جوال: ['جوال', 'هاتف', 'موبايل'],
 }
 
 function tokenize(q: string): string[] {
@@ -171,22 +178,48 @@ async function relevanceSearch(opts: {
   // equally relevant items the ones shoppers can actually see come first.
   const imgRank = `CASE WHEN po."imageUrl" IS NULL OR po."imageUrl" = '' THEN 1 ELSE 0 END`
 
+  // Multi-word queries: an EXACT adjacent phrase ("قهوة عربية" as-typed) is a
+  // stronger signal than every word matching somewhere in the name, so it gets
+  // its own rank ahead of the per-token tiers. Single-word queries skip this
+  // (the expression would be constant).
+  const phraseVars = tokens.length > 1 ? arabicVariants(opts.search.trim()) : []
+  const phraseRank = phraseVars.length
+    ? `CASE WHEN ${phraseVars
+        .flatMap(v => [
+          `po."nameAr" ILIKE ${addI('%' + v + '%')}`,
+          `COALESCE(po."nameEn",'') ILIKE ${addI('%' + v + '%')}`,
+        ])
+        .join(' OR ')} THEN 0 ELSE 1 END`
+    : '0'
+
   const limitP = addI(opts.limit)
   const offsetP = addI(opts.skip)
-  const idsSql = `SELECT po.id ${FROM} WHERE ${whereI} ORDER BY (${rel}) ASC, (${foodRank}) ASC, (${imgRank}) ASC, po."discountPercent" DESC NULLS LAST, po."viewCount" DESC LIMIT ${limitP} OFFSET ${offsetP}`
+  // One round trip: the window count rides along with the page of ids instead
+  // of re-running the whole WHERE a second time (it was the same expensive
+  // scan twice per search). `viewCount` is gone from the ordering — it is a
+  // frozen, discredited metric (see the note in GET below); the final
+  // tie-break is now name length, because among equally relevant rows the
+  // shorter name is the purer match ("سكر" the product beats "بسكويت
+  // بشوكولاتة وقطع السكر البني").
+  const idsSql = `SELECT po.id, count(*) OVER()::int AS total ${FROM} WHERE ${whereI} ORDER BY (${rel}) ASC, (${phraseRank}) ASC, (${foodRank}) ASC, (${imgRank}) ASC, po."discountPercent" DESC NULLS LAST, length(COALESCE(po."nameAr", po."nameEn", '')) ASC LIMIT ${limitP} OFFSET ${offsetP}`
 
+  const idRows = await prisma.$queryRawUnsafe<{ id: string; total: number }[]>(idsSql, ...idParams)
+
+  if (idRows.length) return { ids: idRows.map(r => r.id), total: Number(idRows[0].total) }
+  if (!opts.skip) return { ids: [], total: 0 }
+
+  // Page past the end: the window count never materialised, so fall back to a
+  // bare count. Rare (stale pagination links), so the extra query is fine here.
   const cParams: any[] = []
   const addC = (v: any) => {
     cParams.push(v)
     return `$${cParams.length}`
   }
-  const countSql = `SELECT count(*)::int AS n ${FROM} WHERE ${buildWhere(addC)}`
-
-  const [idRows, countRows] = await Promise.all([
-    prisma.$queryRawUnsafe<{ id: string }[]>(idsSql, ...idParams),
-    prisma.$queryRawUnsafe<{ n: number }[]>(countSql, ...cParams),
-  ])
-  return { ids: idRows.map(r => r.id), total: Number(countRows[0]?.n ?? 0) }
+  const countRows = await prisma.$queryRawUnsafe<{ n: number }[]>(
+    `SELECT count(*)::int AS n ${FROM} WHERE ${buildWhere(addC)}`,
+    ...cParams
+  )
+  return { ids: [], total: Number(countRows[0]?.n ?? 0) }
 }
 
 export async function GET(request: Request) {
