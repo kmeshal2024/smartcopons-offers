@@ -182,15 +182,17 @@ async function relevanceSearch(opts: {
   // stronger signal than every word matching somewhere in the name, so it gets
   // its own rank ahead of the per-token tiers. Single-word queries skip this
   // (the expression would be constant).
+  // NOTE: only injected into ORDER BY when non-empty — a constant literal
+  // there is read by Postgres as a column POSITION and errors out.
   const phraseVars = tokens.length > 1 ? arabicVariants(opts.search.trim()) : []
   const phraseRank = phraseVars.length
-    ? `CASE WHEN ${phraseVars
+    ? `(CASE WHEN ${phraseVars
         .flatMap(v => [
           `po."nameAr" ILIKE ${addI('%' + v + '%')}`,
           `COALESCE(po."nameEn",'') ILIKE ${addI('%' + v + '%')}`,
         ])
-        .join(' OR ')} THEN 0 ELSE 1 END`
-    : '0'
+        .join(' OR ')} THEN 0 ELSE 1 END) ASC, `
+    : ''
 
   const limitP = addI(opts.limit)
   const offsetP = addI(opts.skip)
@@ -201,7 +203,7 @@ async function relevanceSearch(opts: {
   // tie-break is now name length, because among equally relevant rows the
   // shorter name is the purer match ("سكر" the product beats "بسكويت
   // بشوكولاتة وقطع السكر البني").
-  const idsSql = `SELECT po.id, count(*) OVER()::int AS total ${FROM} WHERE ${whereI} ORDER BY (${rel}) ASC, (${phraseRank}) ASC, (${foodRank}) ASC, (${imgRank}) ASC, po."discountPercent" DESC NULLS LAST, length(COALESCE(po."nameAr", po."nameEn", '')) ASC LIMIT ${limitP} OFFSET ${offsetP}`
+  const idsSql = `SELECT po.id, count(*) OVER()::int AS total ${FROM} WHERE ${whereI} ORDER BY (${rel}) ASC, ${phraseRank}(${foodRank}) ASC, (${imgRank}) ASC, po."discountPercent" DESC NULLS LAST, length(COALESCE(po."nameAr", po."nameEn", '')) ASC LIMIT ${limitP} OFFSET ${offsetP}`
 
   const idRows = await prisma.$queryRawUnsafe<{ id: string; total: number }[]>(idsSql, ...idParams)
 
