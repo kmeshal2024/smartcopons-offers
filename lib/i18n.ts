@@ -383,6 +383,11 @@ const DICT: Record<string, Entry> = {
   'couponsPage.title': { ar: 'كوبونات الخصم', en: 'Discount coupons' },
   'couponsPage.subtitle': { ar: '{n} كوبون منتقى', en: '{n} curated coupons' },
   'couponsPage.empty': { ar: 'لا توجد كوبونات نشطة حالياً', en: 'No active coupons right now' },
+  'couponsPage.search': { ar: 'ابحث عن متجر أو كود…', en: 'Search a store or code…' },
+  'couponsPage.all': { ar: 'الكل', en: 'All' },
+  'couponsPage.noResults': { ar: 'لا نتائج مطابقة لبحثك', en: 'No results match your search' },
+  'couponsPage.exclusive': { ar: 'حصري', en: 'Exclusive' },
+  'couponsPage.nCodes': { ar: '{n} كود', en: '{n} codes' },
   'couponsPage.browseOffers': { ar: 'تصفح عروض السوبرماركت', en: 'Browse supermarket offers' },
   // Shareable list (D-lite)
   'cart.share.open': { ar: 'افتح القائمة:', en: 'Open the list:' },

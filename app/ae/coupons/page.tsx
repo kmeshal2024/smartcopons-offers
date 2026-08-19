@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import CouponCard from '@/components/CouponCard'
+import CouponsExplorer from '@/components/CouponsExplorer'
 import { getCouponsData } from '@/lib/coupons'
 import { COUNTRIES, urlFor } from '@/lib/countries'
 import { getLang } from '@/lib/i18n-server'
@@ -54,20 +54,18 @@ export default async function UaeCouponsPage() {
             {t('coupons.aeNone')}
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {coupons.map(c => (
-              <CouponCard
-                key={c.id}
-                id={c.id}
-                title={c.title}
-                code={c.code}
-                discountText={c.discountText}
-                storeName={c.store.name}
-                storeSlug={c.store.slug}
-                storeLogo={c.store.logo}
-              />
-            ))}
-          </div>
+          <CouponsExplorer
+            coupons={coupons.map(c => ({
+              id: c.id,
+              title: c.title,
+              code: c.code,
+              discountText: c.discountText,
+              isExclusive: c.isExclusive,
+              storeName: c.store.name,
+              storeSlug: c.store.slug,
+              storeLogo: c.store.logo,
+            }))}
+          />
         )}
       </main>
       <Footer />

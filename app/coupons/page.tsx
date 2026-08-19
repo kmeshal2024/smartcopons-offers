@@ -4,7 +4,7 @@ import { unstable_cache } from 'next/cache'
 import { prisma } from '@/lib/db'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import CouponCard from '@/components/CouponCard'
+import CouponsExplorer from '@/components/CouponsExplorer'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
 import { TTL_LISTING } from '@/lib/offer-queries'
 import { getLang } from '@/lib/i18n-server'
@@ -98,20 +98,18 @@ export default async function CouponsPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {coupons.map(c => (
-              <CouponCard
-                key={c.id}
-                id={c.id}
-                title={c.title}
-                code={c.code}
-                discountText={c.discountText}
-                storeName={c.store.name}
-                storeSlug={c.store.slug}
-                storeLogo={c.store.logo}
-              />
-            ))}
-          </div>
+          <CouponsExplorer
+            coupons={coupons.map(c => ({
+              id: c.id,
+              title: c.title,
+              code: c.code,
+              discountText: c.discountText,
+              isExclusive: c.isExclusive,
+              storeName: c.store.name,
+              storeSlug: c.store.slug,
+              storeLogo: c.store.logo,
+            }))}
+          />
         )}
       </main>
 
