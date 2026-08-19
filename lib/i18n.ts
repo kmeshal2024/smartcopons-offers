@@ -380,6 +380,10 @@ const DICT: Record<string, Entry> = {
   'listCoupon.copied': { ar: '✓ تم النسخ', en: '✓ Copied' },
   'cart.share.coupon': { ar: 'كود خصم {store}: {code}', en: '{store} discount code: {code}' },
   'retailerCoupon.heading': { ar: 'أكواد خصم لهذا المتجر', en: 'Discount codes for this store' },
+  'couponsPage.title': { ar: 'كوبونات الخصم', en: 'Discount coupons' },
+  'couponsPage.subtitle': { ar: '{n} كوبون منتقى', en: '{n} curated coupons' },
+  'couponsPage.empty': { ar: 'لا توجد كوبونات نشطة حالياً', en: 'No active coupons right now' },
+  'couponsPage.browseOffers': { ar: 'تصفح عروض السوبرماركت', en: 'Browse supermarket offers' },
   // Shareable list (D-lite)
   'cart.share.open': { ar: 'افتح القائمة:', en: 'Open the list:' },
   'sharedList.title': { ar: 'قائمة تسوق مشتركة', en: 'Shared shopping list' },

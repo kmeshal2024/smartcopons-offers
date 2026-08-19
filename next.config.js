@@ -51,8 +51,12 @@ const nextConfig = {
       //
       // 301 rather than 410: these URLs are indexed and carry whatever equity the
       // section earned, and the homepage is the closest surviving equivalent.
-      { source: '/coupons', destination: '/', statusCode: 301 },
-      { source: '/coupons/category/:slug', destination: '/', statusCode: 301 },
+      // /coupons restored 2026-08-18 — owner-curated codes only, article-body
+      // rebuild deliberately not included. See app/coupons/page.tsx. The
+      // category/detail/store routes stay 301 because those pages were not
+      // restored (the ~10 rendering surfaces they used required more coupon
+      // metadata than the current schema carries).
+      { source: '/coupons/category/:slug', destination: '/coupons', statusCode: 301 },
       { source: '/coupon/:id', destination: '/', statusCode: 301 },
       // Coupon-store pages (prisma.store, not Supermarket). Retailer pages live at
       // /offers/{slug} and are unaffected. On the apex, /store/* is proxied to

@@ -13,6 +13,7 @@ export async function GET() {
     { loc: SITE_URL, lastmod: now, changefreq: 'daily', priority: 1 },
     { loc: `${SITE_URL}/offers`, lastmod: now, changefreq: 'daily', priority: 0.9 },
     { loc: `${SITE_URL}/supermarkets`, lastmod: now, changefreq: 'weekly', priority: 0.8 },
+    { loc: `${SITE_URL}/coupons`, lastmod: now, changefreq: 'weekly', priority: 0.7 },
     { loc: `${SITE_URL}/compare`, lastmod: now, changefreq: 'weekly', priority: 0.6 },
     { loc: `${SITE_URL}/privacy`, lastmod: now, changefreq: 'yearly', priority: 0.3 },
   ]
