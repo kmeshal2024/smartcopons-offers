@@ -73,6 +73,26 @@ const SCRAPERS = [
     args: ['--url=https://clicflyer.com/shoppers/en/united-arab-emirates/dubai/retailers/geant-1048', '--supermarket=geant', '--country=AE', '--nameAr=جيان', '--nameEn=Geant', '--website=https://geantuae.com/'] },
   { name: 'km-trading-flyer', script: 'scrape-aggregator-flyer.mjs',
     args: ['--url=https://clicflyer.com/shoppers/en/united-arab-emirates/dubai/retailers/km-trading-1065', '--supermarket=km-trading', '--country=AE', '--nameAr=كي إم تريدنج', '--nameEn=K.M Trading', '--website=https://www.kmtrading.com/'] },
+  // Major Saudi hypermarkets: they already have a PRODUCT scrape (price data),
+  // but published no in-store LEAFLET on the site. Each also runs a full weekly
+  // leaflet on ClicFlyer, captured here as page images and attached to the same
+  // store — so /offers/<slug> shows this week's نشرة instead of "no flyer", and
+  // build-flyer-pdfs turns it into a downloadable PDF. Flyer-only (offers:[]),
+  // so it never touches the product/price rows those stores already carry.
+  { name: 'panda-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/hyper-panda-2', '--supermarket=panda', '--country=SA', '--nameAr=هايبر بنده', '--nameEn=Hyper Panda'] },
+  { name: 'alothaim-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/abdullah-al-othaim-markets-5', '--supermarket=alothaim', '--country=SA', '--nameAr=أسواق العثيم', '--nameEn=Al Othaim Markets'] },
+  { name: 'danube-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/danube-12', '--supermarket=danube', '--country=SA', '--nameAr=الدانوب', '--nameEn=Danube'] },
+  { name: 'tamimi-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/tamimi-markets-6', '--supermarket=tamimi', '--country=SA', '--nameAr=أسواق التميمي', '--nameEn=Tamimi Markets'] },
+  { name: 'bindawood-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/bindawood-9', '--supermarket=bindawood', '--country=SA', '--nameAr=بن داود', '--nameEn=BinDawood'] },
+  { name: 'lulu-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/lulu-hypermarkets-8', '--supermarket=lulu', '--country=SA', '--nameAr=لولو هايبرماركت', '--nameEn=LuLu Hypermarket'] },
+  { name: 'carrefour-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/carrefour-hyper-1', '--supermarket=carrefour', '--country=SA', '--nameAr=كارفور', '--nameEn=Carrefour'] },
   // Carrefour last: it's the slowest (~25-30 min), so the others land first.
   { name: 'carrefour', script: 'scrape-carrefour-playwright.mjs', args: [] },
   { name: 'carrefour-ae', script: 'scrape-carrefour-playwright.mjs', args: ['--country=AE'] },

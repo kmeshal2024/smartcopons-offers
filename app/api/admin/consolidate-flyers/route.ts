@@ -107,36 +107,45 @@ async function run(apply: boolean) {
   for (const arr of Array.from(byRetailer.values())) {
     if (arr.length < 2) continue
 
-    // 1. one winner per week
+    // Keep two complementary things, and nothing else:
+    //   (a) the best offers-bearing row of EACH week — the price CONTAINER the
+    //       nightly product scrape fills (hundreds of ProductOffers, often 0
+    //       pages);
+    //   (b) the single newest LEAFLET row — pageImages/pdf, usually 0 offers.
+    // A store legitimately holds one of each at the same time, so both survive;
+    // everything else (empty duplicates, superseded old leaflets) is demoted.
+    // The earlier "one winner per week by offer count" rule demoted the leaflet
+    // whenever an offers container shared its week — which is exactly the SA
+    // hypermarkets (Panda, Carrefour…) that carry both.
+    const keep = new Set<(typeof arr)[number]>()
+
     const byWeek = new Map<string, typeof arr>()
     for (const f of arr) {
       const k = weekOf(f.startDate)
-      const g = byWeek.get(k) ?? []
-      g.push(f)
-      byWeek.set(k, g)
+      const g = byWeek.get(k)
+      if (g) g.push(f)
+      else byWeek.set(k, [f])
     }
-    const weekWinners = Array.from(byWeek.values()).map(g => [...g].sort(better)[0])
-    const losers = arr.filter(f => !weekWinners.includes(f))
-
-    // 2. only the newest pure leaflet survives; older ones are superseded
-    const leaflets = weekWinners
-      .filter(f => (f._count.productOffers || 0) === 0 && (f.totalPages || 0) > 0)
-      .sort((a, b) => +new Date(b.startDate) - +new Date(a.startDate))
-    losers.push(...leaflets.slice(1))
-
-    // 3. empty winners (no offers, no pages) go too, unless nothing else is left
-    const keepers = weekWinners.filter(f => !losers.includes(f))
-    const hasContent = keepers.some(
-      f => (f._count.productOffers || 0) > 0 || (f.totalPages || 0) > 0
-    )
-    if (hasContent) {
-      for (const f of keepers) {
-        if ((f._count.productOffers || 0) === 0 && (f.totalPages || 0) === 0) losers.push(f)
-      }
+    for (const g of Array.from(byWeek.values())) {
+      const withOffers = g.filter(f => (f._count.productOffers || 0) > 0)
+      if (withOffers.length) keep.add([...withOffers].sort(better)[0])
     }
 
+    const leaflets = arr
+      .filter(f => (f.totalPages || 0) > 0 || !!f.pdfUrl)
+      .sort(
+        (a, b) =>
+          +new Date(b.startDate) - +new Date(a.startDate) ||
+          (b.totalPages || 0) - (a.totalPages || 0)
+      )
+    if (leaflets.length) keep.add(leaflets[0])
+
+    // Never demote everything: a store with only empty rows keeps its newest.
+    if (keep.size === 0) keep.add([...arr].sort(better)[0])
+
+    const losers = arr.filter(f => !keep.has(f))
     if (!losers.length) continue
-    const kept = arr.filter(f => !losers.includes(f))
+    const kept = arr.filter(f => keep.has(f))
     const primary = [...kept].sort(better)[0]
 
     plan.push({

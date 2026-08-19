@@ -406,13 +406,29 @@ export default async function RetailerPage({ params, searchParams }: Props) {
                         endDate={flyer.endDate}
                       />
                     )}
-                    {/* Permalink to the dated weekly flyer page */}
-                    <Link
-                      href={`/flyers/${supermarket.slug}/${new Date(flyer.startDate).toISOString().split('T')[0]}`}
-                      className="mt-2 inline-block text-sm font-semibold text-pink-600 hover:text-pink-700"
-                    >
-                      {t('retailer.flyerPage')}
-                    </Link>
+                    {/* Permalink to the dated weekly flyer page + PDF download */}
+                    <div className="mt-2 flex flex-wrap items-center gap-4">
+                      <Link
+                        href={`/flyers/${supermarket.slug}/${new Date(flyer.startDate).toISOString().split('T')[0]}`}
+                        className="text-sm font-semibold text-pink-600 hover:text-pink-700"
+                      >
+                        {t('retailer.flyerPage')}
+                      </Link>
+                      {flyer.pdfUrl && (
+                        <a
+                          href={flyer.pdfUrl}
+                          target="_blank"
+                          rel="noopener"
+                          download={`${supermarket.slug}-${new Date(flyer.startDate).toISOString().split('T')[0]}.pdf`}
+                          className="inline-flex items-center gap-1.5 text-sm font-semibold text-pink-600 hover:text-pink-700"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+                          </svg>
+                          {t('flyer.downloadPdf')}
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )
               })}
