@@ -108,8 +108,11 @@ export async function POST(request: Request) {
     price: { gt: 0 },
     flyer: { endDate: { gte: new Date() } },
     imageUrl: { not: null },
-    // Only rows still pointing at a retailer host. NB: "not contains blob host"
-    // can't be expressed directly, so over-fetch and filter in JS below.
+    // Only rows still pointing at a retailer host. Excluding already-Blob rows
+    // in SQL is essential: without it the most-viewed window fills with rows we
+    // already mirrored, the JS filter empties the batch, and the loop stalls at
+    // the top of the viewCount order instead of advancing through the backlog.
+    NOT: { imageUrl: { contains: '.blob.vercel-storage.com' } },
     ...(slug ? { supermarket: { slug } } : {}),
   }
 
@@ -117,16 +120,12 @@ export async function POST(request: Request) {
     where,
     select: { id: true, imageUrl: true, supermarket: { select: { slug: true } } },
     orderBy: { viewCount: 'desc' },
-    take: limit + 60, // surplus covers already-mirrored rows skipped below
+    take: limit,
   })
 
-  const jobs: Job[] = []
-  let remainingKnown = 0
-  for (const c of candidates) {
-    if (!c.imageUrl || isBlob(c.imageUrl)) continue
-    remainingKnown++
-    if (jobs.length < limit) jobs.push({ id: c.id, imageUrl: c.imageUrl, slug: c.supermarket.slug })
-  }
+  const jobs: Job[] = candidates
+    .filter(c => c.imageUrl && !isBlob(c.imageUrl))
+    .map(c => ({ id: c.id, imageUrl: c.imageUrl as string, slug: c.supermarket.slug }))
 
   const tally: Record<Result, number> = { mirrored: 0, nulled: 0, skipped: 0, failed: 0 }
   for (let i = 0; i < jobs.length; i += CONCURRENCY) {
