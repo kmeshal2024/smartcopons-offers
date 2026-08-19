@@ -51,7 +51,11 @@ async function processOne(job: Job): Promise<Result> {
   try {
     res = await fetch(job.imageUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-      signal: AbortSignal.timeout(15000),
+      // Short: a healthy retailer image responds in well under a second, and a
+      // whole batch of these fetches (6-wide) must finish inside the 120s
+      // function budget. A slow one is almost always a dead/hanging object —
+      // let it fail fast and be retried next batch rather than 504 the batch.
+      signal: AbortSignal.timeout(8000),
     })
   } catch {
     return 'failed' // network/timeout — retry next batch, keep the URL
