@@ -321,6 +321,31 @@ async function main() {
     }
   }
 
+  // Self-host a nightly slice of product images to Vercel Blob, most-viewed
+  // first, so the images shoppers see most stop depending on retailer CDNs
+  // (which 403 or hotlink-block a fraction of objects). Bounded per night; the
+  // active set turns over weekly, so this keeps pace without a cost spike. Run
+  // scripts/mirror-images.mjs by hand to churn the whole backlog faster.
+  if (!args.dry) {
+    let mMirrored = 0, mNulled = 0
+    for (let i = 0; i < 12; i++) {
+      try {
+        const res = await fetch(`${SITE}/api/admin/mirror-images`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+          body: JSON.stringify({ limit: 60 }),
+          signal: AbortSignal.timeout(180000),
+        })
+        const b = await res.json().catch(() => ({}))
+        if (!res.ok) { log(`mirror-images: HTTP ${res.status} ${b.error || ''}`); break }
+        mMirrored += b.mirrored || 0
+        mNulled += b.nulled || 0
+        if (!(b.processed) || !(b.remainingApprox)) break
+      } catch (err) { log(`mirror-images: ${err.message}`); break }
+    }
+    if (mMirrored || mNulled) log(`mirror-images: استُضيفت ${mMirrored} صورة، وفُرّغت ${mNulled} ميتة`)
+  }
+
   const ok = results.filter(r => r.ok)
   const total = results.reduce((a, r) => a + r.uploaded, 0)
   log(`=== انتهى — ${ok.length}/${results.length} نجح، ${total} عرضاً إجمالاً ===`)
