@@ -217,13 +217,20 @@ export class OfferIngestService {
     endOfWeek.setDate(startOfWeek.getDate() + 6)
     endOfWeek.setHours(23, 59, 59, 999)
 
+    // No upper bound on endDate: extend-flyers pushes a leaflet's endDate past
+    // the week boundary, and the old `endDate lte endOfWeek` filter then failed
+    // to match it — so every subsequent nightly run created a DUPLICATE flyer
+    // row for the same store and week (empty, since the assets went to the
+    // first row). Those duplicates are what made flyer pages render blank when
+    // findFirst picked one arbitrarily. Prefer the row with the most pages so
+    // repeated runs keep attaching assets to the real one.
     const existing = await prisma.flyer.findFirst({
       where: {
         supermarketId,
         startDate: { gte: startOfWeek },
-        endDate: { lte: endOfWeek },
         status: { in: ['ACTIVE', 'DRAFT'] },
       },
+      orderBy: [{ totalPages: 'desc' }, { createdAt: 'desc' }],
     })
 
     if (existing) return existing

@@ -14,7 +14,12 @@ export async function getFlyerBySlugDate(slug: string, date: string) {
   const dayEnd = new Date(dayStart)
   dayEnd.setUTCDate(dayEnd.getUTCDate() + 1)
 
-  return prisma.flyer.findFirst({
+  // The nightly ingest has historically produced DUPLICATE flyer rows for the
+  // same store + start date (see consolidate-flyers), some of them empty. A
+  // bare findFirst picks an arbitrary row, so the page sometimes rendered the
+  // empty duplicate while the real leaflet sat in its sibling. Fetch the day's
+  // candidates (2–3 rows at worst) and prefer the one with content.
+  const rows = await prisma.flyer.findMany({
     where: {
       supermarket: { slug },
       startDate: { gte: dayStart, lt: dayEnd },
@@ -32,7 +37,15 @@ export async function getFlyerBySlugDate(slug: string, date: string) {
       },
       _count: { select: { productOffers: { where: { isHidden: false } } } },
     },
+    orderBy: { createdAt: 'desc' },
   })
+  if (rows.length <= 1) return rows[0] ?? null
+
+  const score = (f: (typeof rows)[number]) =>
+    (parsePageImages(f.pageImages).length ? 4 : 0) +
+    (f.pdfUrl ? 2 : 0) +
+    (f._count.productOffers > 0 ? 1 : 0)
+  return rows.reduce((best, f) => (score(f) > score(best) ? f : best))
 }
 
 export type FlyerWithStore = NonNullable<Awaited<ReturnType<typeof getFlyerBySlugDate>>>

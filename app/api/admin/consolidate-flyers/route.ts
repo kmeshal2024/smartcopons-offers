@@ -52,6 +52,8 @@ async function run(apply: boolean) {
       supermarket: { select: { slug: true } },
       startDate: true,
       createdAt: true,
+      totalPages: true,
+      pdfUrl: true,
       _count: { select: { productOffers: true } },
     },
   })
@@ -75,11 +77,18 @@ async function run(apply: boolean) {
   for (const arr of Array.from(byRetailer.values())) {
     if (arr.length < 2) continue
 
-    // Winner: most offers, then newest startDate, then newest createdAt.
-    // Sorting descending on that composite gives the winner at index 0.
+    // Winner: most offers, then most leaflet pages, then has-a-PDF, then
+    // newest startDate, then newest createdAt. The page/PDF tiers matter for
+    // the flyer-only stores (nesto-ae, ansar-gallery, geant…) where EVERY row
+    // has zero offers — offers alone let an empty duplicate win, which is how
+    // their flyer pages rendered blank.
     const sorted = [...arr].sort((a, b) => {
       const off = (b._count.productOffers || 0) - (a._count.productOffers || 0)
       if (off !== 0) return off
+      const pages = (b.totalPages || 0) - (a.totalPages || 0)
+      if (pages !== 0) return pages
+      const pdf = (b.pdfUrl ? 1 : 0) - (a.pdfUrl ? 1 : 0)
+      if (pdf !== 0) return pdf
       const sd = +new Date(b.startDate) - +new Date(a.startDate)
       if (sd !== 0) return sd
       return +new Date(b.createdAt) - +new Date(a.createdAt)
