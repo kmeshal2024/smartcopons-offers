@@ -22,7 +22,7 @@ const LIMIT = Number(args.limit) || 60
 const MAX = Number(args.max) || 100000
 if (!KEY) { console.error('Missing --key=$APP_SECRET'); process.exit(1) }
 
-let mirrored = 0, nulled = 0, failed = 0, batches = 0
+let mirrored = 0, nulled = 0, failed = 0, batches = 0, transient = 0
 const started = Date.now()
 
 while (batches < MAX) {
@@ -35,9 +35,23 @@ while (batches < MAX) {
       signal: AbortSignal.timeout(180000),
     })
     body = await res.json().catch(() => ({}))
-    if (!res.ok) { console.error(`HTTP ${res.status}: ${body.error || ''}`); break }
+    if (!res.ok) {
+      // 5xx / 504 is a single slow batch (one oversized image, a Blob hiccup),
+      // not a reason to abandon a multi-thousand-image run — back off and keep
+      // going. Only a 4xx (bad key / bad request) is fatal.
+      if (res.status >= 500) {
+        if (++transient > 30) { console.error('too many 5xx in a row — stopping'); break }
+        console.error(`HTTP ${res.status} — transient, backing off`)
+        await new Promise(r => setTimeout(r, 5000))
+        continue
+      }
+      console.error(`HTTP ${res.status}: ${body.error || ''}`); break
+    }
+    transient = 0
   } catch (e) {
-    console.error(`batch ${batches + 1} failed: ${e.message} — retrying once`)
+    if (++transient > 30) { console.error('too many errors — stopping'); break }
+    console.error(`batch ${batches + 1} failed: ${e.message} — retrying`)
+    await new Promise(r => setTimeout(r, 3000))
     continue
   }
 
