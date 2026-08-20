@@ -93,6 +93,11 @@ const SCRAPERS = [
     args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/lulu-hypermarkets-8', '--supermarket=lulu', '--country=SA', '--nameAr=لولو هايبرماركت', '--nameEn=LuLu Hypermarket'] },
   { name: 'carrefour-flyer', script: 'scrape-aggregator-flyer.mjs',
     args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/carrefour-hyper-1', '--supermarket=carrefour', '--country=SA', '--nameAr=كارفور', '--nameEn=Carrefour'] },
+  { name: 'jarir-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/jarir-bookstore-13', '--supermarket=jarir', '--country=SA', '--nameAr=مكتبة جرير', '--nameEn=Jarir Bookstore', '--website=https://www.jarir.com/'] },
+  // أسواق النخبة is listed on ClicFlyer under the English name "Prime Markets".
+  { name: 'nokhba-flyer', script: 'scrape-aggregator-flyer.mjs',
+    args: ['--url=https://clicflyer.com/shoppers/en/saudi-arabia/riyadh/retailers/prime-markets-1102', '--supermarket=nokhba', '--country=SA', '--nameAr=أسواق النخبة', '--nameEn=Al Nokhba Markets'] },
   // Carrefour last: it's the slowest (~25-30 min), so the others land first.
   { name: 'carrefour', script: 'scrape-carrefour-playwright.mjs', args: [] },
   { name: 'carrefour-ae', script: 'scrape-carrefour-playwright.mjs', args: ['--country=AE'] },
