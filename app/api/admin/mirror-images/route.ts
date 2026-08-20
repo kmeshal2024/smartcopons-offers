@@ -87,14 +87,20 @@ async function processOne(job: Job): Promise<Result> {
     return 'failed' // undecodable — leave as-is, may be a format sharp rejects
   }
 
-  const blob = await put(`product-images/${job.slug}/${job.id}.webp`, webp, {
-    access: 'public',
-    contentType: 'image/webp',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-  })
-  await prisma.productOffer.update({ where: { id: job.id }, data: { imageUrl: blob.url } })
-  return 'mirrored'
+  try {
+    const blob = await put(`product-images/${job.slug}/${job.id}.webp`, webp, {
+      access: 'public',
+      contentType: 'image/webp',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    })
+    await prisma.productOffer.update({ where: { id: job.id }, data: { imageUrl: blob.url } })
+    return 'mirrored'
+  } catch {
+    // Blob store unavailable (suspended/quota) — keep the retailer URL and let
+    // a later run retry. Must NOT throw: one bad upload would 500 the batch.
+    return 'failed'
+  }
 }
 
 export async function POST(request: Request) {

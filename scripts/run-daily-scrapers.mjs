@@ -345,6 +345,9 @@ async function main() {
         if (!res.ok) { log(`mirror-images: HTTP ${res.status} ${b.error || ''}`); break }
         mMirrored += b.mirrored || 0
         mNulled += b.nulled || 0
+        // No forward progress (e.g. Blob store suspended → every upload fails):
+        // stop instead of burning 12 failing batches a night.
+        if ((b.mirrored || 0) + (b.nulled || 0) === 0) break
         if (!(b.processed) || !(b.remainingApprox)) break
       } catch (err) { log(`mirror-images: ${err.message}`); break }
     }
