@@ -172,13 +172,37 @@ export class OfferIngestService {
     const coverImage = flyerAsset?.coverImage || pageImages[0]
     const totalPages = flyerAsset?.totalPages || (pageImages.length || undefined)
 
-    if (flyerAsset) {
+    // A scraper's claimed PDF must actually SERVE before the authoritative
+    // merge is allowed to wipe existing assets with it. Danube's /brochures
+    // links 403 from their CloudFront (like a slice of their product images) —
+    // trusting the link replaced a working 131-page ClicFlyer leaflet with a
+    // dead PDF and a blank page. An unusable asset falls through to the
+    // no-asset branch, which leaves whatever the flyer already has.
+    let verifiedPdfUrl: string | null = flyerAsset?.pdfUrl ?? null
+    if (verifiedPdfUrl) {
+      try {
+        const head = await fetch(verifiedPdfUrl, {
+          method: 'HEAD',
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+          signal: AbortSignal.timeout(10000),
+        })
+        if (!head.ok) {
+          logs.push(`[ingest] flyer PDF rejected (HTTP ${head.status}), keeping existing assets: ${verifiedPdfUrl}`)
+          verifiedPdfUrl = null
+        }
+      } catch {
+        logs.push(`[ingest] flyer PDF unreachable, keeping existing assets: ${verifiedPdfUrl}`)
+        verifiedPdfUrl = null
+      }
+    }
+
+    if (flyerAsset && (verifiedPdfUrl || pageImages.length)) {
       await prisma.flyer.update({
         where: { id: flyer.id },
         data: {
           extractedAt: new Date(),
           extractionLog: logs.join('\n'),
-          pdfUrl: flyerAsset.pdfUrl ?? null,
+          pdfUrl: verifiedPdfUrl,
           pageImages: pageImages.length ? JSON.stringify(pageImages) : null,
           coverImage: coverImage ?? null,
           ...(totalPages ? { totalPages } : { totalPages: 0 }),
