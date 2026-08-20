@@ -45,9 +45,12 @@ export async function GET(request: Request) {
 
     let flyersRenewed = 0
     for (const s of stores) {
+      // ACTIVE rows only. The unqualified version resurrected every EXPIRED
+      // duplicate consolidate-flyers had demoted (62 rows came back on the
+      // 2026-08-20 03:45 run) — renewal must never override a demotion.
       const r = await prisma.flyer.updateMany({
-        where: { supermarketId: s.id },
-        data: { endDate: newEnd, status: 'ACTIVE' },
+        where: { supermarketId: s.id, status: 'ACTIVE' },
+        data: { endDate: newEnd },
       })
       flyersRenewed += r.count
     }
