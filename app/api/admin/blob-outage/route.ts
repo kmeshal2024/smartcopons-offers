@@ -65,5 +65,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ blobPdfUrls: pdfCount, blobImageUrls: imgCount, probeStatus: probe })
   }
 
-  return NextResponse.json({ error: 'action must be "status" or "null-pdfs"' }, { status: 400 })
+  // Diagnostic: what ACTIVE flyer rows exist per store right now (the outage
+  // overlapped the 03:00 automation, so page behaviour and DB state diverged).
+  if (action === 'list-flyers') {
+    const rows = await prisma.flyer.findMany({
+      where: { status: 'ACTIVE', endDate: { gte: new Date() } },
+      select: {
+        id: true,
+        startDate: true,
+        totalPages: true,
+        pdfUrl: true,
+        pageImages: true,
+        createdAt: true,
+        updatedAt: true,
+        supermarket: { select: { slug: true } },
+        _count: { select: { productOffers: true } },
+      },
+      orderBy: [{ supermarket: { slug: 'asc' } }, { createdAt: 'asc' }],
+    })
+    return NextResponse.json({
+      flyers: rows.map(r => ({
+        slug: r.supermarket.slug,
+        id: r.id.slice(-6),
+        start: r.startDate.toISOString().slice(0, 10),
+        pages: r.totalPages,
+        imgs: r.pageImages ? JSON.parse(r.pageImages as string).length : 0,
+        pdf: r.pdfUrl ? (r.pdfUrl.includes('.blob.vercel-storage.com') ? 'blob' : 'other') : null,
+        offers: r._count.productOffers,
+        updated: r.updatedAt.toISOString().slice(5, 16),
+      })),
+    })
+  }
+
+  return NextResponse.json({ error: 'action must be "status", "null-pdfs" or "list-flyers"' }, { status: 400 })
 }
