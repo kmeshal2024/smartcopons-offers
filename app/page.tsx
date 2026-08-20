@@ -108,8 +108,9 @@ const getHomeData = unstable_cache(async function getHomeData() {
   ])
 
   // listVisibleRetailers already applies the visibility rule and orders by
-  // viewCount; the homepage just takes the first 8 slots.
-  const visibleSupermarkets = supermarkets.slice(0, 8)
+  // viewCount. Show them ALL — the rail scrolls horizontally, and capping at 8
+  // hid six real stores while the hero proudly counted 14 (Khalid noticed).
+  const visibleSupermarkets = supermarkets
 
   // Grocery retailers first, then at most 2 per retailer. Ranking keys off
   // supermarket.retailerType rather than product category: the category data is
