@@ -63,11 +63,12 @@ export async function GET(request: Request) {
               // Arabic-variant aware over the indexed columns only.
               OR: arabicContainsFilter(query, ['nameAr', 'nameEn', 'brand']),
             },
-            // Over-fetch: the negation post-filter below drops attribute-only
-            // matches ("بدون سكر" for a سكر search), so grab extra to still fill 10.
-            take: 24,
-            // Best deals first — viewCount is a frozen, discredited metric
-            // (see the note in /api/offers).
+            // Over-fetch: the negation post-filter and the relevance re-rank
+            // below need a pool, not just the top discounts — ordering by
+            // discount alone made «ايفون» suggest ten phone CASES (deep
+            // discounts) while the actual iPhones (barely discounted) never
+            // surfaced.
+            take: 48,
             orderBy: { discountPercent: { sort: 'desc', nulls: 'last' } },
             // Lean select: exactly what the autocomplete row shows (thumbnail,
             // price, store), nothing more — smaller payload, faster response.
@@ -110,9 +111,26 @@ export async function GET(request: Request) {
     ])
 
     // Drop products that match only as a negated/flavour attribute
-    // ("المراعي عصير بدون سكر" for a سكر query), then trim to the 10 shown.
+    // ("المراعي عصير بدون سكر" for a سكر query), then RANK by where the query
+    // sits in the name: the matched word's position, with a penalty when it is
+    // preceded by an accessory/"for" marker (غطاء **لهاتف** آيفون is a case FOR
+    // an iPhone, not an iPhone). Earlier match ≈ the product itself; later ≈ an
+    // attribute. Ties keep the discount order from the DB.
+    const nq = normalizeArabic(query).toLowerCase()
+    const rankOf = (p: any) => {
+      const name = normalizeArabic(p.nameAr || p.nameEn || '').toLowerCase()
+      const words = name.split(/\s+/)
+      let idx = words.findIndex(w => w.includes(nq))
+      if (idx < 0) idx = 50
+      const prev = idx > 0 ? words[idx - 1] : ''
+      const accessory = /^(لهاتف|لجوال|لايفون|لأيفون|يدعم|متوافق|يناسب|for)$/.test(prev) || /^ل(هاتف|جوال)/.test(words[idx] || '')
+      return idx + (accessory ? 25 : 0)
+    }
     const cleanProducts = (products as any[])
       .filter(p => !isNegatedMatch(p.nameAr || p.nameEn || '', query))
+      .map((p, i) => ({ p, i, r: rankOf(p) }))
+      .sort((a, b) => a.r - b.r || a.i - b.i)
+      .map(x => x.p)
       .slice(0, 10)
 
     // In-memory name match over the cached lists (both are tiny).
