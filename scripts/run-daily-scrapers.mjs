@@ -103,7 +103,7 @@ const SCRAPERS = [
   { name: 'carrefour-ae', script: 'scrape-carrefour-playwright.mjs', args: ['--country=AE'] },
   // Then top up the Carrefour images its listing scrape couldn't capture. A
   // batch per night rather than one multi-hour pass; coverage climbs over days.
-  { name: 'carrefour-images', script: 'backfill-carrefour-images.mjs', args: ['--limit=400'] },
+  { name: 'carrefour-images', script: 'backfill-carrefour-images.mjs', args: ['--limit=1200'] },
 ]
 
 /**
