@@ -389,6 +389,10 @@ const DICT: Record<string, Entry> = {
   'couponsPage.noResults': { ar: 'لا نتائج مطابقة لبحثك', en: 'No results match your search' },
   'couponsPage.exclusive': { ar: 'حصري', en: 'Exclusive' },
   'couponsPage.nCodes': { ar: '{n} كود', en: '{n} codes' },
+  'couponsPage.allStores': { ar: 'عرض كل المتاجر ({n})', en: 'Show all stores ({n})' },
+  'couponsPage.lessStores': { ar: 'عرض متاجر أقل', en: 'Show fewer stores' },
+  'couponsPage.showingFor': { ar: 'كوبونات {store} ({n})', en: '{store} coupons ({n})' },
+  'couponsPage.clearFilter': { ar: 'إزالة الفلتر', en: 'Clear filter' },
   'couponsPage.browseOffers': { ar: 'تصفح عروض السوبرماركت', en: 'Browse supermarket offers' },
   // Shareable list (D-lite)
   'cart.share.open': { ar: 'افتح القائمة:', en: 'Open the list:' },

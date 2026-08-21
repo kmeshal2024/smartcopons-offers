@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useI18n } from '@/components/I18nProvider'
 
 export interface ExplorerCoupon {
@@ -25,6 +25,22 @@ export default function CouponsExplorer({ coupons }: { coupons: ExplorerCoupon[]
   const [query, setQuery] = useState('')
   const [activeStore, setActiveStore] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  // 86 store chips wrap into many rows, pushing the codes below the fold —
+  // shoppers clicked a store and never noticed anything happened. Collapsed
+  // by default, and picking a store scrolls the results into view.
+  const [chipsExpanded, setChipsExpanded] = useState(false)
+  const resultsRef = useRef<HTMLDivElement>(null)
+
+  const pickStore = (slug: string | null) => {
+    setActiveStore(prev => {
+      const next = slug !== null && prev === slug ? null : slug
+      if (next !== null) {
+        setChipsExpanded(false)
+        setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+      }
+      return next
+    })
+  }
 
   const stores = useMemo(() => {
     const map = new Map<string, { slug: string; name: string; logo?: string | null; count: number }>()
@@ -84,40 +100,67 @@ export default function CouponsExplorer({ coupons }: { coupons: ExplorerCoupon[]
         </svg>
       </div>
 
-      {/* Store chips */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        <button
-          onClick={() => setActiveStore(null)}
-          className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-            activeStore === null
-              ? 'bg-pink-600 text-white shadow-sm'
-              : 'border border-gray-200 bg-white text-gray-600 hover:border-pink-300 hover:text-pink-700'
-          }`}
-        >
-          {t('couponsPage.all')} ({coupons.length})
-        </button>
-        {stores.map(s => (
+      {/* Store chips — collapsed to ~2 rows unless expanded */}
+      <div className="mb-2">
+        <div className={`flex flex-wrap gap-2 overflow-hidden ${chipsExpanded ? '' : 'max-h-[5.25rem]'}`}>
           <button
-            key={s.slug}
-            onClick={() => setActiveStore(activeStore === s.slug ? null : s.slug)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition ${
-              activeStore === s.slug
+            onClick={() => pickStore(null)}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+              activeStore === null
                 ? 'bg-pink-600 text-white shadow-sm'
                 : 'border border-gray-200 bg-white text-gray-600 hover:border-pink-300 hover:text-pink-700'
             }`}
           >
-            {s.logo ? (
-              <img src={s.logo} alt="" className="h-4 w-4 rounded object-contain" />
-            ) : (
-              <span aria-hidden>🏷️</span>
-            )}
-            {s.name}
-            {s.count > 1 && <span className="opacity-60">({s.count})</span>}
+            {t('couponsPage.all')} ({coupons.length})
           </button>
-        ))}
+          {stores.map(s => (
+            <button
+              key={s.slug}
+              onClick={() => pickStore(s.slug)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+                activeStore === s.slug
+                  ? 'bg-pink-600 text-white shadow-sm'
+                  : 'border border-gray-200 bg-white text-gray-600 hover:border-pink-300 hover:text-pink-700'
+              }`}
+            >
+              {s.logo ? (
+                <img src={s.logo} alt="" className="h-4 w-4 rounded object-contain" />
+              ) : (
+                <span aria-hidden>🏷️</span>
+              )}
+              {s.name}
+              {s.count > 1 && <span className="opacity-60">({s.count})</span>}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setChipsExpanded(v => !v)}
+          className="mt-2 text-sm font-semibold text-pink-600 hover:text-pink-700"
+        >
+          {chipsExpanded ? t('couponsPage.lessStores') : t('couponsPage.allStores', { n: stores.length })}
+        </button>
       </div>
 
+      {/* Active-filter bar: instant feedback right where the eye already is */}
+      {activeStore && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-pink-50 px-4 py-2.5 text-sm">
+          <span className="font-semibold text-pink-700">
+            {t('couponsPage.showingFor', {
+              store: stores.find(s => s.slug === activeStore)?.name ?? '',
+              n: groups.reduce((n, g) => n + g.coupons.length, 0),
+            })}
+          </span>
+          <button
+            onClick={() => setActiveStore(null)}
+            className="ms-auto rounded-full bg-white px-3 py-1 text-xs font-bold text-pink-700 shadow-sm hover:bg-pink-100"
+          >
+            ✕ {t('couponsPage.clearFilter')}
+          </button>
+        </div>
+      )}
+
       {/* Grouped results */}
+      <div ref={resultsRef} className="scroll-mt-20" />
       {groups.length === 0 ? (
         <div className="rounded-xl border border-gray-100 bg-white p-10 text-center text-gray-400">
           <span className="mb-3 block text-5xl">🔍</span>
