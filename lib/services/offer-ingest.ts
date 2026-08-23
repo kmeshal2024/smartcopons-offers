@@ -156,6 +156,38 @@ export class OfferIngestService {
       logs.push(`[ingest] Re-attached ${refreshed} still-offered products to the current flyer`)
     }
 
+    // Heal image-less duplicates. Dedup normally ignores imageUrl, which means
+    // a row whose image was nulled (dead link cleanup) stays image-less forever
+    // even though every nightly scrape carries a fresh working URL for it.
+    // Only rows with imageUrl NULL are touched — a mirrored (Blob) image is
+    // never overwritten back to a retailer URL.
+    const imgByHash = new Map<string, string>()
+    for (const { offer, hash } of offerHashes) {
+      if (existingHashes.has(hash) && offer.imageUrl) imgByHash.set(hash, offer.imageUrl)
+    }
+    if (imgByHash.size) {
+      const bare = await prisma.productOffer.findMany({
+        where: {
+          supermarketId: supermarket.id,
+          imageUrl: null,
+          sourceHash: { in: Array.from(imgByHash.keys()) },
+        },
+        select: { id: true, sourceHash: true },
+      })
+      let healed = 0
+      for (let i = 0; i < bare.length; i += 25) {
+        await Promise.all(
+          bare.slice(i, i + 25).map(r =>
+            prisma.productOffer.update({
+              where: { id: r.id },
+              data: { imageUrl: imgByHash.get(r.sourceHash!) },
+            }).then(() => { healed++ }).catch(() => {})
+          )
+        )
+      }
+      if (healed) logs.push(`[ingest] Healed ${healed} image-less duplicates with fresh image URLs`)
+    }
+
     // Update flyer log, and attach the brochure assets when the scraper found
     // one so the viewer has something to render — a PDF (FlyerViewer) or a set
     // of page images (ImageFlyerViewer).
@@ -197,18 +229,23 @@ export class OfferIngestService {
     }
 
     if (flyerAsset && (verifiedPdfUrl || pageImages.length)) {
-      await prisma.flyer.update({
-        where: { id: flyer.id },
-        data: {
-          extractedAt: new Date(),
-          extractionLog: logs.join('\n'),
-          pdfUrl: verifiedPdfUrl,
-          pageImages: pageImages.length ? JSON.stringify(pageImages) : null,
-          coverImage: coverImage ?? null,
-          ...(totalPages ? { totalPages } : { totalPages: 0 }),
-          ...(flyerAsset.titleAr ? { titleAr: flyerAsset.titleAr } : {}),
-        },
-      })
+      // MERGE, don't swap. Farm/Othaim flip-flopped daily: the 03:00 aggregator
+      // attached the ClicFlyer page images, then the retailer's own cron
+      // attached its first-party PDF and the old authoritative replace wiped
+      // those images — leaving a page whose PDF can't render inline (no CORS)
+      // and no image viewer at all. Each side now only updates the half it
+      // actually brought: a PDF-only asset keeps existing page images; an
+      // images-only asset keeps an existing (verified) PDF. Staleness is
+      // handled by the nightly aggregator recapture, not by wiping.
+      const data: any = { extractedAt: new Date(), extractionLog: logs.join('\n') }
+      if (verifiedPdfUrl) data.pdfUrl = verifiedPdfUrl
+      if (pageImages.length) {
+        data.pageImages = JSON.stringify(pageImages)
+        data.coverImage = coverImage ?? null
+        data.totalPages = totalPages || 0
+      }
+      if (flyerAsset.titleAr) data.titleAr = flyerAsset.titleAr
+      await prisma.flyer.update({ where: { id: flyer.id }, data })
     } else {
       await prisma.flyer.update({
         where: { id: flyer.id },

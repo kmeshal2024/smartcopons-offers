@@ -69,14 +69,11 @@ async function processOne(job: Job): Promise<Result> {
   }
   if (!res.ok) return 'failed'
 
-  const ct = res.headers.get('content-type') || ''
   const raw = Buffer.from(await res.arrayBuffer())
-  if (!ct.startsWith('image/') || raw.length < 500) {
-    // Not really an image (an HTML error page slipped a 200) — treat as dead.
-    await prisma.productOffer.update({ where: { id: job.id }, data: { imageUrl: null } })
-    return 'nulled'
-  }
-
+  // Judge by DECODING, never by content-type: Panda's CDN serves real JPEGs
+  // as binary/octet-stream, and the old `content-type startsWith image/` check
+  // mass-nulled thousands of perfectly good Panda images. sharp decoding is
+  // the ground truth for "is this an image".
   let webp: Buffer
   try {
     webp = await sharp(raw)
@@ -84,7 +81,12 @@ async function processOne(job: Job): Promise<Result> {
       .webp({ quality: 78 })
       .toBuffer()
   } catch {
-    return 'failed' // undecodable — leave as-is, may be a format sharp rejects
+    if (raw.length < 500) {
+      // Tiny AND undecodable — an error body behind a 200. Dead.
+      await prisma.productOffer.update({ where: { id: job.id }, data: { imageUrl: null } })
+      return 'nulled'
+    }
+    return 'failed' // sizeable but undecodable — keep the URL, retry later
   }
 
   try {
