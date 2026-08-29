@@ -160,7 +160,12 @@ async function loadRetailerData(slug: string, sort: string, categorySlug: string
     if (cat) where.categoryId = cat.id
   }
 
-  let orderBy: any = { createdAt: 'desc' }
+  // Image-bearing offers first (ASC puts NULLs last in Postgres), newest
+  // within reason after that. Same fix the AE store pages needed: without it a
+  // store whose newest rows are image-less (Farm's vision-extracted catalogue)
+  // renders a first page of grey placeholders while 189 real photos sit on
+  // page 5. Explicit sorts below are left untouched.
+  let orderBy: any = [{ imageUrl: 'asc' }, { createdAt: 'desc' }]
   switch (sort) {
     case 'price-low': orderBy = { price: 'asc' }; break
     case 'price-high': orderBy = { price: 'desc' }; break
