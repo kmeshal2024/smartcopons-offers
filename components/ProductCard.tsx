@@ -136,12 +136,26 @@ export default function ProductCard({ product }: ProductCardProps) {
 
       {/* Product Info */}
       <div className="p-3 sm:p-3.5 flex flex-col flex-1">
-        {/* Retailer name */}
+        {/* Retailer: a CLEAR logo, no text — the Arabic store name looked odd in
+            the English UI and a name label next to a logo was redundant. The
+            name survives as alt/title for accessibility and as the fallback
+            when a store has no logo yet. */}
         <Link
           href={`/offers/${product.supermarket.slug}`}
-          className="text-[10px] sm:text-[11px] text-gray-400 hover:text-pink-600 transition-colors font-medium truncate"
+          title={product.supermarket.nameAr}
+          className="flex items-center hover:opacity-80 transition-opacity"
         >
-          {product.supermarket.nameAr}
+          {product.supermarket.logo ? (
+            <img
+              src={product.supermarket.logo}
+              alt={product.supermarket.nameAr}
+              className="h-6 max-w-[90px] object-contain object-right"
+            />
+          ) : (
+            <span className="text-[10px] sm:text-[11px] text-gray-400 font-medium truncate">
+              {product.supermarket.nameAr}
+            </span>
+          )}
         </Link>
 
         {/* Product Name */}

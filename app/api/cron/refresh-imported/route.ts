@@ -26,6 +26,10 @@ export const dynamic = 'force-dynamic'
 const IMPORTED_STORES = [
   'almaya', 'adcoop', 'aswaaq', 'gala', 'ansar-gallery',
   'geant', 'km-trading', 'union-coop', 'nesto-ae',
+  // SA stores whose products are vision-extracted from leaflets (no nightly
+  // product scraper re-attaches them): without renewal their rows expire with
+  // the weekly flyer — Jarir's 139 and Nokhba's 206 vanished exactly this way.
+  'jarir', 'nokhba', 'alothaim', 'farm', 'nesto',
 ]
 const WINDOW_DAYS = 45
 
