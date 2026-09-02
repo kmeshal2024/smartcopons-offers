@@ -57,12 +57,15 @@ const nextConfig = {
       // restored (the ~10 rendering surfaces they used required more coupon
       // metadata than the current schema carries).
       { source: '/coupons/category/:slug', destination: '/coupons', statusCode: 301 },
-      { source: '/coupon/:id', destination: '/', statusCode: 301 },
-      // Coupon-store pages (prisma.store, not Supermarket). Retailer pages live at
-      // /offers/{slug} and are unaffected. On the apex, /store/* is proxied to
-      // WordPress and untouched by this.
-      { source: '/store/:slug', destination: '/', statusCode: 301 },
-      { source: '/sitemap-coupons.xml', destination: '/sitemap.xml', statusCode: 301 },
+      { source: '/coupon/:id', destination: '/coupons', statusCode: 301 },
+      // Old coupon-store pages (prisma.store) now have a real successor: the
+      // /coupons/[slug] landing pages share the same store slugs, so the old
+      // equity flows to the new money pages instead of the homepage. On the
+      // apex, /store/* is proxied to WordPress and untouched by this.
+      { source: '/store/:slug', destination: '/coupons/:slug', statusCode: 301 },
+      // NB: the old '/sitemap-coupons.xml -> /sitemap.xml' redirect is GONE on
+      // purpose — a real sitemap-coupons.xml route exists again, and redirects
+      // run before filesystem routes, so keeping it would shadow the route.
     ]
   },
 

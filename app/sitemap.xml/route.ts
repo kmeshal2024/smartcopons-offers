@@ -9,6 +9,7 @@ export async function GET() {
     { loc: `${SITE_URL}/sitemap-pages.xml`, lastmod: now },
     { loc: `${SITE_URL}/sitemap-products.xml`, lastmod: now },
     { loc: `${SITE_URL}/sitemap-flyers.xml`, lastmod: now },
+    { loc: `${SITE_URL}/sitemap-coupons.xml`, lastmod: now },
   ])
   return new Response(xml, { headers: XML_HEADERS })
 }

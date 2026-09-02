@@ -171,15 +171,25 @@ export default function CouponsExplorer({ coupons }: { coupons: ExplorerCoupon[]
           {groups.map(({ store, coupons: list }) => (
             <section key={store.slug}>
               <div className="mb-3 flex items-center gap-2.5">
-                {store.logo ? (
-                  <img src={store.logo} alt={store.name} className="h-8 w-8 rounded-lg object-contain" />
-                ) : (
-                  <span className="text-2xl" aria-hidden>🏷️</span>
-                )}
-                <h2 className="text-lg font-bold text-gray-900">{store.name}</h2>
+                {/* Group header links into the store's landing page — the SEO
+                    money page — so /coupons feeds it internal links. */}
+                <a href={`/coupons/${encodeURIComponent(store.slug)}`} className="flex items-center gap-2.5 hover:opacity-80">
+                  {store.logo ? (
+                    <img src={store.logo} alt={store.name} className="h-8 w-8 rounded-lg object-contain" />
+                  ) : (
+                    <span className="text-2xl" aria-hidden>🏷️</span>
+                  )}
+                  <h2 className="text-lg font-bold text-gray-900">{store.name}</h2>
+                </a>
                 <span className="rounded-full bg-pink-50 px-2.5 py-0.5 text-xs font-semibold text-pink-700">
                   {t('couponsPage.nCodes', { n: list.length })}
                 </span>
+                <a
+                  href={`/coupons/${encodeURIComponent(store.slug)}`}
+                  className="ms-auto text-xs font-semibold text-pink-600 hover:text-pink-700"
+                >
+                  {t('couponsPage.storePage')} ←
+                </a>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
