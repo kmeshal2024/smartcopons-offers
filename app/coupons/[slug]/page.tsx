@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!data) return { title: 'كوبونات | سمارت كوبونز' }
   const { store, coupons } = data
   const my = monthYearAr()
-  const title = `كود خصم ${store.name} ${my} فعال ومجرب | سمارت كوبونز`
+  const title = `كود خصم ${store.name} ${my} فعال ومجرب`
   const description = coupons.length
     ? `أحدث أكواد خصم ${store.name} — ${coupons.length} ${coupons.length === 1 ? 'كود فعال' : 'أكواد فعالة'} ومجربة (${coupons
         .slice(0, 3)
