@@ -28,21 +28,27 @@ export default function BannerAd({ banner }: { banner: ServableBanner }) {
     }
   }, [banner.id])
 
+  // Never upscale past the creative's natural width — a 300x250 affiliate
+  // creative stretched to a 1280px container is a blurry wall. The image caps
+  // at its own width (when known), shrinks responsively, and centers.
   return (
-    <a
-      href={`/api/banners/click/${banner.id}`}
-      target="_blank"
-      rel="nofollow sponsored noopener"
-      className="block rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
-    >
-      <img
-        src={banner.imageUrl}
-        alt={banner.title}
-        width={banner.width ?? undefined}
-        height={banner.height ?? undefined}
-        loading="lazy"
-        className="w-full h-auto"
-      />
-    </a>
+    <div className="text-center">
+      <a
+        href={`/api/banners/click/${banner.id}`}
+        target="_blank"
+        rel="nofollow sponsored noopener"
+        className="inline-block max-w-full rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+      >
+        <img
+          src={banner.imageUrl}
+          alt={banner.title}
+          width={banner.width ?? undefined}
+          height={banner.height ?? undefined}
+          loading="lazy"
+          className="h-auto max-w-full"
+          style={banner.width ? { width: banner.width } : undefined}
+        />
+      </a>
+    </div>
   )
 }
