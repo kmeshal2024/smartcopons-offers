@@ -46,7 +46,7 @@ export const bannerSchema = z.object({
   imageUrl: z.string().url('Image URL must be a valid URL'),
   // http-only mirrors the DB CHECK; a mismatch here would surface as a raw 500.
   targetUrl: z.string().url('Target URL must be a valid URL').startsWith('http', 'Target URL must start with http'),
-  placement: z.enum(['home_top', 'home_middle', 'offers', 'coupons', 'flyers']),
+  placement: z.enum(['home_top', 'home_middle', 'offers', 'coupons', 'flyers', 'product', 'stores']),
   country: z.enum(['SA', 'AE']).default('SA'),
   isActive: z.boolean().default(true),
   startsAt: optionalDate,

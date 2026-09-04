@@ -26,6 +26,8 @@ const PLACEMENTS = [
   { value: 'offers', label: 'Offers pages' },
   { value: 'coupons', label: 'Coupons page' },
   { value: 'flyers', label: 'Flyer pages' },
+  { value: 'product', label: 'Product pages' },
+  { value: 'stores', label: 'Stores directory' },
 ]
 
 const EMPTY_FORM = {

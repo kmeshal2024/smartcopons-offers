@@ -7,6 +7,7 @@ import type { Metadata } from 'next'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
+import BannerSlot from '@/components/BannerSlot'
 import ExpiryBadge from '@/components/ExpiryBadge'
 import WatchButton from '@/components/WatchButton'
 import { getValidity, formatRangeAr } from '@/lib/flyer-utils'
@@ -297,6 +298,8 @@ export default async function ProductPage({ params }: Props) {
             </div>
           </div>
         </div>
+
+        <BannerSlot placement="product" country={(p as any).country || DEFAULT_COUNTRY} className="mt-8" />
 
         {/* Cross-store comparison — the reason this page is worth indexing */}
         {comparison.length > 0 && (

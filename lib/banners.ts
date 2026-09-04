@@ -17,6 +17,8 @@ export const BANNER_PLACEMENTS = [
   'offers',
   'coupons',
   'flyers',
+  'product',
+  'stores',
 ] as const
 
 export type BannerPlacement = (typeof BANNER_PLACEMENTS)[number]

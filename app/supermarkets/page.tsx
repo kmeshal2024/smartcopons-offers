@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import BannerSlot from '@/components/BannerSlot'
 import { listVisibleRetailers } from '@/lib/offer-queries'
 import type { Metadata } from 'next'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
@@ -55,6 +56,8 @@ export default async function SupermarketsPage() {
             {t('stores.subtitle')}
           </p>
         </div>
+
+        <BannerSlot placement="stores" country={DEFAULT_COUNTRY} className="mb-6" />
 
         {/* Supermarkets Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">

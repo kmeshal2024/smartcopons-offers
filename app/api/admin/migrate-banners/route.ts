@@ -50,11 +50,13 @@ const STATEMENTS = [
        CHECK ("targetUrl" LIKE 'http%');
    EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 
-  `DO $$ BEGIN
-     ALTER TABLE banners
-       ADD CONSTRAINT "banners_placement_check"
-       CHECK (placement IN ('home_top', 'home_middle', 'offers', 'coupons', 'flyers'));
-   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  // Re-created (not IF NOT EXISTS) so re-running after the list grows updates
+  // the constraint — this is why the route stays the single source of the enum.
+  `ALTER TABLE banners DROP CONSTRAINT IF EXISTS "banners_placement_check"`,
+
+  `ALTER TABLE banners
+     ADD CONSTRAINT "banners_placement_check"
+     CHECK (placement IN ('home_top', 'home_middle', 'offers', 'coupons', 'flyers', 'product', 'stores'))`,
 ]
 
 async function run() {
