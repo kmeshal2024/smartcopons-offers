@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import FlyerScreen from '@/components/FlyerScreen'
+import BannerSlot from '@/components/BannerSlot'
 import type { Metadata } from 'next'
 import { formatDateAr, formatRangeAr, getValidity } from '@/lib/flyer-utils'
 import { getFlyerBySlugDate } from '@/lib/flyer-query'
@@ -86,6 +87,7 @@ export default async function AeWeeklyFlyerPage({ params }: Props) {
     <div className="min-h-screen bg-gray-50" dir={dirOf(getLang())}>
       <Header />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <BannerSlot placement="flyers" country="AE" className="container mx-auto px-4 pt-4" />
       <FlyerScreen flyer={flyer} country="AE" />
       <Footer />
     </div>

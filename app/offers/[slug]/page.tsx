@@ -12,6 +12,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import RetailerFilters from './RetailerFilters'
 import RetailerCouponStrip from '@/components/RetailerCouponStrip'
+import BannerSlot from '@/components/BannerSlot'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
 import { getLang } from '@/lib/i18n-server'
@@ -353,6 +354,8 @@ export default async function RetailerPage({ params, searchParams }: Props) {
           </svg>
           <span className="text-gray-800 font-medium">{supermarket.nameAr}</span>
         </nav>
+
+        <BannerSlot placement="offers" country={DEFAULT_COUNTRY} className="mb-4" />
 
         {/* Supermarket Header */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-5 mb-5">

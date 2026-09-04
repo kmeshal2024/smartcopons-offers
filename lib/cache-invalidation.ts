@@ -24,8 +24,14 @@ export function invalidateCoupons() {
   revalidateTag('coupons')
 }
 
+/** Banner rows changed — the admin banners CRUD. */
+export function invalidateBanners() {
+  revalidateTag('banners')
+}
+
 /** Everything. Use after a bulk import or migration of unknown scope. */
 export function invalidateAll() {
   invalidateOffers()
   invalidateCoupons()
+  invalidateBanners()
 }

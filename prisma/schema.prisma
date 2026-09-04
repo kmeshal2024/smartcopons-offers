@@ -409,3 +409,45 @@ model SharedList {
   @@index([expiresAt])
   @@map("shared_lists")
 }
+
+// ============================================================================
+// AD BANNERS
+// ============================================================================
+
+/// A self-managed ad banner (affiliate or sold placement), scheduled per market.
+///
+/// Served through lib/banners.ts (cached, tag 'banners') and rendered by
+/// components/BannerSlot.tsx. Clicks route through /api/banners/click/[id] so
+/// the redirect and the count are the same event; impressions arrive batched
+/// from a client beacon. Both counters are lifetime totals — per-day analytics
+/// can be layered on later without touching the serving path.
+model Banner {
+  id        String    @id @default(cuid())
+  /// Internal label AND the image alt text, so write it as a shopper would read it.
+  title     String
+  imageUrl  String
+  /// Where the click lands (affiliate deep link). A DB CHECK enforces http-prefixed,
+  /// same guard as Coupon.affiliateUrl — the '#' failure must not recur here.
+  targetUrl String
+  /// One of lib/banners.ts BANNER_PLACEMENTS. Guarded by a DB CHECK.
+  placement String
+  /// ISO country code — see lib/countries.ts. A banner serves exactly one market;
+  /// run the same creative twice for both.
+  country   String    @default("SA")
+  isActive  Boolean   @default(true)
+  /// Both nullable: an open-ended banner is the common case for affiliate creatives.
+  startsAt  DateTime?
+  endsAt    DateTime?
+  /// Highest wins the slot; ties rotate randomly per request.
+  priority  Int       @default(0)
+  /// Intrinsic image size when known — lets the <img> reserve space (no CLS).
+  width     Int?
+  height    Int?
+  impressions Int     @default(0)
+  clicks    Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([placement, country, isActive])
+  @@map("banners")
+}

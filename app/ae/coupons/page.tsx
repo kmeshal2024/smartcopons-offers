@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import CouponsExplorer from '@/components/CouponsExplorer'
+import BannerSlot from '@/components/BannerSlot'
 import { getCouponsData } from '@/lib/coupons'
 import { COUNTRIES, urlFor } from '@/lib/countries'
 import { getLang } from '@/lib/i18n-server'
@@ -48,6 +49,8 @@ export default async function UaeCouponsPage() {
             {t('coupons.aeSubtitle', { n: formatNumber(coupons.length) })}
           </p>
         </header>
+
+        <BannerSlot placement="coupons" country={COUNTRY.code} className="mb-6" />
 
         {coupons.length === 0 ? (
           <p className="rounded-xl border border-gray-100 bg-white py-14 text-center text-gray-500">

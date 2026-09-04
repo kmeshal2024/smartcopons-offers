@@ -14,6 +14,7 @@ export default function AdminNav() {
 
   const links = [
     { href: '/admin/coupons', label: 'Coupons' },
+    { href: '/admin/banners', label: 'Banners' },
     { href: '/admin/stores', label: 'Stores' },
     { href: '/admin/supermarkets', label: 'Supermarkets' },
     { href: '/admin/categories', label: 'Categories' },

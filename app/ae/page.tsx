@@ -5,6 +5,7 @@ import type { Metadata } from 'next'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
+import BannerSlot from '@/components/BannerSlot'
 import { COUNTRIES, urlFor } from '@/lib/countries'
 import { getLang } from '@/lib/i18n-server'
 import { t as translate, dirOf, formatNumber } from '@/lib/i18n'
@@ -108,6 +109,8 @@ export default async function UaeHome() {
           </div>
         </section>
 
+        <BannerSlot placement="home_top" country={COUNTRY.code} className="mb-8" />
+
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-bold text-gray-900">{t('home.section.stores')}</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -136,6 +139,8 @@ export default async function UaeHome() {
             ))}
           </div>
         </section>
+
+        <BannerSlot placement="home_middle" country={COUNTRY.code} className="mb-8" />
 
         <section>
           <div className="mb-3 flex items-center justify-between">

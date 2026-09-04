@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import CouponsExplorer from '@/components/CouponsExplorer'
+import BannerSlot from '@/components/BannerSlot'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
 import { TTL_LISTING } from '@/lib/offer-queries'
 import { getLang } from '@/lib/i18n-server'
@@ -85,6 +86,8 @@ export default async function CouponsPage() {
             {t('couponsPage.subtitle', { n: coupons.length })}
           </p>
         </div>
+
+        <BannerSlot placement="coupons" country={DEFAULT_COUNTRY} className="mb-6" />
 
         {coupons.length === 0 ? (
           <div className="rounded-xl border border-gray-100 bg-white p-10 text-center text-gray-400">

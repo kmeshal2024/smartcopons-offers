@@ -10,6 +10,7 @@ import {
 import Link from 'next/link'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
+import BannerSlot from '@/components/BannerSlot'
 import Footer from '@/components/Footer'
 import type { Metadata } from 'next'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
@@ -179,6 +180,8 @@ export default async function HomePage() {
           </div>
         </div>
 
+        <BannerSlot placement="home_top" country={DEFAULT_COUNTRY} className="container mx-auto px-4 mt-6" />
+
         {/* Retailers Section */}
         {supermarkets.length > 0 && (
           <section className="container mx-auto px-4 mt-6">
@@ -304,6 +307,8 @@ export default async function HomePage() {
             (i.e. an external counter store); until that exists there is no honest
             "most viewed". "Ending soon", "top discounts" and "latest" already
             cover this slot. */}
+
+        <BannerSlot placement="home_middle" country={DEFAULT_COUNTRY} className="container mx-auto px-4 mt-8" />
 
         {/* Section Divider */}
         <div className="container mx-auto px-4 mt-8">

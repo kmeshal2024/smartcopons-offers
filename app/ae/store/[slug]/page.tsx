@@ -6,6 +6,7 @@ import type { Metadata } from 'next'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
+import BannerSlot from '@/components/BannerSlot'
 import { COUNTRIES, urlFor } from '@/lib/countries'
 import { getLang } from '@/lib/i18n-server'
 import { t as translate, dirOf, formatNumber } from '@/lib/i18n'
@@ -113,6 +114,8 @@ export default async function UaeStorePage({ params }: Props) {
           <span className="text-gray-300">/</span>
           <span className="font-semibold text-gray-900">{store.nameAr}</span>
         </nav>
+
+        <BannerSlot placement="offers" country={COUNTRY.code} className="mb-5" />
 
         <header className="mb-6 flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5">
           {store.logo ? (
