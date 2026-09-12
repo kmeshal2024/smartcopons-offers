@@ -7,17 +7,18 @@ import { invalidateBanners } from '@/lib/cache-invalidation'
  * seed-owned-coupons): one full-set POST, idempotent via upsert on fixed ids,
  * behind APP_SECRET. Re-running updates the creatives in place.
  *
- * Sources, pulled from the owner's own affiliate dashboards on 2026-09-05:
- * - AliExpress WW via Admitad, ad space "smart copons". The image is served
- *   from ad.admitad.com/b/ (their counting pixel endpoint) and the click goes
- *   through rzekl.com/g/ — both per the exact HTML the Code dialog generates,
- *   so Admitad counts what we count. rel="nofollow sponsored" is rendered by
- *   BannerAd, which is what the program rules require.
- * - iHerb via Partnerize (camref:1011lCoHu), creative 1100l169709: the Arabic
- *   evergreen 728x90 whose destination is sa.iherb.com.
+ * 2026-09-12: every unit converted to kind='native' (styled Arabic card, no
+ * external image). Week-one data showed the network images were the problem:
+ * ad.admitad.com and prf.hn are on every ad-blocker list, so a chunk of
+ * shoppers never saw the creative at all, and the generic logos said nothing
+ * to a deals audience. The affiliate CLICK links are unchanged — tracking and
+ * commissions work exactly as before. imageUrl values are kept on the rows so
+ * flipping a unit back to kind='image' in /admin/banners is one click.
  *
- * The Fall Fest creative is a dated campaign (1–7 Sep 2026) and carries endsAt,
- * after which its slot silently empties.
+ * Affiliate links (from the owner's own dashboards, 2026-09-05):
+ * - AliExpress WW via Admitad, ad space "smart copons" (rzekl.com/g/…)
+ * - iHerb via Partnerize camref:1011lCoHu → sa.iherb.com
+ * - Trip.com via Partnerize camref:1100l4hxTZ
  *
  *   curl -X POST https://sa.smartcopons.com/api/admin/seed-banners \
  *        -H "Authorization: Bearer $APP_SECRET"
@@ -25,154 +26,70 @@ import { invalidateBanners } from '@/lib/cache-invalidation'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
+const ALIEXPRESS_URL = 'https://rzekl.com/g/45zdaqe3i33be3681a0d16525dc3e8/?i=4'
+const ALIEXPRESS_IMG = 'https://ad.admitad.com/b/45zdaqe3i33be3681a0d16525dc3e8/'
+const IHERB_URL = 'https://iherb.prf.hn/click/camref:1011lCoHu/creativeref:1100l169709'
+const IHERB_IMG = 'https://iherb-creative.prf.hn/source/camref:1011lCoHu/creativeref:1100l169709'
+const TRIP_URL = 'https://trip.prf.hn/click/camref:1100l4hxTZ/creativeref:1011l28720'
+const TRIP_IMG = 'https://trip-creative.prf.hn/source/camref:1100l4hxTZ/creativeref:1011l28720'
+
+const IHERB_CARD = {
+  kind: 'native',
+  theme: 'green',
+  headline: '🌿 شحن مجاني من آيهيرب إلى السعودية',
+  subtitle: 'فيتامينات ومكملات وعناية بخصومات يومية — للطلبات فوق 250 ر.س',
+  ctaText: 'تسوق الآن',
+  targetUrl: IHERB_URL,
+  imageUrl: IHERB_IMG,
+  title: 'آيهيرب — شحن مجاني إلى السعودية للطلبات فوق 250 ر.س',
+}
+
+const ALI_CARD_SA = {
+  kind: 'native',
+  theme: 'orange',
+  headline: '🛒 عروض علي إكسبرس اليوم',
+  subtitle: 'ملايين المنتجات بأسعار مخفضة مع شحن إلى السعودية',
+  ctaText: 'اكتشف العروض',
+  targetUrl: ALIEXPRESS_URL,
+  imageUrl: ALIEXPRESS_IMG,
+  title: 'علي إكسبرس — تسوق ملايين المنتجات بأسعار مخفضة',
+}
+
+const ALI_CARD_AE = {
+  ...ALI_CARD_SA,
+  subtitle: 'ملايين المنتجات بأسعار مخفضة مع شحن إلى الإمارات',
+}
+
+const TRIP_CARD = {
+  kind: 'native',
+  theme: 'blue',
+  headline: '✈️ سافر بذكاء مع Trip.com',
+  subtitle: 'فنادق وطيران حول العالم بدون رسوم حجز',
+  ctaText: 'احجز الآن',
+  targetUrl: TRIP_URL,
+  imageUrl: TRIP_IMG,
+  title: 'Trip.com — احجز فنادق وطيران بدون رسوم حجز',
+}
+
+const BASE = { isActive: true, priority: 10, width: null as number | null, height: null as number | null }
+
 const BANNERS = [
-  {
-    id: 'seed-iherb-ar-728x90-home-top-sa',
-    title: 'آيهيرب — شحن مجاني إلى السعودية للطلبات فوق 250 ر.س',
-    imageUrl: 'https://iherb-creative.prf.hn/source/camref:1011lCoHu/creativeref:1100l169709',
-    targetUrl: 'https://iherb.prf.hn/click/camref:1011lCoHu/creativeref:1100l169709',
-    placement: 'home_top',
-    country: 'SA',
-    width: 728,
-    height: 90,
-    priority: 10,
-    isActive: true,
-  },
-  {
-    id: 'seed-aliexpress-logo-640-home-middle-sa',
-    title: 'علي إكسبرس — تسوق ملايين المنتجات بأسعار مخفضة',
-    imageUrl: 'https://ad.admitad.com/b/45zdaqe3i33be3681a0d16525dc3e8/',
-    targetUrl: 'https://rzekl.com/g/45zdaqe3i33be3681a0d16525dc3e8/?i=4',
-    placement: 'home_middle',
-    country: 'SA',
-    width: 640,
-    height: 150,
-    priority: 10,
-    isActive: true,
-  },
-  {
-    id: 'seed-aliexpress-fallfest-300-offers-sa',
-    title: 'علي إكسبرس — خصومات حتى 60% في مهرجان الخريف',
-    imageUrl: 'https://ad.admitad.com/b/j565dxnlzy3be3681a0d16525dc3e8/',
-    targetUrl: 'https://rzekl.com/g/j565dxnlzy3be3681a0d16525dc3e8/?i=4',
-    placement: 'offers',
-    country: 'SA',
-    width: 300,
-    height: 250,
-    priority: 10,
-    isActive: true,
-    endsAt: new Date('2026-09-07T23:59:59+03:00'),
-  },
-  {
-    id: 'seed-aliexpress-logo-640-coupons-sa',
-    title: 'علي إكسبرس — تسوق ملايين المنتجات بأسعار مخفضة',
-    imageUrl: 'https://ad.admitad.com/b/45zdaqe3i33be3681a0d16525dc3e8/',
-    targetUrl: 'https://rzekl.com/g/45zdaqe3i33be3681a0d16525dc3e8/?i=4',
-    placement: 'coupons',
-    country: 'SA',
-    width: 640,
-    height: 150,
-    priority: 10,
-    isActive: true,
-  },
-  {
-    id: 'seed-iherb-ar-728x90-product-sa',
-    title: 'آيهيرب — شحن مجاني إلى السعودية للطلبات فوق 250 ر.س',
-    imageUrl: 'https://iherb-creative.prf.hn/source/camref:1011lCoHu/creativeref:1100l169709',
-    targetUrl: 'https://iherb.prf.hn/click/camref:1011lCoHu/creativeref:1100l169709',
-    placement: 'product',
-    country: 'SA',
-    width: 728,
-    height: 90,
-    priority: 10,
-    isActive: true,
-  },
-  {
-    id: 'seed-aliexpress-logo-640-product-ae',
-    title: 'علي إكسبرس — تسوق ملايين المنتجات بأسعار مخفضة',
-    imageUrl: 'https://ad.admitad.com/b/45zdaqe3i33be3681a0d16525dc3e8/',
-    targetUrl: 'https://rzekl.com/g/45zdaqe3i33be3681a0d16525dc3e8/?i=4',
-    placement: 'product',
-    country: 'AE',
-    width: 640,
-    height: 150,
-    priority: 10,
-    isActive: true,
-  },
-  {
-    id: 'seed-aliexpress-logo-640-stores-sa',
-    title: 'علي إكسبرس — تسوق ملايين المنتجات بأسعار مخفضة',
-    imageUrl: 'https://ad.admitad.com/b/45zdaqe3i33be3681a0d16525dc3e8/',
-    targetUrl: 'https://rzekl.com/g/45zdaqe3i33be3681a0d16525dc3e8/?i=4',
-    placement: 'stores',
-    country: 'SA',
-    width: 640,
-    height: 150,
-    priority: 10,
-    isActive: true,
-  },
-  {
-    id: 'seed-tripcom-728x90-flyers-sa',
-    title: 'Trip.com — احجز فنادق وطيران بدون رسوم حجز',
-    imageUrl: 'https://trip-creative.prf.hn/source/camref:1100l4hxTZ/creativeref:1011l28720',
-    targetUrl: 'https://trip.prf.hn/click/camref:1100l4hxTZ/creativeref:1011l28720',
-    placement: 'flyers',
-    country: 'SA',
-    width: 728,
-    height: 90,
-    priority: 10,
-    isActive: true,
-  },
-  {
-    id: 'seed-tripcom-728x90-flyers-ae',
-    title: 'Trip.com — احجز فنادق وطيران بدون رسوم حجز',
-    imageUrl: 'https://trip-creative.prf.hn/source/camref:1100l4hxTZ/creativeref:1011l28720',
-    targetUrl: 'https://trip.prf.hn/click/camref:1100l4hxTZ/creativeref:1011l28720',
-    placement: 'flyers',
-    country: 'AE',
-    width: 728,
-    height: 90,
-    priority: 10,
-    isActive: true,
-  },
-  {
-    // Priority 5 on purpose: Fall Fest (priority 10) wins the offers slot until
-    // its endsAt passes, then this takes over — no manual switch needed.
-    id: 'seed-tripcom-728x90-offers-sa',
-    title: 'Trip.com — احجز فنادق وطيران بدون رسوم حجز',
-    imageUrl: 'https://trip-creative.prf.hn/source/camref:1100l4hxTZ/creativeref:1011l28720',
-    targetUrl: 'https://trip.prf.hn/click/camref:1100l4hxTZ/creativeref:1011l28720',
-    placement: 'offers',
-    country: 'SA',
-    width: 728,
-    height: 90,
-    priority: 5,
-    isActive: true,
-  },
-  {
-    id: 'seed-tripcom-728x90-home-middle-ae',
-    title: 'Trip.com — احجز فنادق وطيران بدون رسوم حجز',
-    imageUrl: 'https://trip-creative.prf.hn/source/camref:1100l4hxTZ/creativeref:1011l28720',
-    targetUrl: 'https://trip.prf.hn/click/camref:1100l4hxTZ/creativeref:1011l28720',
-    placement: 'home_middle',
-    country: 'AE',
-    width: 728,
-    height: 90,
-    priority: 10,
-    isActive: true,
-  },
-  {
-    id: 'seed-aliexpress-logo-640-home-top-ae',
-    title: 'علي إكسبرس — تسوق ملايين المنتجات بأسعار مخفضة',
-    imageUrl: 'https://ad.admitad.com/b/45zdaqe3i33be3681a0d16525dc3e8/',
-    targetUrl: 'https://rzekl.com/g/45zdaqe3i33be3681a0d16525dc3e8/?i=4',
-    placement: 'home_top',
-    country: 'AE',
-    width: 640,
-    height: 150,
-    priority: 10,
-    isActive: true,
-  },
+  // ---- SA ----
+  { id: 'seed-iherb-ar-728x90-home-top-sa', ...BASE, ...IHERB_CARD, placement: 'home_top', country: 'SA' },
+  { id: 'seed-aliexpress-logo-640-home-middle-sa', ...BASE, ...ALI_CARD_SA, placement: 'home_middle', country: 'SA' },
+  // Fall Fest expired Sep 7; trip.com (converted to native) now owns the slot.
+  { id: 'seed-tripcom-728x90-offers-sa', ...BASE, ...TRIP_CARD, placement: 'offers', country: 'SA' },
+  { id: 'seed-aliexpress-logo-640-coupons-sa', ...BASE, ...ALI_CARD_SA, placement: 'coupons', country: 'SA' },
+  { id: 'seed-iherb-ar-728x90-product-sa', ...BASE, ...IHERB_CARD, placement: 'product', country: 'SA' },
+  { id: 'seed-aliexpress-logo-640-stores-sa', ...BASE, ...ALI_CARD_SA, placement: 'stores', country: 'SA' },
+  { id: 'seed-tripcom-728x90-flyers-sa', ...BASE, ...TRIP_CARD, placement: 'flyers', country: 'SA' },
+  { id: 'seed-iherb-infeed-sa', ...BASE, ...IHERB_CARD, headline: '🌿 خصومات آيهيرب اليومية', subtitle: 'شحن مجاني إلى السعودية للطلبات فوق 250 ر.س', placement: 'infeed', country: 'SA' },
+  // ---- AE ----
+  { id: 'seed-aliexpress-logo-640-home-top-ae', ...BASE, ...ALI_CARD_AE, placement: 'home_top', country: 'AE' },
+  { id: 'seed-tripcom-728x90-home-middle-ae', ...BASE, ...TRIP_CARD, placement: 'home_middle', country: 'AE' },
+  { id: 'seed-aliexpress-logo-640-product-ae', ...BASE, ...ALI_CARD_AE, placement: 'product', country: 'AE' },
+  { id: 'seed-tripcom-728x90-flyers-ae', ...BASE, ...TRIP_CARD, placement: 'flyers', country: 'AE' },
+  { id: 'seed-aliexpress-infeed-ae', ...BASE, ...ALI_CARD_AE, headline: '🛒 صفقات علي إكسبرس', subtitle: 'أسعار مخفضة وشحن إلى الإمارات', placement: 'infeed', country: 'AE' },
 ]
 
 async function run() {

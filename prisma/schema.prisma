@@ -425,7 +425,20 @@ model Banner {
   id        String    @id @default(cuid())
   /// Internal label AND the image alt text, so write it as a shopper would read it.
   title     String
-  imageUrl  String
+  /// 'image' renders imageUrl; 'native' renders a styled card from headline/
+  /// subtitle/ctaText/theme — no external image, so ad-blockers (which blanket
+  /// ad.admitad.com and prf.hn) cannot blank it. Guarded by a DB CHECK.
+  kind      String    @default("image")
+  /// Nullable since native banners have no creative image. Still required for
+  /// kind='image' — enforced in the zod schema, not the DB.
+  imageUrl  String?
+  /// Native card copy. Emoji goes at the start of the headline.
+  headline  String?
+  subtitle  String?
+  ctaText   String?
+  /// green | orange | blue | pink — a key into BannerAd's gradient map, NOT raw
+  /// classes, because Tailwind only ships literals it can see at build time.
+  theme     String?
   /// Where the click lands (affiliate deep link). A DB CHECK enforces http-prefixed,
   /// same guard as Coupon.affiliateUrl — the '#' failure must not recur here.
   targetUrl String

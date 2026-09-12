@@ -41,20 +41,45 @@ const optionalPositiveInt = z.preprocess(
   z.number().int().positive().nullable()
 ).optional()
 
-export const bannerSchema = z.object({
-  title: z.string().min(2, 'Title must be at least 2 characters'),
-  imageUrl: z.string().url('Image URL must be a valid URL'),
-  // http-only mirrors the DB CHECK; a mismatch here would surface as a raw 500.
-  targetUrl: z.string().url('Target URL must be a valid URL').startsWith('http', 'Target URL must start with http'),
-  placement: z.enum(['home_top', 'home_middle', 'offers', 'coupons', 'flyers', 'product', 'stores']),
-  country: z.enum(['SA', 'AE']).default('SA'),
-  isActive: z.boolean().default(true),
-  startsAt: optionalDate,
-  endsAt: optionalDate,
-  priority: z.coerce.number().int().min(0).max(1000).default(0),
-  width: optionalPositiveInt,
-  height: optionalPositiveInt,
-})
+const optionalTrimmed = z.preprocess(
+  v => (v === '' || v == null ? null : v),
+  z.string().max(300).nullable()
+).optional()
+
+export const bannerSchema = z
+  .object({
+    title: z.string().min(2, 'Title must be at least 2 characters'),
+    kind: z.enum(['image', 'native']).default('image'),
+    imageUrl: z.preprocess(
+      v => (v === '' || v == null ? null : v),
+      z.string().url('Image URL must be a valid URL').nullable()
+    ).optional(),
+    headline: optionalTrimmed,
+    subtitle: optionalTrimmed,
+    ctaText: optionalTrimmed,
+    theme: z.preprocess(
+      v => (v === '' || v == null ? null : v),
+      z.enum(['green', 'orange', 'blue', 'pink']).nullable()
+    ).optional(),
+    // http-only mirrors the DB CHECK; a mismatch here would surface as a raw 500.
+    targetUrl: z.string().url('Target URL must be a valid URL').startsWith('http', 'Target URL must start with http'),
+    placement: z.enum(['home_top', 'home_middle', 'offers', 'coupons', 'flyers', 'product', 'stores', 'infeed']),
+    country: z.enum(['SA', 'AE']).default('SA'),
+    isActive: z.boolean().default(true),
+    startsAt: optionalDate,
+    endsAt: optionalDate,
+    priority: z.coerce.number().int().min(0).max(1000).default(0),
+    width: optionalPositiveInt,
+    height: optionalPositiveInt,
+  })
+  .refine(b => b.kind !== 'image' || !!b.imageUrl, {
+    message: 'Image banners need an image URL',
+    path: ['imageUrl'],
+  })
+  .refine(b => b.kind !== 'native' || (!!b.headline && !!b.ctaText), {
+    message: 'Native banners need a headline and CTA text',
+    path: ['headline'],
+  })
 
 export const storeSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),

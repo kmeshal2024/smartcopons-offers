@@ -19,6 +19,7 @@ export const BANNER_PLACEMENTS = [
   'flyers',
   'product',
   'stores',
+  'infeed',
 ] as const
 
 export type BannerPlacement = (typeof BANNER_PLACEMENTS)[number]
@@ -26,7 +27,12 @@ export type BannerPlacement = (typeof BANNER_PLACEMENTS)[number]
 export interface ServableBanner {
   id: string
   title: string
-  imageUrl: string
+  kind: string
+  imageUrl: string | null
+  headline: string | null
+  subtitle: string | null
+  ctaText: string | null
+  theme: string | null
   priority: number
   width: number | null
   height: number | null
@@ -49,7 +55,12 @@ export const getActiveBanners = unstable_cache(
         select: {
           id: true,
           title: true,
+          kind: true,
           imageUrl: true,
+          headline: true,
+          subtitle: true,
+          ctaText: true,
+          theme: true,
           priority: true,
           width: true,
           height: true,

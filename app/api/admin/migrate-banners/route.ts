@@ -50,13 +50,28 @@ const STATEMENTS = [
        CHECK ("targetUrl" LIKE 'http%');
    EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 
+  // Native-card columns (2026-09-12). imageUrl becomes nullable because a
+  // native banner has no creative image at all.
+  `ALTER TABLE banners ADD COLUMN IF NOT EXISTS kind       TEXT NOT NULL DEFAULT 'image'`,
+  `ALTER TABLE banners ADD COLUMN IF NOT EXISTS headline   TEXT`,
+  `ALTER TABLE banners ADD COLUMN IF NOT EXISTS subtitle   TEXT`,
+  `ALTER TABLE banners ADD COLUMN IF NOT EXISTS "ctaText"  TEXT`,
+  `ALTER TABLE banners ADD COLUMN IF NOT EXISTS theme      TEXT`,
+  `ALTER TABLE banners ALTER COLUMN "imageUrl" DROP NOT NULL`,
+
+  `DO $$ BEGIN
+     ALTER TABLE banners
+       ADD CONSTRAINT "banners_kind_check"
+       CHECK (kind IN ('image', 'native'));
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+
   // Re-created (not IF NOT EXISTS) so re-running after the list grows updates
   // the constraint — this is why the route stays the single source of the enum.
   `ALTER TABLE banners DROP CONSTRAINT IF EXISTS "banners_placement_check"`,
 
   `ALTER TABLE banners
      ADD CONSTRAINT "banners_placement_check"
-     CHECK (placement IN ('home_top', 'home_middle', 'offers', 'coupons', 'flyers', 'product', 'stores'))`,
+     CHECK (placement IN ('home_top', 'home_middle', 'offers', 'coupons', 'flyers', 'product', 'stores', 'infeed'))`,
 ]
 
 async function run() {

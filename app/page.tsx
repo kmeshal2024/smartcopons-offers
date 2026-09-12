@@ -332,7 +332,12 @@ export default async function HomePage() {
               </Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
-              {latestProducts.map(product => (
+              {latestProducts.slice(0, 4).map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+              {/* In-feed ad tile: sits in the grid like a product card. */}
+              <BannerSlot placement="infeed" country={DEFAULT_COUNTRY} variant="card" />
+              {latestProducts.slice(4).map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>

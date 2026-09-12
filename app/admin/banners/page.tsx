@@ -6,7 +6,12 @@ import AdminNav from '@/components/AdminNav'
 interface Banner {
   id: string
   title: string
-  imageUrl: string
+  kind: string
+  imageUrl: string | null
+  headline: string | null
+  subtitle: string | null
+  ctaText: string | null
+  theme: string | null
   targetUrl: string
   placement: string
   country: string
@@ -28,11 +33,24 @@ const PLACEMENTS = [
   { value: 'flyers', label: 'Flyer pages' },
   { value: 'product', label: 'Product pages' },
   { value: 'stores', label: 'Stores directory' },
+  { value: 'infeed', label: 'In-feed (inside product grids)' },
+]
+
+const THEMES = [
+  { value: 'pink', label: 'Pink (site brand)' },
+  { value: 'green', label: 'Green' },
+  { value: 'orange', label: 'Orange' },
+  { value: 'blue', label: 'Blue' },
 ]
 
 const EMPTY_FORM = {
   title: '',
+  kind: 'native',
   imageUrl: '',
+  headline: '',
+  subtitle: '',
+  ctaText: '',
+  theme: 'pink',
   targetUrl: '',
   placement: 'home_top',
   country: 'SA',
@@ -106,6 +124,11 @@ export default function AdminBannersPage() {
     try {
       const payload = {
         ...formData,
+        imageUrl: formData.imageUrl || null,
+        headline: formData.headline || null,
+        subtitle: formData.subtitle || null,
+        ctaText: formData.ctaText || null,
+        theme: formData.theme || null,
         priority: Number(formData.priority) || 0,
         startsAt: formData.startsAt ? new Date(formData.startsAt).toISOString() : null,
         endsAt: formData.endsAt ? new Date(formData.endsAt).toISOString() : null,
@@ -138,7 +161,12 @@ export default function AdminBannersPage() {
     setEditingId(b.id)
     setFormData({
       title: b.title,
-      imageUrl: b.imageUrl,
+      kind: b.kind || 'image',
+      imageUrl: b.imageUrl ?? '',
+      headline: b.headline ?? '',
+      subtitle: b.subtitle ?? '',
+      ctaText: b.ctaText ?? '',
+      theme: b.theme ?? 'pink',
       targetUrl: b.targetUrl,
       placement: b.placement,
       country: b.country,
@@ -165,7 +193,12 @@ export default function AdminBannersPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: b.title,
+        kind: b.kind || 'image',
         imageUrl: b.imageUrl,
+        headline: b.headline,
+        subtitle: b.subtitle,
+        ctaText: b.ctaText,
+        theme: b.theme,
         targetUrl: b.targetUrl,
         placement: b.placement,
         country: b.country,
@@ -232,32 +265,92 @@ export default function AdminBannersPage() {
             </label>
 
             <label className="block md:col-span-2">
-              <span className="text-sm font-medium">Image URL</span>
-              <div className="flex gap-2 mt-1">
-                <input
-                  required
-                  type="url"
-                  value={formData.imageUrl}
-                  onChange={e => setFormData({ ...formData, imageUrl: e.target.value })}
-                  className="flex-1 border rounded px-3 py-2"
-                  placeholder="https://... (paste a URL or upload)"
-                />
-                <label className="bg-gray-200 px-4 py-2 rounded cursor-pointer hover:bg-gray-300 whitespace-nowrap">
-                  {uploading ? 'Uploading…' : 'Upload'}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={e => e.target.files?.[0] && handleUpload(e.target.files[0])}
-                  />
-                </label>
-              </div>
+              <span className="text-sm font-medium">Type</span>
+              <select
+                value={formData.kind}
+                onChange={e => setFormData({ ...formData, kind: e.target.value })}
+                className="mt-1 w-full border rounded px-3 py-2"
+              >
+                <option value="native">Native card (styled text + CTA — ad-blocker-proof, higher CTR)</option>
+                <option value="image">Image creative (network banner)</option>
+              </select>
             </label>
 
-            {formData.imageUrl && (
-              <div className="md:col-span-2 border rounded p-2 bg-gray-50">
-                <img src={formData.imageUrl} alt="preview" className="max-h-40 mx-auto" />
-              </div>
+            {formData.kind === 'native' ? (
+              <>
+                <label className="block">
+                  <span className="text-sm font-medium">Headline (Arabic, emoji first)</span>
+                  <input
+                    required
+                    value={formData.headline}
+                    onChange={e => setFormData({ ...formData, headline: e.target.value })}
+                    className="mt-1 w-full border rounded px-3 py-2"
+                    placeholder="🌿 شحن مجاني من آيهيرب فوق 250 ر.س"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium">CTA button text</span>
+                  <input
+                    required
+                    value={formData.ctaText}
+                    onChange={e => setFormData({ ...formData, ctaText: e.target.value })}
+                    className="mt-1 w-full border rounded px-3 py-2"
+                    placeholder="تسوق الآن"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium">Subtitle (optional)</span>
+                  <input
+                    value={formData.subtitle}
+                    onChange={e => setFormData({ ...formData, subtitle: e.target.value })}
+                    className="mt-1 w-full border rounded px-3 py-2"
+                    placeholder="فيتامينات ومكملات بخصومات يومية"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium">Theme</span>
+                  <select
+                    value={formData.theme}
+                    onChange={e => setFormData({ ...formData, theme: e.target.value })}
+                    className="mt-1 w-full border rounded px-3 py-2"
+                  >
+                    {THEMES.map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            ) : (
+              <>
+                <label className="block md:col-span-2">
+                  <span className="text-sm font-medium">Image URL</span>
+                  <div className="flex gap-2 mt-1">
+                    <input
+                      required
+                      type="url"
+                      value={formData.imageUrl}
+                      onChange={e => setFormData({ ...formData, imageUrl: e.target.value })}
+                      className="flex-1 border rounded px-3 py-2"
+                      placeholder="https://... (paste a URL or upload)"
+                    />
+                    <label className="bg-gray-200 px-4 py-2 rounded cursor-pointer hover:bg-gray-300 whitespace-nowrap">
+                      {uploading ? 'Uploading…' : 'Upload'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => e.target.files?.[0] && handleUpload(e.target.files[0])}
+                      />
+                    </label>
+                  </div>
+                </label>
+
+                {formData.imageUrl && (
+                  <div className="md:col-span-2 border rounded p-2 bg-gray-50">
+                    <img src={formData.imageUrl} alt="preview" className="max-h-40 mx-auto" />
+                  </div>
+                )}
+              </>
             )}
 
             <label className="block">
@@ -392,7 +485,13 @@ export default function AdminBannersPage() {
                 {banners.map(b => (
                   <tr key={b.id} className="border-t">
                     <td className="p-3">
-                      <img src={b.imageUrl} alt={b.title} className="h-10 max-w-[120px] object-contain" />
+                      {b.kind === 'native' ? (
+                        <span className="inline-block rounded bg-pink-100 px-2 py-1 text-xs font-semibold text-pink-700">
+                          Native
+                        </span>
+                      ) : (
+                        <img src={b.imageUrl ?? ''} alt={b.title} className="h-10 max-w-[120px] object-contain" />
+                      )}
                     </td>
                     <td className="p-3 max-w-[200px] truncate" title={b.title}>{b.title}</td>
                     <td className="p-3">{b.placement}</td>

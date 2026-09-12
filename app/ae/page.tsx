@@ -155,7 +155,12 @@ export default async function UaeHome() {
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {deals.map(p => (
+              {deals.slice(0, 5).map(p => (
+                <ProductCard key={p.id} product={p as any} />
+              ))}
+              {/* In-feed ad tile: sits in the grid like a product card. */}
+              <BannerSlot placement="infeed" country={COUNTRY.code} variant="card" />
+              {deals.slice(5).map(p => (
                 <ProductCard key={p.id} product={p as any} />
               ))}
             </div>

@@ -501,7 +501,12 @@ export default async function RetailerPage({ params, searchParams }: Props) {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4">
-              {products.map(product => (
+              {products.slice(0, 5).map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+              {/* In-feed ad tile: sits in the grid like a product card. */}
+              <BannerSlot placement="infeed" country={DEFAULT_COUNTRY} variant="card" />
+              {products.slice(5).map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
