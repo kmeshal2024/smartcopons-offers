@@ -1,33 +1,43 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { unstable_cache } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { hasEnoughContent } from '@/lib/retailer-visibility'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
+import { TTL_LISTING } from '@/lib/offer-queries'
 import { getLang } from '@/lib/i18n-server'
 import { t } from '@/lib/i18n'
 
-async function getFooterData() {
-  const supermarkets = await prisma.supermarket.findMany({
-    where: { isActive: true, country: DEFAULT_COUNTRY },
-    select: {
-      nameAr: true,
-      slug: true,
-      _count: {
-        select: {
-          productOffers: { where: { isHidden: false, country: DEFAULT_COUNTRY } },
-          flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
+// Footer renders on every page. Without this wrap it was 131k+ DB round trips
+// a month (top query by call count in Neon) and kept the compute instance from
+// ever auto-suspending. Tags match cache-invalidation.ts so a scrape/admin edit
+// refreshes the footer within the same TTL as every other listing.
+const getFooterData = unstable_cache(
+  async () => {
+    const supermarkets = await prisma.supermarket.findMany({
+      where: { isActive: true, country: DEFAULT_COUNTRY },
+      select: {
+        nameAr: true,
+        slug: true,
+        _count: {
+          select: {
+            productOffers: { where: { isHidden: false, country: DEFAULT_COUNTRY } },
+            flyers: { where: { status: 'ACTIVE', endDate: { gte: new Date() } } },
+          },
         },
       },
-    },
-    orderBy: { viewCount: 'desc' },
-    // Over-fetch: empty retailers are filtered out, and the footer shows 6.
-    take: 20,
-  })
+      orderBy: { viewCount: 'desc' },
+      // Over-fetch: empty retailers are filtered out, and the footer shows 6.
+      take: 20,
+    })
 
-  // The footer renders on every page, so an unfiltered list here would link to
-  // empty stores site-wide — see lib/retailer-visibility.ts.
-  return supermarkets.filter(sm => hasEnoughContent(sm._count)).slice(0, 6)
-}
+    // The footer renders on every page, so an unfiltered list here would link to
+    // empty stores site-wide — see lib/retailer-visibility.ts.
+    return supermarkets.filter(sm => hasEnoughContent(sm._count)).slice(0, 6)
+  },
+  ['footer-data'],
+  { revalidate: TTL_LISTING, tags: ['offers', 'retailers'] }
+)
 
 export default async function Footer() {
   const supermarkets = await getFooterData()
