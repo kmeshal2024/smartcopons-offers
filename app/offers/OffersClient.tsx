@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { currencyOf, DEFAULT_COUNTRY } from '@/lib/countries'
 import { useI18n } from '@/components/I18nProvider'
 import { trackCouponCopy } from '@/lib/track'
+import { featuredRank } from '@/lib/coupon-priority'
 
 
 interface Product {
@@ -149,7 +150,20 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
     } else {
       fetch('/api/public/coupons')
         .then(r => r.json())
-        .then(data => setCoupons((data.coupons || []).slice(0, 4)))
+        // Featured stores first (lib/coupon-priority.ts), one code per store.
+        // This strip used to show whichever four codes were imported last.
+        .then(data => {
+          const seen = new Set<string>()
+          const ranked = [...(data.coupons || [])]
+            .sort((a: any, b: any) => featuredRank(a.store?.slug) - featuredRank(b.store?.slug))
+            .filter((c: any) => {
+              const k = c.store?.slug || c.id
+              if (seen.has(k)) return false
+              seen.add(k)
+              return true
+            })
+          setCoupons(ranked.slice(0, 4))
+        })
         .catch(() => setCoupons([]))
     }
   }, [selectedSupermarket, supermarkets])

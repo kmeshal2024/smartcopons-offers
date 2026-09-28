@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache'
+import { FEATURED_COUPON_STORES, rotationWeight } from '@/lib/coupon-priority'
 import { prisma } from '@/lib/db'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
 import { MIN_VISIBLE_OFFERS } from '@/lib/retailer-visibility'
@@ -477,6 +478,7 @@ export interface RenderableCoupon {
   storeName: string
   /** Slug of the coupon store, for linking to /coupons/{slug}. */
   storeSlug?: string | null
+  storeLogo?: string | null
 }
 
 /**
@@ -531,6 +533,7 @@ function toRenderable(c: any): RenderableCoupon {
     validUntil: c.validUntil,
     storeName: c.supermarket?.nameAr || c.store?.name || '',
     storeSlug: c.store?.slug ?? null,
+    storeLogo: c.store?.logo ?? null,
   }
 }
 
@@ -643,7 +646,7 @@ const couponPoolForStores = unstable_cache(
     const rows = await prisma.coupon.findMany({
       where: { ...renderableCouponWhere(country), store: { countries: { contains: country }, slug: { in: storeSlugs } } },
       include: {
-        store: { select: { name: true, slug: true, website: true } },
+        store: { select: { name: true, slug: true, website: true, logo: true } },
         supermarket: { select: { nameAr: true, slug: true, website: true } },
       },
       orderBy: [{ isExclusive: 'desc' }, { createdAt: 'desc' }],
@@ -681,6 +684,28 @@ export async function couponForContext(
   }
   const pool = await couponPoolForStores(storeSlugs, country)
   if (!pool.length) return null
+  // Weighted: a store the owner earns from gets three slots in the rotation
+  // (lib/coupon-priority.ts), the rest one each. Interleaved rather than
+  // grouped, so the same store does not hold three days in a row.
+  const slots: RenderableCoupon[] = []
+  for (let round = 0; round < 3; round++) {
+    for (const c of pool) if (round < rotationWeight(c.storeSlug)) slots.push(c)
+  }
   const dayIndex = Math.floor((Date.now() + 3 * 3600_000) / 86_400_000)
-  return pool[dayIndex % pool.length]
+  return slots[dayIndex % slots.length]
+}
+
+/** One live code from each featured store, in priority order: the homepage row. */
+export async function featuredCoupons(country: string = DEFAULT_COUNTRY, take = 8) {
+  const pool = await couponPoolForStores(FEATURED_COUPON_STORES, country)
+  // The table holds Noon under two slugs; show it once.
+  const seen = new Set<string>()
+  return pool
+    .filter(c => {
+      const key = c.storeName.trim().toLowerCase().replace('نون', 'noon')
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .slice(0, take)
 }

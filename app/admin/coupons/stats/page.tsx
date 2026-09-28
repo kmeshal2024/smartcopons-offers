@@ -43,6 +43,7 @@ const SURFACE_LABELS: Record<string, string> = {
   shopping_list: 'Shopping list',
   product_page: 'Product page',
   category_page: 'Category page',
+  home: 'Homepage featured row',
 }
 
 type SortKey = 'last30' | 'last7' | 'today' | 'total'

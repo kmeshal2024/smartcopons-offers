@@ -29,6 +29,7 @@ const SURFACES = new Set([
   'shopping_list',
   'product_page',
   'category_page',
+  'home',
 ])
 
 const BOT = /bot|crawl|spider|slurp|preview|headless|lighthouse|monitor/i

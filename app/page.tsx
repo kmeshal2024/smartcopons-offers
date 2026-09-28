@@ -7,11 +7,13 @@ import {
   capPerRetailer,
   groceryFirst,
   latestAcrossRetailers,
+  featuredCoupons,
 } from '@/lib/offer-queries'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
 import BannerSlot from '@/components/BannerSlot'
+import FeaturedCoupons from '@/components/FeaturedCoupons'
 import Footer from '@/components/Footer'
 import type { Metadata } from 'next'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
@@ -137,6 +139,9 @@ const getHomeData = unstable_cache(async function getHomeData() {
 
 export default async function HomePage() {
   const { supermarkets, latestProducts, topDiscounts, categories, totalProducts, totalStores, endingSoon } = await getHomeData()
+  // The stores the site actually earns from (lib/coupon-priority.ts). Separate
+  // from getHomeData so it follows the coupon cache tag, not the offers one.
+  const coupons = await featuredCoupons(DEFAULT_COUNTRY)
   const lang = getLang()
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
 
@@ -221,6 +226,10 @@ export default async function HomePage() {
             </div>
           </section>
         )}
+
+        {/* Coupons are the revenue, and this is their only place on the homepage,
+            so it sits directly under the stores rather than below the offers. */}
+        <FeaturedCoupons coupons={coupons} />
 
         {/* Categories Section */}
         {categories.length > 0 && (

@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useI18n } from '@/components/I18nProvider'
 import { trackCouponCopy } from '@/lib/track'
+import { featuredRank } from '@/lib/coupon-priority'
 
 export interface ExplorerCoupon {
   id: string
@@ -50,7 +51,14 @@ export default function CouponsExplorer({ coupons }: { coupons: ExplorerCoupon[]
       if (s) s.count++
       else map.set(c.storeSlug, { slug: c.storeSlug, name: c.storeName, logo: c.storeLogo, count: 1 })
     }
-    return Array.from(map.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ar'))
+    // Stores the site earns from lead (lib/coupon-priority.ts); the rest keep the
+    // old order, most codes first.
+    return Array.from(map.values()).sort(
+      (a, b) =>
+        featuredRank(a.slug) - featuredRank(b.slug) ||
+        b.count - a.count ||
+        a.name.localeCompare(b.name, 'ar')
+    )
   }, [coupons])
 
   const groups = useMemo(() => {
