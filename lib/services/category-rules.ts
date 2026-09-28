@@ -68,7 +68,7 @@ const NEUTRAL_PREFIXES = ['لل', 'ال', 'ل']
 const ATTRIBUTE_MARKERS = new Set(
   [
     'بطعم', 'طعم', 'بنكهه', 'نكهه', 'بنكهات', 'نكهات', 'برائحه', 'رائحه', 'بخلاصه', 'خلاصه',
-    'بعطر', 'مع', 'محشو', 'محشوه', 'مغطي', 'مغطاه', 'غير', 'كامل', 'كامله',
+    'بعطر', 'مع', 'محشو', 'محشوه', 'مغطي', 'مغطاه', 'غير',
     // Free-standing conjunctions, for names typed as "شوكولا و زبدة".
     'و', 'او',
     'with', 'and', 'in', 'flavour', 'flavor', 'flavoured', 'flavored', 'scent', 'scented',
@@ -181,7 +181,9 @@ const KEYWORDS: Record<string, Keyword[]> = {
     'ice cream', 'آيس كريم', 'ايسكريم',
     // Brands: tie-breakers only. "المراعي عصير تفاح" is a juice.
     ...weak('nadec', 'نادك', 'almarai', 'المراعي', 'nada', 'ندى', 'kiri', 'كيري', 'puck', 'بوك',
-      'philadelphia', 'lurpak', 'لورباك', 'الصافي', 'cream', 'كريمة'),
+      'philadelphia', 'lurpak', 'لورباك', 'الصافي'),
+    // Enough to file "Puck Thick Cream", not enough to beat "hair cream".
+    ...soft('cream', 'كريمة'),
   ],
   beverages: [
     'juice', 'عصير', 'nectar', 'نكتار', 'water', 'ماء', 'مياه', 'cola', 'كولا', 'pepsi', 'بيبسي',
@@ -224,7 +226,7 @@ const KEYWORDS: Record<string, Keyword[]> = {
     'lettuce', 'خس', 'pepper', 'فلفل', 'garlic', 'ثوم', 'ginger', 'زنجبيل',
     'zucchini', 'كوسة', 'eggplant', 'باذنجان', 'cabbage', 'ملفوف', 'كرنب',
     'cauliflower', 'قرنبيط', 'broccoli', 'بروكلي', 'spinach', 'سبانخ',
-    'okra', 'بامية', 'بقدونس', 'parsley', 'كزبرة', 'نعناع', 'فجل', 'شمندر', 'كرفس',
+    'okra', 'بامية', 'بقدونس', 'parsley', 'ريحان', 'basil', 'جرجير', 'شبت', 'كراث', 'كزبرة', 'نعناع', 'فجل', 'شمندر', 'كرفس',
   ],
   frozen: [
     ...soft('frozen', 'مجمد', 'مجمدة'),
@@ -258,8 +260,12 @@ const KEYWORDS: Record<string, Keyword[]> = {
     'فوط صحية', 'vitamin', 'فيتامين', 'فيتامينات', 'مكمل غذائي', 'supplement',
     // Coffee comes in capsules and dishwasher detergent in tablets.
     ...weak('كبسولة', 'كبسولات', 'capsule', 'tablet', 'أقراص'),
-    ...weak('pantene', 'بانتين', 'dove', 'دوف', 'nivea', 'نيفيا', 'colgate', 'كولجيت', 'oral-b',
-      'sunsilk', 'garnier', 'غارنييه', 'جونسون', 'معجون'),
+    'حلاقة', 'shaving', 'شاور جل', 'جل استحمام', 'إزالة الشعر', 'لإزالة الشعر',
+    // These brands make nothing but personal care, so the brand alone is a fair
+    // guess — but any product word still outranks it.
+    ...soft('pantene', 'بانتين', 'dove', 'دوف', 'nivea', 'نيفيا', 'colgate', 'كولجيت', 'oral-b',
+      'sunsilk', 'صانسيلك', 'garnier', 'غارنييه', 'لوريال', 'فازلين', 'ريكسونا'),
+    ...weak('جونسون', 'معجون'),
     // Dairy's own phrases ("كريم طبخ", "آيس كريم") are two words and outrank this.
     'كريم',
   ],
@@ -277,9 +283,10 @@ const KEYWORDS: Record<string, Keyword[]> = {
     'softener', 'منعم', 'للأقمشة', 'مبيد', 'ورق حمام', 'ورق تواليت', 'ورق مطبخ', 'مكنسة',
     'غسالة صحون', 'غسالة الصحون', 'غسالة أطباق', 'غسالة الأطباق', 'لغسل الأطباق',
     // "خيار (صحن)" is cucumbers on a tray; "المقلاة الهوائية" is air-fryer chicken.
-    ...weak('plate', 'صحن', 'صحون', 'قدر', 'مقلاة', 'أكياس', 'شمع', 'شموع', 'fairy', 'فيري',
-      'dettol', 'ديتول', 'clorox', 'كلوركس', 'persil', 'برسيل', 'ariel', 'اريال', 'tide',
-      'تايد', 'downy', 'داوني', 'comfort', 'كومفورت', 'omo', 'أومو'),
+    'أكياس نفاية', 'نفايات', 'نفاية',
+    ...weak('plate', 'صحن', 'صحون', 'قدر', 'مقلاة', 'أكياس', 'شمع', 'شموع'),
+    ...soft('fairy', 'فيري', 'dettol', 'ديتول', 'clorox', 'كلوركس', 'persil', 'برسيل', 'ariel',
+      'اريال', 'tide', 'تايد', 'downy', 'داوني', 'comfort', 'كومفورت', 'omo', 'أومو'),
   ],
   bakery: [
     'bread', 'خبز', 'toast', 'توست', 'cake', 'كيك', 'كيكة', 'كعك', 'croissant', 'كرواسان',
