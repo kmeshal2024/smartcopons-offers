@@ -111,8 +111,15 @@ function tokenize(name: string): Token[] {
     })
 }
 
-type Keyword = string | { k: string; weak: true }
-const weak = (...ks: string[]): Keyword[] => ks.map(k => ({ k, weak: true as const }))
+type Keyword = string | { k: string; factor: number }
+/** Brands and ambiguous words: never enough to classify on their own. */
+const weak = (...ks: string[]): Keyword[] => ks.map(k => ({ k, factor: 0.3 }))
+/**
+ * A real signal that should still lose to the product's own name. "مجمد" files
+ * frozen falafel under frozen, but "دجاج مجمد" stays with the chicken and "بامية
+ * مجمدة" with the vegetables — which is where a shopper looks for them.
+ */
+const soft = (...ks: string[]): Keyword[] => ks.map(k => ({ k, factor: 0.6 }))
 
 /**
  * How strongly a category's keywords say what KIND of product this is — rule 6.
@@ -167,7 +174,7 @@ const KEYWORDS: Record<string, Keyword[]> = {
     'لبن', 'ألبان', 'لبنة', 'labneh', 'laban', 'قشطة', 'قيمر', 'زبدة', 'butter',
     'كريمة الطبخ', 'كريمة الخفق', 'كريمة حامضة', 'كريم طبخ', 'كريم الطبخ', 'كريمة طبخ',
     'cooking cream', 'whipping cream', 'sour cream', 'cream cheese', 'mozzarella',
-    'موزاريلا', 'cheddar', 'شيدر', 'feta', 'فيتا', 'halloumi', 'حلوم', 'حلومي', 'kashkaval',
+    'موزاريلا', 'cheddar', 'شيدر', 'feta', 'جبنة فيتا', 'جبن فيتا', 'halloumi', 'حلوم', 'حلومي', 'kashkaval',
     'قشقوان', 'كفير', 'kefir', 'بيض', 'egg',
     // Also under `frozen`, which outweighs this when that category exists. The
     // live DB has no frozen category, and dairy is the honest second choice.
@@ -190,17 +197,19 @@ const KEYWORDS: Record<string, Keyword[]> = {
     'شوكولاتة بالحليب', 'رقائق', 'popcorn', 'فشار', 'pretzel', 'cracker', 'كراكرز', 'قراقيش',
     'منتفخات', 'علكة', 'gum',
     // Spreads that are not butter, whatever the first word says.
-    'كريمة البندق', 'hazelnut spread', 'nutella', 'نوتيلا', 'نيوتيلا',
+    'كريمة البندق', 'زبدة البسكويت', 'hazelnut spread', 'nutella', 'نوتيلا', 'نيوتيلا',
     // Also a Samsung phone line and a rice brand.
     ...weak('galaxy', 'جالكسي'),
   ],
   'meat-poultry': [
     'chicken', 'دجاج', 'دجاجة', 'meat', 'لحم', 'لحوم', 'beef', 'بقري', 'lamb', 'ضأن', 'خروف',
-    'غنم', 'turkey', 'ديك رومي', 'fish', 'سمك', 'سمكة', 'أسماك', 'shrimp', 'روبيان', 'salmon',
-    'سلمون', 'fillet', 'فيليه', 'steak', 'ستيك', 'sausage', 'نقانق', 'burger', 'برغر', 'برجر',
-    'minced', 'مفروم', 'كبدة', 'شاورما', 'كفتة',
-    // "طازج" describes milk, juice and bread as readily as meat.
-    ...weak('fresh', 'طازج', 'طازجة'),
+    'غنم', 'turkey breast', 'smoked turkey', 'ديك رومي', 'fish', 'سمك', 'سمكة', 'أسماك', 'shrimp', 'روبيان', 'salmon',
+    'سلمون', 'fillet', 'فيليه', 'steak', 'ستيك لحم', 'ستيك بقري', 'sausage', 'نقانق', 'burger', 'برغر', 'برجر',
+    'minced', 'مفروم', 'كبدة', 'شاورما', 'كفتة', 'مرتديلا', 'mortadella', 'لانشون', 'veal',
+    'عجل', 'camel', 'حاشي', 'ناجتس', 'nuggets', 'ستربس', 'هامور', 'روبيان',
+    // Deliberately absent: "fresh"/"طازج" (it put deodorant "Deo Fresh", tortillas
+    // and sambar mix in the meat aisle) and bare "turkey" ("Turkey Peaches" is
+    // fruit from Turkey — the bird is "ديك رومي" or "turkey breast").
   ],
   fruits: [
     'apple', 'تفاح', 'banana', 'موز', 'fruit', 'فواكه', 'فاكهة', 'orange', 'برتقال',
@@ -218,7 +227,8 @@ const KEYWORDS: Record<string, Keyword[]> = {
     'okra', 'بامية', 'بقدونس', 'parsley', 'كزبرة', 'نعناع', 'فجل', 'شمندر', 'كرفس',
   ],
   frozen: [
-    'frozen', 'مجمد', 'مجمدة', 'ice cream', 'آيس كريم', 'ايسكريم', 'بوظة', 'pizza', 'بيتزا',
+    ...soft('frozen', 'مجمد', 'مجمدة'),
+    'ice cream', 'آيس كريم', 'ايسكريم', 'بوظة', 'pizza', 'بيتزا',
     'nuggets', 'ناجتس', 'fries', 'بطاطس مقلية', 'baskin', 'magnum', 'cornetto', 'samosa',
     'سمبوسة', 'spring roll', 'popsicle',
   ],
@@ -233,9 +243,12 @@ const KEYWORDS: Record<string, Keyword[]> = {
     // "ماء عطر" stops being read as water and "زبدة الشيا" as butter.
     'ماء عطر', 'ماء تواليت', 'eau de parfum', 'eau de toilette', 'ماء كولونيا', 'كولونيا',
     'زبدة الشيا', 'زبدة الكاكاو', 'shea butter', 'cocoa butter', 'body butter', 'زبدة الجسم',
+    'زبدة جسم',
     'hair cream', 'كريم شعر', 'كريم الشعر', 'كريم للشعر', 'face cream', 'hand cream',
     'body cream', 'كريم اليدين', 'كريم الجسم', 'كريم الوجه', 'كريم مرطب', 'واقي شمس',
-    'واقي الشمس', 'sunscreen', 'مزيل عرق', 'مزيل العرق',
+    'واقي الشمس', 'sunscreen', 'مزيل عرق', 'مزيل العرق', 'مضاد التعرق', 'مضاد للتعرق',
+    'antiperspirant', 'deo', 'صن ستيك', 'hand wash', 'غسول اليدين', 'حليب للجسم', 'حليب الجسم',
+    'body milk', 'body lotion',
     // "معجون" alone is ambiguous — tomato paste is معجون طماطم.
     'معجون اسنان', 'معجون أسنان', 'معجون الأسنان', 'غسول فم', 'غسول الفم', 'فرشاة اسنان',
     'فرشاة أسنان', 'toothpaste', 'toothbrush', 'mouthwash',
@@ -246,7 +259,9 @@ const KEYWORDS: Record<string, Keyword[]> = {
     // Coffee comes in capsules and dishwasher detergent in tablets.
     ...weak('كبسولة', 'كبسولات', 'capsule', 'tablet', 'أقراص'),
     ...weak('pantene', 'بانتين', 'dove', 'دوف', 'nivea', 'نيفيا', 'colgate', 'كولجيت', 'oral-b',
-      'sunsilk', 'garnier', 'غارنييه', 'جونسون', 'معجون', 'كريم'),
+      'sunsilk', 'garnier', 'غارنييه', 'جونسون', 'معجون'),
+    // Dairy's own phrases ("كريم طبخ", "آيس كريم") are two words and outrank this.
+    'كريم',
   ],
   'oil-cooking': [
     'sunflower', 'عباد الشمس', 'ghee', 'سمن', 'canola', 'vegetable oil', 'coconut oil',
@@ -299,7 +314,7 @@ const KEYWORDS: Record<string, Keyword[]> = {
   // Things a supermarket sells that belong in none of the grocery categories.
   // Never a database slug: FALLBACK files these nowhere.
   'non-grocery': [
-    'طعام قطط', 'طعام القطط', 'طعام كلاب', 'طعام الكلاب', 'مكافآت قطط', 'cat food', 'dog food',
+    'ويسكاس', 'whiskas', 'فليكس', 'شيبا', 'طعام قطط', 'طعام القطط', 'طعام كلاب', 'طعام الكلاب', 'مكافآت قطط', 'cat food', 'dog food',
     'لعبة', 'ألعاب', 'بلاستيك', 'بلاستيكية', 'بلاستيكي', 'plastic', 'دفتر', 'قلم', 'أقلام',
     'شنطة', 'حقيبة', 'gift card',
   ],
@@ -308,7 +323,7 @@ const KEYWORDS: Record<string, Keyword[]> = {
 interface Compiled {
   slug: string
   tokens: string[]
-  weak: boolean
+  factor: number
 }
 
 const COMPILED: Compiled[] = Object.entries(KEYWORDS).flatMap(([slug, list]) =>
@@ -317,7 +332,7 @@ const COMPILED: Compiled[] = Object.entries(KEYWORDS).flatMap(([slug, list]) =>
     return {
       slug,
       tokens: normalizeName(k).split(' ').filter(Boolean),
-      weak: typeof entry !== 'string',
+      factor: typeof entry === 'string' ? 1 : entry.factor,
     }
   })
 )
@@ -330,6 +345,9 @@ function matchToken(token: Token, word: string): { attribute: boolean } | null {
   for (const s of token.stems) if (s.stem === word) return { attribute: s.attribute }
   return null
 }
+
+/** Below a strong keyword in sixth position (11.7); above any weak or attribute hit (max 10.8). */
+const MIN_SCORE = 11
 
 export interface Classification {
   slug: string | null
@@ -372,7 +390,7 @@ function collectHits(tokens: Token[]): { kept: Hit[]; every: Hit[] } {
       let score = 10 * kw.tokens.length            // rule 5
       score *= 1 + 1 / (1 + i)                     // rule 2
       score *= CATEGORY_WEIGHT[kw.slug] ?? 1       // rule 6
-      if (kw.weak) score *= 0.3                    // rule 4
+      score *= kw.factor                           // rule 4
       if (attribute) score *= 0.3                  // rule 3
 
       hits.push({ slug: kw.slug, score, start: i, length: kw.tokens.length, matched: kw.tokens.join(' ') })
@@ -402,7 +420,11 @@ export function classify(name: string, available?: Iterable<string>): Classifica
   if (!tokens.length) return none
 
   const all = collectHits(tokens)
-  const hits = all.kept.sort((a, b) => b.score - a.score)
+  // MIN_SCORE: a product is only filed somewhere on the strength of a real
+  // product word. A lone brand ("المراعي …") or a lone attribute ("… بالجبن")
+  // scores under it, and no category is better than a guessed one — that guess
+  // is what a shopper sees as "unrelated products" when they open the aisle.
+  const hits = all.kept.filter(h => h.score >= MIN_SCORE).sort((a, b) => b.score - a.score)
   if (!hits.length) return none
 
   const top = hits[0]
@@ -421,7 +443,10 @@ export function classify(name: string, available?: Iterable<string>): Classifica
   if (fallback === 'runner-up') {
     // Searched over every hit, including words inside the winning phrase:
     // "بطاطس مقلية" has no frozen aisle to go to, but "بطاطس" still says vegetables.
-    const next = all.every.sort((a, b) => b.score - a.score).find(h => allowed.has(h.slug))
+    const next = all.every
+      .filter(h => h.score >= MIN_SCORE)
+      .sort((a, b) => b.score - a.score)
+      .find(h => allowed.has(h.slug))
     return next ? result(next) : { ...none, matched: top.matched }
   }
   if (fallback && allowed.has(fallback)) return result(top, fallback)
