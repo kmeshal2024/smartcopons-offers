@@ -100,7 +100,8 @@ export class OfferIngestService {
       seenHashes.add(hash)
 
       const categoryId = await categoryMapper.mapToCategory(
-        offer.nameAr || offer.nameEn || ''
+        offer.nameAr || offer.nameEn || '',
+        offer.nameAr ? offer.nameEn : null
       )
 
       rows.push({

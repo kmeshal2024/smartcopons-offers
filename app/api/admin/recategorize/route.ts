@@ -48,30 +48,33 @@ async function run(dry: boolean, limit: number) {
     if (page.length < 5000) break
   }
 
-  const changes: Array<{ id: string; name: string; from: string; to: string }> = []
+  const changes: Array<{ id: string; name: string; from: string; to: string; toId: string | null }> = []
   for (const o of offers) {
     const name = o.nameAr || o.nameEn || ''
     if (!name) continue
-    const next = await mapper.mapToCategory(name)
-    if (!next || next === o.categoryId) continue
+    const next = await mapper.mapToCategory(name, o.nameAr ? o.nameEn : null)
+    // `next` may be null, and that is a real answer: a tablet or a toy truck
+    // filed under dairy has to be taken OUT of dairy even though there is no
+    // better category to put it in. Skipping nulls left those rows where the
+    // old mapper had put them.
+    if (next === (o.categoryId ?? null)) continue
     changes.push({
       id: o.id,
       name: name.slice(0, 55),
       from: slugById.get(o.categoryId || '') || '(none)',
-      to: slugById.get(next) || '(none)',
+      to: (next && slugById.get(next)) || '(none)',
+      toId: next,
     })
   }
 
   if (!dry) {
     // Group by target so this is a handful of updateMany calls rather than one
     // round trip per row.
-    const byTarget = new Map<string, string[]>()
+    const byTarget = new Map<string | null, string[]>()
     for (const c of changes) {
-      const target = cats.find(x => slugById.get(x.id) === c.to)?.id
-      if (!target) continue
-      const list = byTarget.get(target) || []
+      const list = byTarget.get(c.toId) || []
       list.push(c.id)
-      byTarget.set(target, list)
+      byTarget.set(c.toId, list)
     }
     for (const [categoryId, ids] of Array.from(byTarget.entries())) {
       for (let i = 0; i < ids.length; i += 500) {
@@ -93,8 +96,13 @@ async function run(dry: boolean, limit: number) {
     scanned: offers.length,
     changed: changes.length,
     dry,
-    topMoves: Object.fromEntries(Object.entries(moves).sort((a, b) => b[1] - a[1]).slice(0, 12)),
-    samples: changes.slice(0, 15).map(c => `[${c.from} -> ${c.to}] ${c.name}`),
+    topMoves: Object.fromEntries(Object.entries(moves).sort((a, b) => b[1] - a[1]).slice(0, 40)),
+    // Spread across the run, not the first 15 ids — those all come from one
+    // scrape and say nothing about the rest.
+    samples: changes
+      .filter((_, i) => i % Math.max(1, Math.floor(changes.length / 40)) === 0)
+      .slice(0, 40)
+      .map(c => `[${c.from} -> ${c.to}] ${c.name}`),
   }
 }
 
