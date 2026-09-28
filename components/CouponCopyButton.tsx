@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useI18n } from '@/components/I18nProvider'
+import { track } from '@/lib/track'
 
 /**
  * The one interactive bit of the coupon store landing pages. Everything else on
@@ -16,6 +17,7 @@ export default function CouponCopyButton({ code, destinationUrl }: { code: strin
     navigator.clipboard.writeText(code)
     setCopied(true)
     setTimeout(() => setCopied(false), 2500)
+    track('coupon_copy', { coupon_code: code, surface: 'coupon_store_page', has_destination: !!destinationUrl })
     if (destinationUrl) window.open(destinationUrl, '_blank', 'noopener')
   }
 

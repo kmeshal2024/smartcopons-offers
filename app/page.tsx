@@ -6,6 +6,7 @@ import {
   countAllActiveOffers,
   capPerRetailer,
   groceryFirst,
+  latestAcrossRetailers,
 } from '@/lib/offer-queries'
 import Link from 'next/link'
 import Header from '@/components/Header'
@@ -44,23 +45,18 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 const getHomeData = unstable_cache(async function getHomeData() {
-  const [supermarkets, latestProducts, topDiscounts, categories, totalProducts, endingSoon] = await Promise.all([
-    // Shared helper — ONE definition of a live offer, and the same visibility
-    // rule as /supermarkets, each retailer page's noindex decision and the
-    // sitemap. The inline query this replaces omitted `price > 0` and the flyer
-    // end-date bound, so these cards advertised expired stock and scraper
-    // placeholder rows: Tamimi read 24,100 against its page's 9,510, Carrefour
-    // 18,471 against 7,416, Panda 3,363 against 1,242.
-    listVisibleRetailers(DEFAULT_COUNTRY),
-    prisma.productOffer.findMany({
-      where: { isHidden: false, country: DEFAULT_COUNTRY, price: { gt: 0 }, flyer: { endDate: { gte: new Date() } } },
-      include: {
-        supermarket: { select: { nameAr: true, slug: true, logo: true } },
-        category: { select: { nameAr: true, icon: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    }),
+  // Shared helper — ONE definition of a live offer, and the same visibility
+  // rule as /supermarkets, each retailer page's noindex decision and the
+  // sitemap. The inline query this replaces omitted `price > 0` and the flyer
+  // end-date bound, so these cards advertised expired stock and scraper
+  // placeholder rows: Tamimi read 24,100 against its page's 9,510, Carrefour
+  // 18,471 against 7,416, Panda 3,363 against 1,242.
+  // Awaited first (it is itself cached) because the latest-offers query below
+  // needs the retailer list.
+  const supermarkets = await listVisibleRetailers(DEFAULT_COUNTRY)
+
+  const [latestProducts, topDiscounts, categories, totalProducts, endingSoonRaw] = await Promise.all([
+    latestAcrossRetailers(supermarkets, DEFAULT_COUNTRY, 2, 10),
     // Over-fetch 60: capPerRetailer + foodFirst below can only shrink the list,
     // and 4 rows of headroom is not enough to survive a cap of 2 per retailer.
     prisma.productOffer.findMany({
@@ -99,14 +95,19 @@ const getHomeData = unstable_cache(async function getHomeData() {
         },
       },
       include: {
-        supermarket: { select: { nameAr: true, slug: true, logo: true } },
-        category: { select: { nameAr: true, icon: true } },
+        supermarket: { select: { nameAr: true, slug: true, logo: true, retailerType: true } },
+        category: { select: { nameAr: true, slug: true, icon: true } },
         flyer: { select: { startDate: true, endDate: true } },
       },
       orderBy: { flyer: { endDate: 'asc' } },
-      take: 8,
+      // Over-fetched for the same reason as top discounts: every row of the
+      // soonest-ending flyer sorts first, so 8 rows meant 8 from one store.
+      take: 60,
     }),
   ])
+
+  // Stable sort, so soonest-to-expire order survives within each tier.
+  const endingSoon = capPerRetailer(groceryFirst(endingSoonRaw), 2, 8)
 
   // listVisibleRetailers already applies the visibility rule and orders by
   // viewCount. Show them ALL — the rail scrolls horizontally, and capping at 8

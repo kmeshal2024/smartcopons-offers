@@ -8,6 +8,7 @@ import { currencyOf } from '@/lib/countries'
 import { useI18n } from '@/components/I18nProvider'
 import ListCoupon from '@/components/ListCoupon'
 import { useListCoupon } from '@/hooks/useListCoupon'
+import { track } from '@/lib/track'
 
 // A price list is always within one country, so the currency is resolved once
 // here rather than per row. See lib/countries.ts.
@@ -81,6 +82,7 @@ export default function ShoppingListWidget() {
 
     const url = `https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`
     window.open(url, '_blank', 'noopener,noreferrer')
+    track('share', { method: 'whatsapp', content_type: 'shopping_list', items: items.length, value: +totals.total.toFixed(2) })
 
     // Fire-and-forget, AFTER the window is open. If it fails the link 404s but the
     // message still carries the full list as text, so nothing is lost.

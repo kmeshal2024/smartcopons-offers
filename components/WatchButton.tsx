@@ -2,6 +2,7 @@
 
 import { useWatches } from '@/hooks/useWatches'
 import { usePush } from '@/hooks/usePush'
+import { track } from '@/lib/track'
 
 /**
  * "Watch the price" toggle. Starting a watch is the natural moment to ask for
@@ -21,6 +22,7 @@ export default function WatchButton({ productId }: { productId: string }) {
         onClick={async () => {
           const wasWatching = watching
           toggle(productId)
+          if (!wasWatching) track('price_watch_start', { item_id: productId })
           // Only ask when starting a watch, never when cancelling one.
           if (!wasWatching && !subscribed && state === 'default') await enable()
         }}

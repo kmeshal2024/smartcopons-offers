@@ -360,6 +360,12 @@ const DICT: Record<string, Entry> = {
   'product.thisPage': { ar: '(هذه الصفحة)', en: '(this page)' },
   'product.related': { ar: 'عروض مشابهة', en: 'Similar offers' },
   'product.relatedIn': { ar: 'عروض مشابهة في {cat}', en: 'Similar offers in {cat}' },
+  'product.shareWhatsapp': { ar: 'شارك عبر واتساب', en: 'Share on WhatsApp' },
+  'product.share': { ar: 'مشاركة', en: 'Share' },
+  'product.historyTitle': { ar: 'سجل السعر في {store}', en: 'Price history at {store}' },
+  'product.historyWindow': { ar: 'آخر 90 يوماً', en: 'Last 90 days' },
+  'product.historyLow': { ar: 'أقل سعر', en: 'Lowest' },
+  'product.historyHigh': { ar: 'أعلى سعر', en: 'Highest' },
 
   // Product card
   'card.noImage': { ar: 'لا توجد صورة', en: 'No image' },

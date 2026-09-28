@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useI18n } from '@/components/I18nProvider'
+import { track } from '@/lib/track'
 import type { RenderableCoupon } from '@/lib/offer-queries'
 
 /**
@@ -36,6 +37,7 @@ export default function RetailerCouponStrip({
       window.open(c.destinationUrl, '_blank', 'noopener,noreferrer')
     }
     navigator.clipboard?.writeText(c.code).catch(() => {})
+    track('coupon_copy', { coupon_code: c.code, coupon_id: c.id, surface: 'retailer_page', has_destination: !!c.destinationUrl })
     setCopiedId(c.id)
     setTimeout(() => setCopiedId(null), 2000)
   }

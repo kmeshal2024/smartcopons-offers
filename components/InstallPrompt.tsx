@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/components/I18nProvider'
+import { track } from '@/lib/track'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -36,7 +37,10 @@ export default function InstallPrompt() {
       setShow(true)
     }
     window.addEventListener('beforeinstallprompt', onPrompt)
-    window.addEventListener('appinstalled', () => setShow(false))
+    window.addEventListener('appinstalled', () => {
+      track('pwa_install')
+      setShow(false)
+    })
     return () => window.removeEventListener('beforeinstallprompt', onPrompt)
   }, [])
 

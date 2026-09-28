@@ -10,6 +10,8 @@ import ProductCard from '@/components/ProductCard'
 import BannerSlot from '@/components/BannerSlot'
 import ExpiryBadge from '@/components/ExpiryBadge'
 import WatchButton from '@/components/WatchButton'
+import ProductActions from '@/components/ProductActions'
+import Sparkline from '@/components/Sparkline'
 import { getValidity, formatRangeAr } from '@/lib/flyer-utils'
 import { arabicContainsFilter } from '@/lib/arabic-search'
 import { currencyOf, resolveCountry, urlFor, DEFAULT_COUNTRY } from '@/lib/countries'
@@ -99,6 +101,48 @@ const getRelated = unstable_cache(async function getRelated(categoryId: string |
   })
 }, ['product-related'], { revalidate: TTL_PRODUCT, tags: ['offers'] })
 
+/**
+ * What this store has charged for this item over the last 90 days.
+ *
+ * There is no price-history table. Offers are re-inserted as new rows each time
+ * a flyer rolls over, and expired flyers are kept for CLEANUP_RETENTION_DAYS
+ * before being deleted — so the earlier rows for the same item ARE the history,
+ * for as long as they survive. Matched on the exact Arabic name within the same
+ * store: looser matching would splice a 1 L and a 2 L bottle into one line and
+ * draw a price drop that never happened.
+ *
+ * Returns one point per day (lowest price that day). The caller renders nothing
+ * unless there are at least two distinct days — a single point is not a history.
+ */
+const getPriceHistory = unstable_cache(async function getPriceHistory(
+  supermarketId: string,
+  nameAr: string | null,
+  country: string
+) {
+  if (!nameAr) return []
+  const rows = await prisma.productOffer.findMany({
+    where: {
+      supermarketId,
+      country,
+      nameAr,
+      isHidden: false,
+      price: { gt: 0 },
+      createdAt: { gte: new Date(Date.now() - 90 * 86_400_000) },
+    },
+    select: { price: true, createdAt: true },
+    orderBy: { createdAt: 'asc' },
+    take: 200,
+  })
+
+  const byDay = new Map<string, number>()
+  for (const r of rows) {
+    const day = new Date(r.createdAt).toISOString().slice(0, 10)
+    const prev = byDay.get(day)
+    if (prev == null || r.price < prev) byDay.set(day, r.price)
+  }
+  return Array.from(byDay.entries()).map(([date, price]) => ({ date, price }))
+}, ['product-price-history'], { revalidate: TTL_PRODUCT, tags: ['offers'] })
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const p = await getProduct(id)
@@ -151,10 +195,14 @@ export default async function ProductPage({ params }: Props) {
   const cur = currencyOf((p as any).country)
   const curIso = resolveCountry((p as any).country).currencyEn
   const validity = getValidity(p.flyer?.startDate, p.flyer?.endDate)
-  const [comparison, related] = await Promise.all([
-    getPriceComparison(name, p.id, (p as any).country || DEFAULT_COUNTRY),
-    getRelated(p.categoryId, p.id, (p as any).country || DEFAULT_COUNTRY),
+  const country = (p as any).country || DEFAULT_COUNTRY
+  const [comparison, related, history] = await Promise.all([
+    getPriceComparison(name, p.id, country),
+    getRelated(p.categoryId, p.id, country),
+    getPriceHistory(p.supermarket.id, p.nameAr, country),
   ])
+  const historyPrices = history.map(h => h.price)
+  const showHistory = history.length >= 2
 
   // Cheapest across this offer + the comparison rows.
   const allPrices = [p.price, ...comparison.map(c => c.price)]
@@ -296,10 +344,48 @@ export default async function ProductPage({ params }: Props) {
               </Link>
               <WatchButton productId={p.id} />
             </div>
+
+            <ProductActions
+              product={{
+                id: p.id,
+                name: displayName,
+                price: p.price,
+                oldPrice: p.oldPrice,
+                image: p.imageUrl,
+                storeName: p.supermarket.nameAr,
+                storeSlug: p.supermarket.slug,
+              }}
+              url={urlFor(country, `/product/${p.id}`)}
+              currency={cur}
+            />
+
+            {showHistory && (
+              <div className="mt-4 rounded-lg border border-gray-100 bg-white p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-bold text-gray-800">
+                    {t('product.historyTitle', { store: p.supermarket.nameAr })}
+                  </h2>
+                  <span className="text-[11px] text-gray-400">{t('product.historyWindow')}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Sparkline data={history} width={160} height={44} />
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                    <dt className="text-gray-400">{t('product.historyLow')}</dt>
+                    <dd className="font-bold text-emerald-600">
+                      <bdi>{Math.min(...historyPrices).toFixed(2)}</bdi> {cur}
+                    </dd>
+                    <dt className="text-gray-400">{t('product.historyHigh')}</dt>
+                    <dd className="font-bold text-gray-700">
+                      <bdi>{Math.max(...historyPrices).toFixed(2)}</bdi> {cur}
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        <BannerSlot placement="product" country={(p as any).country || DEFAULT_COUNTRY} className="mt-8" />
+        <BannerSlot placement="product" country={country} className="mt-8" />
 
         {/* Cross-store comparison — the reason this page is worth indexing */}
         {comparison.length > 0 && (

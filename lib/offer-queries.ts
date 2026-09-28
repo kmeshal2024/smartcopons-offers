@@ -206,6 +206,67 @@ export function capPerRetailer<T extends { supermarket?: { slug: string } | null
 }
 
 /**
+ * The newest offers, drawn from EVERY retailer rather than from whichever one
+ * was scraped last.
+ *
+ * `أحدث العروض` was `orderBy: createdAt desc, take: 10`. A scraper run inserts a
+ * retailer's whole catalogue within the same few seconds, so the ten newest rows
+ * site-wide are always ten rows from ONE store, usually one shelf of it — the
+ * homepage showed seven toothbrushes in a row. Over-fetching and capping (the
+ * fix used for top discounts) cannot work here: the newest several hundred rows
+ * all belong to that same run, so a cap of 2 would leave 2 cards.
+ *
+ * So it asks each retailer for its own newest few — one small query per store on
+ * the (supermarketId, isHidden, createdAt) index — then deals them out
+ * round-robin, grocery retailers first. Rows with an image are preferred within
+ * a store: vision-extracted flyer rows have none, and a placeholder tile is a
+ * poor thing to feature. Call it inside a cached function; it is N queries.
+ */
+export async function latestAcrossRetailers(
+  retailers: Array<{ id: string; retailerType?: string | null }>,
+  country: string = DEFAULT_COUNTRY,
+  perRetailer = 2,
+  limit = 10
+) {
+  const ordered = [...retailers].sort(
+    (a, b) =>
+      Number((a.retailerType ?? 'grocery') !== 'grocery') -
+      Number((b.retailerType ?? 'grocery') !== 'grocery')
+  )
+
+  const perStore = await Promise.all(
+    ordered.map(async sm => {
+      const rows = await prisma.productOffer.findMany({
+        where: { ...activeOfferWhere(country), supermarketId: sm.id },
+        include: {
+          supermarket: { select: { nameAr: true, slug: true, logo: true } },
+          category: { select: { nameAr: true, icon: true } },
+          flyer: { select: { startDate: true, endDate: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        // Headroom so the image preference has something to choose from.
+        take: perRetailer * 4,
+      })
+      return rows
+        .map((row, i) => ({ row, i }))
+        .sort((a, b) => Number(!a.row.imageUrl) - Number(!b.row.imageUrl) || a.i - b.i)
+        .slice(0, perRetailer)
+        .map(x => x.row)
+    })
+  )
+
+  // Round-robin: first pick of every store, then second pick of every store.
+  const out: (typeof perStore)[number] = []
+  for (let round = 0; round < perRetailer && out.length < limit; round++) {
+    for (const rows of perStore) {
+      if (out.length >= limit) break
+      if (rows[round]) out.push(rows[round])
+    }
+  }
+  return out
+}
+
+/**
  * Category slugs that are actually groceries. Kept as a SECONDARY signal only.
  *
  * On its own this does not work, which is why groceryFirst() exists: the category

@@ -1,5 +1,6 @@
 'use client'
 import { currencyOf, countryFromPath, pathFor } from '@/lib/countries'
+import { track } from '@/lib/track'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
@@ -164,11 +165,16 @@ export default function SearchAutocomplete({
 
   const navigateToSearch = (searchTerm: string) => {
     saveRecent(searchTerm)
+    track('search', { search_term: searchTerm })
     router.push(pathFor(country, `/offers?search=${encodeURIComponent(searchTerm)}`))
     reset()
   }
 
   const selectOption = (opt: FlatOption) => {
+    // `recent` re-runs a search and is counted there as a `search`.
+    if (opt.kind !== 'recent') {
+      track('search_suggestion_click', { search_term: query.trim(), suggestion_type: opt.kind })
+    }
     switch (opt.kind) {
       case 'recent':
         navigateToSearch(opt.label)

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useI18n } from '@/components/I18nProvider'
+import { track } from '@/lib/track'
 import type { ListCouponData } from '@/hooks/useListCoupon'
 
 export default function ListCoupon({ coupon }: { coupon: ListCouponData | null }) {
@@ -27,6 +28,7 @@ export default function ListCoupon({ coupon }: { coupon: ListCouponData | null }
       window.open(coupon.destinationUrl, '_blank', 'noopener,noreferrer')
     }
     navigator.clipboard?.writeText(coupon.code).catch(() => {})
+    track('coupon_copy', { coupon_code: coupon.code, surface: 'shopping_list', has_destination: !!coupon.destinationUrl })
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
