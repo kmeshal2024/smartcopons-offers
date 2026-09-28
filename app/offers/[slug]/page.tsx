@@ -89,8 +89,19 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const counts = await retailerContentCounts(supermarket.id, DEFAULT_COUNTRY)
   const isEmpty = !hasEnoughContent(counts)
 
-  const canonical = retailerUrl(supermarket.slug, page)
-  const pageSuffix = page > 1 ? ` — صفحة ${page}` : ''
+  // A page number past the end renders no products at all, yet it used to be
+  // indexable with a canonical pointing at itself. Search Console listed
+  // /offers/tamimi?page=610 (Tamimi has ~360 pages) and dozens like it under
+  // "Duplicate without user-selected canonical" and "Crawled - currently not
+  // indexed": they were real URLs once, when the catalogue was larger, and every
+  // one is now an identical empty shell. Point them at page 1 and keep them out
+  // of the index; `follow` stays so the links in the header and footer still
+  // count. Same 24-per-page size as loadRetailerData below.
+  const lastPage = Math.max(1, Math.ceil(counts.productOffers / 24))
+  const pastEnd = page > lastPage
+
+  const canonical = retailerUrl(supermarket.slug, pastEnd ? 1 : page)
+  const pageSuffix = page > 1 && !pastEnd ? ` — صفحة ${page}` : ''
 
   return {
     // The root layout appends `| SmartCopons` — don't repeat the brand here.
@@ -100,7 +111,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     // discovery of the ~24k product pages they link to. A long-lived `noindex`
     // gets crawled progressively less over time, which would work against exactly
     // that. `nofollow` is never correct here.
-    robots: isEmpty ? { index: false, follow: true } : undefined,
+    robots: isEmpty || pastEnd ? { index: false, follow: true } : undefined,
     description: `تصفح أحدث عروض وخصومات ${supermarket.nameAr} في السعودية. عروض يومية وأسبوعية على المنتجات الغذائية والمنزلية. قارن الأسعار ووفّر أكثر.`,
     keywords: `عروض ${supermarket.nameAr}, عروض ${supermarket.nameAr} اليوم, خصومات ${supermarket.nameAr}, عروض ${supermarket.nameAr} الاسبوعية, ${supermarket.name} offers, ${supermarket.name} deals KSA, عروض السوبرماركت`,
     alternates: { canonical },

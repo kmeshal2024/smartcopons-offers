@@ -81,13 +81,29 @@ const getPriceComparison = unstable_cache(async function getPriceComparison(name
   return Array.from(perStore.values()).slice(0, 6)
 }, ['price-comparison'], { revalidate: TTL_PRODUCT, tags: ['offers'] })
 
-const getRelated = unstable_cache(async function getRelated(categoryId: string | null, excludeId: string, country: string) {
-  if (!categoryId) return []
-  return prisma.productOffer.findMany({
+/**
+ * Offers to show under the product: the same category, or — when the product has
+ * no category — more from the same store.
+ *
+ * The store fallback exists because an uncategorised product used to render
+ * NOTHING here. With no comparison rows either, the whole page was a name, a
+ * price and a store: about 60 words, against ~200 for a page with this section.
+ * Those are the pages Search Console reports as "Crawled - currently not
+ * indexed". Electronics, toys and stationery have no category by design (see
+ * category-rules.ts), so this is a permanent population, not a data gap.
+ */
+const getRelated = unstable_cache(async function getRelated(
+  categoryId: string | null,
+  supermarketId: string,
+  excludeId: string,
+  country: string
+) {
+  const rows = await prisma.productOffer.findMany({
     where: {
-      categoryId,
+      ...(categoryId ? { categoryId } : { supermarketId }),
       isHidden: false,
       country,
+      price: { gt: 0 },
       id: { not: excludeId },
       flyer: { endDate: { gte: new Date() } },
     },
@@ -99,7 +115,8 @@ const getRelated = unstable_cache(async function getRelated(categoryId: string |
     orderBy: { discountPercent: 'desc' },
     take: 8,
   })
-}, ['product-related'], { revalidate: TTL_PRODUCT, tags: ['offers'] })
+  return { rows, sameStore: !categoryId }
+}, ['product-related-v2'], { revalidate: TTL_PRODUCT, tags: ['offers'] })
 
 /**
  * What this store has charged for this item over the last 90 days.
@@ -196,9 +213,9 @@ export default async function ProductPage({ params }: Props) {
   const curIso = resolveCountry((p as any).country).currencyEn
   const validity = getValidity(p.flyer?.startDate, p.flyer?.endDate)
   const country = (p as any).country || DEFAULT_COUNTRY
-  const [comparison, related, history] = await Promise.all([
+  const [comparison, { rows: related, sameStore: relatedSameStore }, history] = await Promise.all([
     getPriceComparison(name, p.id, country),
-    getRelated(p.categoryId, p.id, country),
+    getRelated(p.categoryId, p.supermarket.id, p.id, country),
     getPriceHistory(p.supermarket.id, p.nameAr, country),
   ])
   const historyPrices = history.map(h => h.price)
@@ -434,7 +451,11 @@ export default async function ProductPage({ params }: Props) {
         {related.length > 0 && (
           <section className="mt-8">
             <h2 className="mb-3 font-bold text-gray-900">
-              {p.category ? t('product.relatedIn', { cat: p.category.nameAr }) : t('product.related')}
+              {relatedSameStore
+                ? t('product.relatedStore', { store: p.supermarket.nameAr })
+                : p.category
+                  ? t('product.relatedIn', { cat: p.category.nameAr })
+                  : t('product.related')}
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {related.map(r => (

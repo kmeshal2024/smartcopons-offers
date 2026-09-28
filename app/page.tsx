@@ -234,7 +234,12 @@ export default async function HomePage() {
                   {categories.map(cat => (
                     <Link
                       key={cat.id}
-                      href={`/offers?category=${cat.slug}`}
+                      // The category's own server-rendered page, not the
+                      // `/offers?category=` filter view. That one canonicalises
+                      // to /offers, so the homepage was sending its eight most
+                      // prominent links to URLs that declare themselves
+                      // duplicates — Search Console listed them as such.
+                      href={`/offers/category/${cat.slug}`}
                       className="group text-center p-3 rounded-lg bg-gray-50 hover:bg-pink-50 border border-transparent hover:border-pink-200 transition-all"
                     >
                       <div className="text-2xl mb-1.5">{cat.icon || '📦'}</div>
