@@ -527,7 +527,10 @@ function toRenderable(c: any): RenderableCoupon {
     id: c.id,
     code: c.code,
     title: c.title,
-    discountText: c.discountText,
+    // "خصم 00%" is a data-entry slip (Level Shoes carries it), and advertising
+    // a zero discount is worse than naming none. Shown as a plain "discount
+    // code" until the real figure is entered; the stored value is untouched.
+    discountText: /(^|[^\d.])0+\s*%/.test(c.discountText || '') ? 'كود خصم' : c.discountText,
     destinationUrl: destinationFor(c),
     isExclusive: c.isExclusive,
     validUntil: c.validUntil,
