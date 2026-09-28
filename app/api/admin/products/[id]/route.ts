@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { syncProductsSafely } from '@/lib/services/product-sync'
 import { requireAdmin } from '@/lib/auth'
 
 export async function PUT(
@@ -33,6 +34,9 @@ export async function PUT(
         isHidden: isHidden || false,
       },
     })
+
+    // A renamed or re-sized offer may now be a different product.
+    await syncProductsSafely({ offerId: product.id })
 
     return NextResponse.json({ product })
   } catch (error) {

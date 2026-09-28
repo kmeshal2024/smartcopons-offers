@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { CategoryMapper } from './category-mapper'
+import { syncProductsSafely } from './product-sync'
 import { isRestrictedProduct } from '@/lib/restricted-products'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
 import type { ScrapedOffer, ScrapedFlyerAsset } from '@/lib/scrapers/types'
@@ -155,6 +156,14 @@ export class OfferIngestService {
     }
     if (refreshed > 0) {
       logs.push(`[ingest] Re-attached ${refreshed} still-offered products to the current flyer`)
+    }
+
+    // Stable products (phase 3). Everything attached to this flyer — rows just
+    // created AND rows re-attached above — is linked to its product, and today's
+    // price is recorded. Scoped to the flyer so a nightly run costs a handful of
+    // queries rather than a scan of the whole table. Never fails the ingest.
+    if (created > 0 || refreshed > 0) {
+      await syncProductsSafely({ flyerId: flyer.id }, logs)
     }
 
     // Heal image-less duplicates. Dedup normally ignores imageUrl, which means

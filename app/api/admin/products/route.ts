@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { syncProductsSafely } from '@/lib/services/product-sync'
 import { requireAdmin } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
@@ -89,6 +90,8 @@ export async function POST(request: NextRequest) {
         isHidden: isHidden || false,
       },
     })
+
+    await syncProductsSafely({ offerId: product.id })
 
     return NextResponse.json({ product }, { status: 201 })
   } catch (error) {

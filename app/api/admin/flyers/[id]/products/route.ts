@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
 import { CategoryMapper } from '@/lib/services/category-mapper'
+import { syncProductsSafely } from '@/lib/services/product-sync'
 
 interface ProductRow {
   nameAr: string
@@ -94,6 +95,8 @@ export async function POST(
         errors.push({ index: i, message: `Row ${i + 1}: ${err.message}` })
       }
     }
+
+    if (created > 0) await syncProductsSafely({ flyerId })
 
     return NextResponse.json({
       created,

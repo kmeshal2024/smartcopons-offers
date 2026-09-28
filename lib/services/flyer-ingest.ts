@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { PDFExtractor } from './pdf-extractor'
 import { CategoryMapper } from './category-mapper'
+import { syncProductsSafely } from './product-sync'
 import { isRestrictedProduct } from '@/lib/restricted-products'
 import path from 'path'
 import fs from 'fs/promises'
@@ -101,6 +102,8 @@ export class FlyerIngestService {
           extractionLog: result.logs.join('\n'),
         },
       })
+
+      if (savedCount > 0) await syncProductsSafely({ flyerId: options.flyerId })
 
       console.log(`✅ Ingestion complete: ${savedCount} products saved`)
 
