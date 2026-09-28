@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { useI18n } from '@/components/I18nProvider'
-import { track } from '@/lib/track'
+import { trackCouponCopy } from '@/lib/track'
 
 interface CouponCardProps {
   id: string
@@ -21,7 +21,7 @@ export default function CouponCard({ id, title, code, discountText, storeName, s
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code)
-    track('coupon_copy', { coupon_code: code, store: storeSlug, surface: 'coupon_card' })
+    trackCouponCopy({ id, code, store: storeSlug, surface: 'coupon_card' })
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

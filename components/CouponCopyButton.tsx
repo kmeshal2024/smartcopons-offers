@@ -2,14 +2,22 @@
 
 import { useState } from 'react'
 import { useI18n } from '@/components/I18nProvider'
-import { track } from '@/lib/track'
+import { trackCouponCopy } from '@/lib/track'
 
 /**
  * The one interactive bit of the coupon store landing pages. Everything else on
  * /coupons/[slug] is server-rendered so the codes are real text in the HTML —
  * that page is an SEO surface first.
  */
-export default function CouponCopyButton({ code, destinationUrl }: { code: string; destinationUrl?: string | null }) {
+export default function CouponCopyButton({
+  code,
+  destinationUrl,
+  couponId,
+}: {
+  code: string
+  destinationUrl?: string | null
+  couponId?: string
+}) {
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)
 
@@ -17,7 +25,7 @@ export default function CouponCopyButton({ code, destinationUrl }: { code: strin
     navigator.clipboard.writeText(code)
     setCopied(true)
     setTimeout(() => setCopied(false), 2500)
-    track('coupon_copy', { coupon_code: code, surface: 'coupon_store_page', has_destination: !!destinationUrl })
+    trackCouponCopy({ id: couponId, code, surface: 'coupon_store_page', hasDestination: !!destinationUrl })
     if (destinationUrl) window.open(destinationUrl, '_blank', 'noopener')
   }
 

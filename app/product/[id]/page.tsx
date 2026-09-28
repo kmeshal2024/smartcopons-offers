@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db'
 import { unstable_cache } from 'next/cache'
-import { TTL_PRODUCT } from '@/lib/offer-queries'
+import { TTL_PRODUCT, couponForContext } from '@/lib/offer-queries'
+import { couponStoresForCategory } from '@/lib/coupon-context'
+import ContextCoupon from '@/components/ContextCoupon'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -218,6 +220,14 @@ export default async function ProductPage({ params }: Props) {
     getRelated(p.categoryId, p.supermarket.id, p.id, country),
     getPriceHistory(p.supermarket.id, p.nameAr, country),
   ])
+  // One code that fits this aisle — see lib/coupon-context.ts. Not for an ended
+  // offer: that page is noindex and the shopper cannot buy the item anyway.
+  const found = validity.isExpired
+    ? null
+    : await couponForContext(p.supermarket.slug, couponStoresForCategory(p.category?.slug), country)
+  // Store coupon pages exist for the Saudi site only; elsewhere show the code
+  // without a link that would 404.
+  const coupon = found && country !== DEFAULT_COUNTRY ? { ...found, storeSlug: null } : found
   const historyPrices = history.map(h => h.price)
   const showHistory = history.length >= 2
 
@@ -401,6 +411,8 @@ export default async function ProductPage({ params }: Props) {
             )}
           </div>
         </div>
+
+        <ContextCoupon coupon={coupon} surface="product_page" className="mt-6" />
 
         <BannerSlot placement="product" country={country} className="mt-8" />
 

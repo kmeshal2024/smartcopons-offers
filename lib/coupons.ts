@@ -24,7 +24,7 @@ export const getCouponStore = unstable_cache(
       orderBy: [{ isExclusive: 'desc' }, { createdAt: 'desc' }],
       select: {
         id: true, code: true, title: true, discountText: true,
-        isExclusive: true, validUntil: true, updatedAt: true, affiliateUrl: true,
+        isExclusive: true, validUntil: true, updatedAt: true, affiliateUrl: true, url: true,
       },
     })
     return { store, coupons }

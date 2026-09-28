@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { useI18n } from '@/components/I18nProvider'
-import { track } from '@/lib/track'
+import { trackCouponCopy } from '@/lib/track'
 
 export interface ExplorerCoupon {
   id: string
@@ -78,7 +78,7 @@ export default function CouponsExplorer({ coupons }: { coupons: ExplorerCoupon[]
 
   const handleCopy = (id: string, code: string) => {
     navigator.clipboard.writeText(code)
-    track('coupon_copy', { coupon_code: code, coupon_id: id, surface: 'coupons_explorer' })
+    trackCouponCopy({ id, code, surface: 'coupons_explorer' })
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
   }

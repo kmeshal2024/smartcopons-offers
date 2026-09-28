@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db'
 import { unstable_cache } from 'next/cache'
-import { TTL_LISTING } from '@/lib/offer-queries'
+import { TTL_LISTING, couponForContext } from '@/lib/offer-queries'
+import { couponStoresForCategory } from '@/lib/coupon-context'
+import ContextCoupon from '@/components/ContextCoupon'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -107,6 +109,10 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   if (!data) notFound()
 
   const { category, products, total } = data
+  // One code from a store that sells this aisle — see lib/coupon-context.ts.
+  const coupon = products.length
+    ? await couponForContext(null, couponStoresForCategory(slug), DEFAULT_COUNTRY)
+    : null
   const lang = getLang()
   const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
   const catName = lang === 'en' ? (category.nameEn || category.nameAr) : category.nameAr
@@ -169,6 +175,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
               </h1>
               <p className="text-gray-600">{t('retailer.productsCount', { n: total })}</p>
             </div>
+
+            <ContextCoupon coupon={coupon} surface="category_page" className="mb-6" />
 
             <CategorySort current={sort} />
 

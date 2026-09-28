@@ -7,7 +7,7 @@ import ProductCard from '@/components/ProductCard'
 import Link from 'next/link'
 import { currencyOf, DEFAULT_COUNTRY } from '@/lib/countries'
 import { useI18n } from '@/components/I18nProvider'
-import { track } from '@/lib/track'
+import { trackCouponCopy } from '@/lib/track'
 
 
 interface Product {
@@ -246,7 +246,7 @@ export default function OffersClient({ country = DEFAULT_COUNTRY }: { country?: 
 
   const handleCopyCode = (code: string, elementId: string) => {
     navigator.clipboard.writeText(code).catch(() => {})
-    track('coupon_copy', { coupon_code: code, surface: 'offers_page' })
+    trackCouponCopy({ id: elementId.replace(/^(search-)?copy-/, ''), code, surface: 'offers_page' })
     const btnId = elementId.startsWith('copy-') || elementId.startsWith('search-copy-') ? elementId : `copy-${elementId}`
     const btn = document.getElementById(btnId)
     if (btn) {

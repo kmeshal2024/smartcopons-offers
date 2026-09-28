@@ -360,6 +360,8 @@ const DICT: Record<string, Entry> = {
   'product.thisPage': { ar: '(هذه الصفحة)', en: '(this page)' },
   'product.related': { ar: 'عروض مشابهة', en: 'Similar offers' },
   'product.relatedIn': { ar: 'عروض مشابهة في {cat}', en: 'Similar offers in {cat}' },
+  'contextCoupon.heading': { ar: 'وفّر أكثر — كود خصم {store}', en: 'Save more — {store} discount code' },
+  'contextCoupon.allCodes': { ar: 'كل أكواد {store} ←', en: 'All {store} codes →' },
   'product.relatedStore': { ar: 'عروض أخرى من {store}', en: 'More offers from {store}' },
   'product.shareWhatsapp': { ar: 'شارك عبر واتساب', en: 'Share on WhatsApp' },
   'product.share': { ar: 'مشاركة', en: 'Share' },

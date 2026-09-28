@@ -475,6 +475,8 @@ export interface RenderableCoupon {
   isExclusive: boolean
   validUntil: Date | null
   storeName: string
+  /** Slug of the coupon store, for linking to /coupons/{slug}. */
+  storeSlug?: string | null
 }
 
 /**
@@ -504,11 +506,18 @@ function renderableCouponWhere(country: string = DEFAULT_COUNTRY) {
  * Where "copy & shop" sends the shopper, best available first:
  *   1. the affiliate URL, when one exists
  *   2. the retailer's own site (we already store it on Supermarket/Store)
- *   3. nothing — the button becomes copy-only rather than a dead link
+ *   3. the coupon's own `url`, when it is a real address. That column was '#'
+ *      on every legacy row, which is why it used to be ignored; the codes
+ *      imported since carry the merchant's site there, and `stores.website` is
+ *      empty for most of them, so without this step the button was copy-only
+ *      for codes whose destination we actually know.
+ *   4. nothing — the button becomes copy-only rather than a dead link
  */
-function destinationFor(c: any): string | null {
-  const url = c.affiliateUrl || c.supermarket?.website || c.store?.website || null
-  return typeof url === 'string' && /^https?:\/\//.test(url) ? url : null
+export function destinationFor(c: any): string | null {
+  for (const url of [c.affiliateUrl, c.supermarket?.website, c.store?.website, c.url]) {
+    if (typeof url === 'string' && /^https?:\/\//.test(url)) return url
+  }
+  return null
 }
 
 function toRenderable(c: any): RenderableCoupon {
@@ -521,6 +530,7 @@ function toRenderable(c: any): RenderableCoupon {
     isExclusive: c.isExclusive,
     validUntil: c.validUntil,
     storeName: c.supermarket?.nameAr || c.store?.name || '',
+    storeSlug: c.store?.slug ?? null,
   }
 }
 
@@ -621,3 +631,56 @@ export const couponsForRetailer = unstable_cache(
   ['coupons-for-retailer'],
   { revalidate: TTL_LISTING, tags: ['coupons'] }
 )
+
+/**
+ * Live codes for the coupon stores mapped to one product aisle, one per store —
+ * each store's best code (exclusive first, then newest). Cached as a pool; the
+ * pick happens outside the cache so it can rotate.
+ */
+const couponPoolForStores = unstable_cache(
+  async (storeSlugs: string[], country: string = DEFAULT_COUNTRY) => {
+    if (!storeSlugs.length) return []
+    const rows = await prisma.coupon.findMany({
+      where: { ...renderableCouponWhere(country), store: { countries: { contains: country }, slug: { in: storeSlugs } } },
+      include: {
+        store: { select: { name: true, slug: true, website: true } },
+        supermarket: { select: { nameAr: true, slug: true, website: true } },
+      },
+      orderBy: [{ isExclusive: 'desc' }, { createdAt: 'desc' }],
+    })
+    const perStore = new Map<string, RenderableCoupon>()
+    for (const r of rows) {
+      const slug = (r as any).store?.slug
+      // Named after the coupon store, not the retailer: on a Carrefour product
+      // the heading must say whose code this is.
+      if (slug && !perStore.has(slug)) perStore.set(slug, { ...toRenderable(r), storeName: (r as any).store.name })
+    }
+    // Keep the order of the map in coupon-context.ts, so the rotation is stable.
+    return storeSlugs.map(s => perStore.get(s)).filter((c): c is RenderableCoupon => !!c)
+  },
+  ['coupon-pool-for-stores'],
+  { revalidate: TTL_LISTING, tags: ['coupons'] }
+)
+
+/**
+ * The ONE code to show beside a product or at the top of an aisle.
+ *
+ *   1. A code belonging to the retailer itself (Nahdi's code on a Nahdi product).
+ *   2. Otherwise a code from a store that sells this aisle, rotating by Riyadh
+ *      day so each mapped store gets its share of exposure.
+ *   3. Otherwise nothing.
+ */
+export async function couponForContext(
+  retailerSlug: string | null | undefined,
+  storeSlugs: string[],
+  country: string = DEFAULT_COUNTRY
+): Promise<RenderableCoupon | null> {
+  if (retailerSlug) {
+    const own = await couponsForRetailer(retailerSlug, country, 1)
+    if (own.length) return own[0]
+  }
+  const pool = await couponPoolForStores(storeSlugs, country)
+  if (!pool.length) return null
+  const dayIndex = Math.floor((Date.now() + 3 * 3600_000) / 86_400_000)
+  return pool[dayIndex % pool.length]
+}

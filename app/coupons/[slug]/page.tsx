@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import CouponCopyButton from '@/components/CouponCopyButton'
+import { destinationFor } from '@/lib/offer-queries'
 import { getCouponStore, getCouponsData } from '@/lib/coupons'
 import { COUPON_STORE_CONTENT } from '@/lib/coupon-store-content'
 import { getLang } from '@/lib/i18n-server'
@@ -160,7 +161,7 @@ export default async function CouponStorePage({ params }: { params: { slug: stri
         ) : (
           <section className="mb-8 space-y-4">
             {coupons.map(c => {
-              const dest = c.affiliateUrl || store.website || null
+              const dest = destinationFor({ ...c, store })
               return (
                 <article
                   key={c.id}
@@ -180,7 +181,7 @@ export default async function CouponStorePage({ params }: { params: { slug: stri
                     <div className="flex-1 rounded-lg border border-dashed border-pink-300 bg-gray-50 px-4 py-2.5 text-center font-mono text-lg font-bold tracking-wider text-pink-700">
                       {c.code}
                     </div>
-                    <CouponCopyButton code={c.code} destinationUrl={dest} />
+                    <CouponCopyButton code={c.code} destinationUrl={dest} couponId={c.id} />
                   </div>
                 </article>
               )
