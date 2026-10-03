@@ -11,13 +11,13 @@
  *      Authorization: Bearer $APP_SECRET  → { asins: [...] }
  *   2. In the amazon.sa tab: `window.__ASINS = [...]`, then run this file.
  *      It returns immediately and works in the background (a single CDP call
- *      times out after 45s; 100 product pages take ~3 minutes).
+ *      times out after 45s; 100 product pages take ~25 minutes at ~15s each).
  *   3. Poll `window.__amz.status` until 'done', then read `window.__amz.out`
  *      ("ASIN:percent,..." — percent 0 = no discount now) in slices of ~900
  *      characters, because tool output is truncated around 1,000.
  *   4. POST { discounts: [{ asin, percent }] } to the same endpoint.
  *      ASINs with no readable price are left out on purpose: their old
- *      discount ages out after 48h instead of being guessed.
+ *      discount ages out after 54h instead of being guessed.
  */
 ;(() => {
   const asins = (window.__ASINS || []).filter(a => /^[A-Z0-9]{10}$/.test(a))
@@ -30,18 +30,26 @@
       try {
         const html = await fetch(`/dp/${asin}?language=ar_AE&th=1&psc=1`, { credentials: 'include' }).then(r => r.text())
         const doc = new DOMParser().parseFromString(html, 'text/html')
-        const box =
-          doc.querySelector('#corePriceDisplay_desktop_feature_div') ||
-          doc.querySelector('#corePrice_feature_div') ||
-          doc
-        const price = num(box.querySelector('.priceToPay .a-offscreen, .a-price .a-offscreen')?.textContent)
+        // Amazon renders the price block in more than one layout; the first
+        // container that actually holds a price wins. In the 2026 "apex" layout
+        // #corePriceDisplay_desktop_feature_div exists but is empty.
+        const first = sels => {
+          for (const sel of sels) {
+            const el = doc.querySelector(sel)
+            if (el && el.textContent.trim()) return el.textContent
+          }
+          return null
+        }
+        const price = num(
+          first(['.apex-pricetopay-value .a-offscreen', '.priceToPay .a-offscreen', '#corePrice_feature_div .a-price .a-offscreen'])
+        )
         if (!price) {
           state.skipped.push(asin) // unavailable or no buy box — let the old discount age out
         } else {
-          const badge = box.querySelector('.savingsPercentage')?.textContent || ''
+          const badge = first(['.apex-savings-percentage', '#corePriceDisplay_desktop_feature_div .savingsPercentage', '#corePrice_feature_div .savingsPercentage']) || ''
           let pct = Math.abs(parseInt(badge.replace(/[^\d-]/g, ''), 10)) || 0
           if (!pct) {
-            const list = num(box.querySelector('.basisPrice .a-offscreen, .a-text-price .a-offscreen')?.textContent)
+            const list = num(first(['.basisPrice .a-offscreen', '#corePrice_feature_div .a-text-price .a-offscreen']))
             if (list && list > price) pct = Math.round(((list - price) / list) * 100)
           }
           pairs.push(`${asin}:${pct}`)

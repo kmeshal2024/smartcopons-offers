@@ -12,7 +12,7 @@ import { invalidateAmazon } from '@/lib/cache-invalidation'
  *        percent >= 5  → stored and stamped as checked now
  *        percent <  5  → cleared (checked, and there is no discount right now)
  *        ASIN absent   → untouched, so its old discount simply ages out
- *                        (liveDiscount hides it 48h after the last check)
+ *                        (liveDiscount hides it 54h after the last check)
  *
  * Fed by scripts/amazon-discount-refresh.js, run in Chrome on amazon.sa every
  * two days. Two ways in, like the import: APP_SECRET or the admin session.

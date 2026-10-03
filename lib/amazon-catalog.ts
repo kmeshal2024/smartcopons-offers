@@ -55,8 +55,13 @@ export function isAsin(s: string): boolean {
  * a "خصم 30%" that ended yesterday is a promise the shopper finds broken at
  * checkout, so after this the card falls back to the plain "see the price" CTA
  * until the discount is re-checked.
+ *
+ * 54, not 48: the refresh runs every two days (scheduled task
+ * smartcopons-amazon-discount-refresh) and stamps at the END of a ~25-minute
+ * run, so 48 would blank every badge for part of each run. 6h of slack also
+ * covers the run starting late because the app was closed.
  */
-export const AMAZON_DISCOUNT_MAX_AGE_HOURS = 48
+export const AMAZON_DISCOUNT_MAX_AGE_HOURS = 54
 
 /** The discount to show right now, or null when there is none or it is stale. */
 export function liveDiscount(
