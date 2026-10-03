@@ -50,6 +50,26 @@ export function isAsin(s: string): boolean {
   return ASIN_RE.test(s)
 }
 
+/**
+ * How long a recorded discount stays on the page. Amazon deals change daily, and
+ * a "خصم 30%" that ended yesterday is a promise the shopper finds broken at
+ * checkout, so after this the card falls back to the plain "see the price" CTA
+ * until the discount is re-checked.
+ */
+export const AMAZON_DISCOUNT_MAX_AGE_HOURS = 48
+
+/** The discount to show right now, or null when there is none or it is stale. */
+export function liveDiscount(
+  percent: number | null | undefined,
+  checkedAt: Date | string | null | undefined,
+  now: number = Date.now()
+): number | null {
+  if (!percent || percent < 5 || !checkedAt) return null
+  const t = new Date(checkedAt).getTime()
+  if (!Number.isFinite(t) || now - t > AMAZON_DISCOUNT_MAX_AGE_HOURS * 3600_000) return null
+  return percent
+}
+
 /** The affiliate link. Short /dp/ form plus the tag — what SiteStripe itself produces. */
 export function amazonUrl(asin: string): string {
   return `https://www.amazon.sa/dp/${asin}?tag=${AMAZON_SA_TAG}`

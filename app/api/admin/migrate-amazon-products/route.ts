@@ -42,6 +42,16 @@ const STATEMENTS = [
        ADD CONSTRAINT "amazon_products_asin_check"
        CHECK (asin ~ '^[A-Z0-9]{10}$');
    EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+
+  // Discount instead of price (2026-10-03).
+  `ALTER TABLE amazon_products ADD COLUMN IF NOT EXISTS "discountPercent"   INTEGER`,
+  `ALTER TABLE amazon_products ADD COLUMN IF NOT EXISTS "discountCheckedAt" TIMESTAMP(3)`,
+
+  `DO $$ BEGIN
+     ALTER TABLE amazon_products
+       ADD CONSTRAINT "amazon_products_discount_check"
+       CHECK ("discountPercent" IS NULL OR "discountPercent" BETWEEN 1 AND 95);
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 ]
 
 async function run() {

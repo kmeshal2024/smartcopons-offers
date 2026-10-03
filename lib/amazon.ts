@@ -18,6 +18,8 @@ export {
   parseAsin,
   isAsin,
   amazonUrl,
+  liveDiscount,
+  AMAZON_DISCOUNT_MAX_AGE_HOURS,
 } from '@/lib/amazon-catalog'
 
 export interface ServableAmazonProduct {
@@ -27,6 +29,9 @@ export interface ServableAmazonProduct {
   note: string | null
   imageUrl: string | null
   category: string
+  discountPercent: number | null
+  /** A string once it has been through unstable_cache (JSON), so read via new Date(). */
+  discountCheckedAt: Date | string | null
 }
 
 export const getActiveAmazonProducts = unstable_cache(
@@ -34,7 +39,16 @@ export const getActiveAmazonProducts = unstable_cache(
     try {
       return await prisma.amazonProduct.findMany({
         where: { isActive: true },
-        select: { id: true, asin: true, title: true, note: true, imageUrl: true, category: true },
+        select: {
+          id: true,
+          asin: true,
+          title: true,
+          note: true,
+          imageUrl: true,
+          category: true,
+          discountPercent: true,
+          discountCheckedAt: true,
+        },
         orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
         take: 500,
       })

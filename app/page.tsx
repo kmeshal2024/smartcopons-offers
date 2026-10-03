@@ -14,6 +14,7 @@ import Header from '@/components/Header'
 import ProductCard from '@/components/ProductCard'
 import BannerSlot from '@/components/BannerSlot'
 import FeaturedCoupons from '@/components/FeaturedCoupons'
+import AmazonStoreTile from '@/components/AmazonStoreTile'
 import Footer from '@/components/Footer'
 import type { Metadata } from 'next'
 import { DEFAULT_COUNTRY } from '@/lib/countries'
@@ -200,6 +201,7 @@ export default async function HomePage() {
               </div>
               <div className="p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                  <AmazonStoreTile variant="home" />
                   {supermarkets.map(sm => (
                     <Link
                       key={sm.id}

@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import AdminNav from '@/components/AdminNav'
-import { AMAZON_CATEGORIES, AMAZON_SA_TAG, amazonUrl, parseAsin } from '@/lib/amazon-catalog'
+import {
+  AMAZON_CATEGORIES,
+  AMAZON_SA_TAG,
+  AMAZON_DISCOUNT_MAX_AGE_HOURS,
+  amazonUrl,
+  liveDiscount,
+  parseAsin,
+} from '@/lib/amazon-catalog'
 
 interface AmazonProduct {
   id: string
@@ -13,6 +20,8 @@ interface AmazonProduct {
   category: string
   isActive: boolean
   priority: number
+  discountPercent: number | null
+  discountCheckedAt: string | null
   clicks: number
 }
 
@@ -24,6 +33,9 @@ const EMPTY_FORM = {
   category: 'grocery' as string,
   isActive: true,
   priority: 0,
+  discountPercent: '' as string | number,
+  /** Kept from the loaded row so an edit that leaves the discount alone keeps its check time. */
+  discountCheckedAt: null as string | null,
 }
 
 const categoryLabel = (slug: string) =>
@@ -57,7 +69,17 @@ export default function AdminAmazonPage() {
     }
   }
 
-  const payloadOf = (p: Omit<AmazonProduct, 'id' | 'clicks'>) => ({
+  const payloadOf = (p: {
+    asin: string
+    title: string
+    note: string | null
+    imageUrl: string | null
+    category: string
+    isActive: boolean
+    priority: number
+    discountPercent: string | number | null
+    discountCheckedAt: string | null
+  }) => ({
     asin: p.asin,
     title: p.title,
     note: p.note || null,
@@ -65,6 +87,9 @@ export default function AdminAmazonPage() {
     category: p.category,
     isActive: p.isActive,
     priority: Number(p.priority) || 0,
+    discountPercent: p.discountPercent === '' || p.discountPercent == null ? null : Number(p.discountPercent),
+    // null makes the server stamp "now" — i.e. a newly typed discount counts as just checked.
+    discountCheckedAt: p.discountCheckedAt,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,6 +133,8 @@ export default function AdminAmazonPage() {
       category: p.category,
       isActive: p.isActive,
       priority: p.priority,
+      discountPercent: p.discountPercent ?? '',
+      discountCheckedAt: p.discountCheckedAt,
     })
     setShowForm(true)
     setError('')
@@ -242,6 +269,25 @@ export default function AdminAmazonPage() {
             </label>
 
             <label className="block">
+              <span className="text-sm font-medium">Discount % off list price (blank = none)</span>
+              <input
+                type="number"
+                min={1}
+                max={95}
+                value={formData.discountPercent}
+                onChange={e =>
+                  // A changed discount is a fresh check: clear the old stamp so the server sets now.
+                  setFormData({ ...formData, discountPercent: e.target.value, discountCheckedAt: null })
+                }
+                className="mt-1 w-full rounded border px-3 py-2"
+                placeholder="25"
+              />
+              <span className="mt-1 block text-xs text-gray-500">
+                Shown as "خصم X%" for {AMAZON_DISCOUNT_MAX_AGE_HOURS}h after it was checked, then hidden until re-checked.
+              </span>
+            </label>
+
+            <label className="block">
               <span className="text-sm font-medium">Priority (higher shows first)</span>
               <input
                 type="number"
@@ -288,6 +334,7 @@ export default function AdminAmazonPage() {
                   <th className="p-3"></th>
                   <th className="p-3">Product</th>
                   <th className="p-3">Category</th>
+                  <th className="p-3">Discount</th>
                   <th className="p-3">Priority</th>
                   <th className="p-3">Clicks</th>
                   <th className="p-3">Status</th>
@@ -317,6 +364,22 @@ export default function AdminAmazonPage() {
                       </a>
                     </td>
                     <td className="p-3">{categoryLabel(p.category)}</td>
+                    <td className="p-3 whitespace-nowrap">
+                      {p.discountPercent ? (
+                        <>
+                          <span className={liveDiscount(p.discountPercent, p.discountCheckedAt) ? 'font-semibold text-red-600' : 'text-gray-400 line-through'}>
+                            {p.discountPercent}%
+                          </span>
+                          {p.discountCheckedAt && (
+                            <span className="block text-xs text-gray-400">
+                              {new Date(p.discountCheckedAt).toISOString().slice(0, 16).replace('T', ' ')} UTC
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td className="p-3">{p.priority}</td>
                     <td className="p-3">{p.clicks}</td>
                     <td className="p-3">

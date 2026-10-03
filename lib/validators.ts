@@ -82,7 +82,8 @@ export const bannerSchema = z
     path: ['headline'],
   })
 
-export const amazonProductSchema = z.object({
+export const amazonProductSchema = z
+  .object({
   // Already parsed from the pasted URL by the client; the regex mirrors the DB CHECK.
   asin: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{10}$/, 'ASIN must be 10 letters/digits'),
   title: z.string().trim().min(3, 'Title must be at least 3 characters').max(300),
@@ -94,7 +95,19 @@ export const amazonProductSchema = z.object({
   category: z.enum(AMAZON_CATEGORY_SLUGS),
   isActive: z.boolean().default(true),
   priority: z.coerce.number().int().min(0).max(1000).default(0),
-})
+  // Range mirrors the DB CHECK.
+  discountPercent: z.preprocess(
+    v => (v === '' || v == null || v === 0 || v === '0' ? null : Number(v)),
+    z.number().int().min(1).max(95).nullable()
+  ).optional(),
+  discountCheckedAt: optionalDate,
+  })
+  // A discount without a check time would never display (and never expire), so
+  // a newly entered discount is stamped now; clearing it clears the stamp.
+  .transform(p => ({
+    ...p,
+    discountCheckedAt: p.discountPercent ? p.discountCheckedAt ?? new Date() : null,
+  }))
 
 export const storeSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),

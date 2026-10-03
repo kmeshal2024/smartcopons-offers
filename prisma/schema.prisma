@@ -469,9 +469,10 @@ model Banner {
 ///
 /// Curated by hand from /admin/amazon until Creators API access opens (it needs
 /// 10 shipped sales in the trailing 30 days). The affiliate URL is NEVER stored:
-/// it is built at render time from the ASIN and lib/amazon.ts AMAZON_SA_TAG, so a
-/// row cannot carry a wrong or missing tag. No price column on purpose — Amazon
-/// requires a displayed price to be fresh, and nothing refreshes it yet.
+/// it is built at render time from the ASIN and lib/amazon-catalog.ts AMAZON_SA_TAG,
+/// so a row cannot carry a wrong or missing tag. No price column on purpose: the
+/// page shows the DISCOUNT instead, and only while it is fresh (see
+/// discountCheckedAt).
 model AmazonProduct {
   id        String   @id @default(cuid())
   /// 10-char Amazon product id. Unique, and a DB CHECK enforces the format.
@@ -485,6 +486,11 @@ model AmazonProduct {
   isActive  Boolean  @default(true)
   /// Higher shows first inside its category.
   priority  Int      @default(0)
+  /// Percent off Amazon's list price when last checked. Shown only while
+  /// discountCheckedAt is younger than AMAZON_DISCOUNT_MAX_AGE_HOURS — a stale
+  /// "خصم 30%" on a deal that ended would mislead the shopper.
+  discountPercent   Int?
+  discountCheckedAt DateTime?
   /// Outbound clicks to Amazon (first-party beacon, bots dropped).
   clicks    Int      @default(0)
   createdAt DateTime @default(now())
