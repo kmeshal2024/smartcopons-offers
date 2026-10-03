@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AMAZON_CATEGORY_SLUGS } from '@/lib/amazon-catalog'
 
 export const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -80,6 +81,20 @@ export const bannerSchema = z
     message: 'Native banners need a headline and CTA text',
     path: ['headline'],
   })
+
+export const amazonProductSchema = z.object({
+  // Already parsed from the pasted URL by the client; the regex mirrors the DB CHECK.
+  asin: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{10}$/, 'ASIN must be 10 letters/digits'),
+  title: z.string().trim().min(3, 'Title must be at least 3 characters').max(300),
+  note: optionalTrimmed,
+  imageUrl: z.preprocess(
+    v => (v === '' || v == null ? null : v),
+    z.string().url('Image URL must be a valid URL').startsWith('https', 'Image URL must be https').nullable()
+  ).optional(),
+  category: z.enum(AMAZON_CATEGORY_SLUGS),
+  isActive: z.boolean().default(true),
+  priority: z.coerce.number().int().min(0).max(1000).default(0),
+})
 
 export const storeSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),

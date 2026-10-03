@@ -464,3 +464,32 @@ model Banner {
   @@index([placement, country, isActive])
   @@map("banners")
 }
+
+/// Hand-picked Amazon.sa products, linked with the Associates tag.
+///
+/// Curated by hand from /admin/amazon until Creators API access opens (it needs
+/// 10 shipped sales in the trailing 30 days). The affiliate URL is NEVER stored:
+/// it is built at render time from the ASIN and lib/amazon.ts AMAZON_SA_TAG, so a
+/// row cannot carry a wrong or missing tag. No price column on purpose — Amazon
+/// requires a displayed price to be fresh, and nothing refreshes it yet.
+model AmazonProduct {
+  id        String   @id @default(cuid())
+  /// 10-char Amazon product id. Unique, and a DB CHECK enforces the format.
+  asin      String   @unique
+  title     String
+  /// Short Arabic line under the title ("الأكثر مبيعاً في الحفاضات").
+  note      String?
+  imageUrl  String?
+  /// One of lib/amazon.ts AMAZON_CATEGORIES.
+  category  String
+  isActive  Boolean  @default(true)
+  /// Higher shows first inside its category.
+  priority  Int      @default(0)
+  /// Outbound clicks to Amazon (first-party beacon, bots dropped).
+  clicks    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, category])
+  @@map("amazon_products")
+}

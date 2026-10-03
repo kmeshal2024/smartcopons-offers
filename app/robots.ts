@@ -15,6 +15,7 @@ export default function robots(): MetadataRoute.Robots {
           // Ad click/impression endpoints: crawled clicks polluted the CTR
           // numbers in week one (see app/api/banners/click).
           '/api/banners/',
+          '/api/amazon/',
           // On-site search results are near-infinite and duplicate the listings.
           // Handled here rather than via a noindex tag: reading searchParams in
           // generateMetadata forces dynamic streaming, and the response then

@@ -52,6 +52,7 @@ const DICT: Record<string, Entry> = {
   'nav.home': { ar: 'الرئيسية', en: 'Home' },
   'nav.offers': { ar: 'العروض', en: 'Offers' },
   'nav.coupons': { ar: 'كوبونات', en: 'Coupons' },
+  'nav.amazon': { ar: 'منتجات أمازون', en: 'Amazon picks' },
   'nav.stores': { ar: 'المتاجر', en: 'Stores' },
   'nav.favorites': { ar: 'المفضّلة', en: 'Favourites' },
   'nav.list': { ar: 'قائمتي', en: 'My list' },

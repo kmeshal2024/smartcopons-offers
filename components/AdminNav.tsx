@@ -16,6 +16,7 @@ export default function AdminNav() {
     { href: '/admin/coupons', label: 'Coupons' },
     { href: '/admin/coupons/stats', label: 'Coupon stats' },
     { href: '/admin/banners', label: 'Banners' },
+    { href: '/admin/amazon', label: 'Amazon' },
     { href: '/admin/stores', label: 'Stores' },
     { href: '/admin/supermarkets', label: 'Supermarkets' },
     { href: '/admin/categories', label: 'Categories' },

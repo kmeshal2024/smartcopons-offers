@@ -79,6 +79,9 @@ export default async function Footer() {
               <Link href="/coupons" className="block text-gray-400 hover:text-white transition">
                 {t(lang, 'nav.coupons')}
               </Link>
+              <Link href="/amazon" className="block text-gray-400 hover:text-white transition">
+                {t(lang, 'nav.amazon')}
+              </Link>
               {/* App stores require a reachable privacy policy link. */}
               <Link href="/privacy" className="block text-gray-400 hover:text-white transition">
                 {t(lang, 'footer.privacy')}

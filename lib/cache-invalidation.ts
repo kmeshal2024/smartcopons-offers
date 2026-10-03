@@ -29,9 +29,15 @@ export function invalidateBanners() {
   revalidateTag('banners')
 }
 
+/** Amazon product rows changed — the admin Amazon CRUD and import. */
+export function invalidateAmazon() {
+  revalidateTag('amazon')
+}
+
 /** Everything. Use after a bulk import or migration of unknown scope. */
 export function invalidateAll() {
   invalidateOffers()
   invalidateCoupons()
   invalidateBanners()
+  invalidateAmazon()
 }

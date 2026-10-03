@@ -23,6 +23,7 @@ export type TrackEvent =
   | 'search'
   | 'search_suggestion_click'
   | 'pwa_install'
+  | 'amazon_click'
 
 type Params = Record<string, string | number | boolean | null | undefined>
 
@@ -84,5 +85,32 @@ export function trackCouponCopy(p: {
     }
   } catch {
     /* counting must never break the copy */
+  }
+}
+
+/**
+ * An outbound click to an Amazon.sa product — same double record as a coupon
+ * copy: GA4 for behaviour, a first-party counter (/api/amazon/click) for the
+ * admin list, because ad blockers drop gtag and Amazon's own reports only show
+ * what was bought, not which of our picks got the click.
+ */
+export function trackAmazonClick(p: { id: string; asin: string; category: string }): void {
+  track('amazon_click', { product_id: p.id, asin: p.asin, category: p.category })
+  if (typeof window === 'undefined') return
+  try {
+    const body = JSON.stringify({ id: p.id })
+    const sent =
+      typeof navigator.sendBeacon === 'function' &&
+      navigator.sendBeacon('/api/amazon/click', new Blob([body], { type: 'application/json' }))
+    if (!sent) {
+      void fetch('/api/amazon/click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: true,
+      }).catch(() => {})
+    }
+  } catch {
+    /* counting must never break the click */
   }
 }
